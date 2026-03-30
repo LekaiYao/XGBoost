@@ -16,7 +16,7 @@ if len(sys.argv) != 2:
 
 train_tag = sys.argv[1]
 
-number_trials=150 #3->50->150
+number_trials = int(os.environ.get("OPTUNA_N_TRIALS", "150")) # default 150, override with OPTUNA_N_TRIALS
 
 SIG_PATH = "/eos/home-l/leyao/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_MC.root:ntmix"
 BKG_PATH = "/eos/home-l/leyao/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_DATA.root:ntmix"
@@ -46,7 +46,7 @@ df_raw = pd.concat([ak_sig, ak_bkg], axis=0, ignore_index=True)
 # =========================
 from sklearn.preprocessing import StandardScaler
 
-input_columns = ['Btrk1dR', 'Btrk2dR', 'BtrkPtimb']
+input_columns = ['Btrk1dR', 'Btrk2dR', 'BtrkPtimb', 'Bchi2Prob']
 scaler = StandardScaler()
 
 df_trans = pd.DataFrame(
@@ -60,7 +60,7 @@ df = pd.concat([df_trans, df_raw], axis=1)
 # =========================
 # dataset split
 # =========================
-X = df[['Btrk1dR_trans', 'Btrk2dR_trans', 'BtrkPtimb_trans']]
+X = df[['Btrk1dR_trans', 'Btrk2dR_trans', 'BtrkPtimb_trans', 'Bchi2Prob_trans']]
 y = df[['is_sig', 'is_bkg']]
 
 from sklearn.model_selection import train_test_split

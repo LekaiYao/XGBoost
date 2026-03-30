@@ -7,9 +7,10 @@ echo "Time: $(date)"
 train_tag=$1
 echo "Train tag: ${train_tag}"
 
-cd /eos/home-l/leyao/pbpb_work/X_analysis/test_XGBoost
+repo_dir="/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost"
+cd "${repo_dir}"
 
-source /eos/home-l/leyao/pbpb_work/X_analysis/test_XGBoost/myenv/bin/activate
+source "${repo_dir}/.venv/bin/activate"
 export PYTHONNOUSERSITE=1
 
 echo "Python: $(which python3)"

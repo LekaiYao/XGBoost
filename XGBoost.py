@@ -48,14 +48,14 @@ df_raw = pd.concat([ak_sig, ak_bkg], axis=0, ignore_index=True)
 from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
 
-input_columns = ['Btrk1dR', 'Btrk2dR', 'BtrkPtimb']
+input_columns = ['Btrk1dR', 'Btrk2dR', 'BtrkPtimb', 'Bchi2Prob']
 
 # Fit and transform the DataFrame
 df_trans = pd.DataFrame(scaler.fit_transform(df_raw[input_columns]), columns=[c + '_trans' for c in input_columns], index=df_raw.index)
 df = pd.concat([df_trans, df_raw], axis=1)
 
 # Define the features and labels
-X = df[['Btrk1dR_trans', 'Btrk2dR_trans', 'BtrkPtimb_trans']]
+X = df[['Btrk1dR_trans', 'Btrk2dR_trans', 'BtrkPtimb_trans', 'Bchi2Prob_trans']]
 y = df[['is_sig', 'is_bkg']] 
 
 from sklearn.model_selection import train_test_split

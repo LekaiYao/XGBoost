@@ -10,6 +10,7 @@ This directory contains a small XGBoost-based workflow for training, hyperparame
 - `draw.py`: scans score cuts and produces `Bmass` plots from scored DATA.
 - `run.sh`: batch entrypoint used by HTCondor.
 - `submit.sub`: example HTCondor submission file.
+- `requirements.txt`: Python dependencies for the local virtual environment.
 
 ## Workflow
 
@@ -48,25 +49,26 @@ Signal events are selected with `isX3872 == 1`, while background is taken from `
 
 ## Features
 
-The current model uses three input variables:
+The current model uses four input variables:
 
 - `Btrk1dR`
 - `Btrk2dR`
 - `BtrkPtimb`
+- `Bchi2Prob`
 
 They are standardized with `StandardScaler` before training and inference.
 
 ## Local Python Environment
 
-This folder contains a local virtual environment in `myenv/`. If you prefer the more common naming convention, it plays the same role as a project-local `.venv/`.
+Use a project-local virtual environment named `.venv/`.
 
-Environment details from `myenv/pyvenv.cfg`:
+Recommended interpreter:
 
-- Base interpreter location: `/usr/bin`
-- Python version: `3.9.25`
+- Base interpreter location: `/usr/bin/python3.9`
+- Python version: `3.9.x`
 - `include-system-site-packages = false`
 
-The code imports and therefore requires at least the following Python packages:
+The repository dependencies are listed in `requirements.txt`:
 
 - `uproot`
 - `awkward`
@@ -78,17 +80,18 @@ The code imports and therefore requires at least the following Python packages:
 - `optuna`
 - `joblib`
 
-To recreate a similar environment manually:
+To create the environment manually:
 
 ```bash
 python3.9 -m venv .venv
 source .venv/bin/activate
-pip install uproot awkward pandas numpy matplotlib scikit-learn xgboost optuna joblib
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install -r requirements.txt
 ```
 
 ## Batch Running
 
-`run.sh` activates `myenv/` and launches:
+`run.sh` activates `.venv/` and launches:
 
 ```bash
 python3 optuna_XGBoost.py ${train_tag}
