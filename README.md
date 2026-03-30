@@ -2,14 +2,16 @@
 
 This directory contains a small XGBoost-based workflow for training, hyperparameter tuning, score application, and mass-shape plotting for the X(3872) analysis.
 
+The repository is currently stored under EOS for versioning and artifact sharing. The HTCondor helper files are kept here as examples/documentation, but are not meant to be launched directly from this EOS path. For actual batch running, copy or mirror the workflow to an AFS path first.
+
 ## Repository Structure
 
 - `XGBoost.py`: baseline training script.
 - `optuna_XGBoost.py`: Optuna-based hyperparameter scan and final training.
 - `apply.py`: applies a trained model to MC and DATA ROOT ntuples and writes `xgb_score`.
 - `draw.py`: scans score cuts and produces `Bmass` plots from scored DATA.
-- `run.sh`: batch entrypoint used by HTCondor.
-- `submit.sub`: example HTCondor submission file.
+- `run.sh`: example batch entrypoint used by HTCondor after relocating the workflow to AFS.
+- `submit.sub`: example HTCondor submission file kept for later AFS-side usage.
 - `requirements.txt`: Python dependencies for the local virtual environment.
 
 ## Workflow
@@ -61,6 +63,16 @@ They are standardized with `StandardScaler` before training and inference.
 After training, both `XGBoost.py` and `optuna_XGBoost.py` print the feature importance ranking in descending order and save it to:
 
 - `xgb_output/feature_importance_<train_tag>.json`
+- `xgb_output/feature_importance_cumulative_<train_tag>.pdf`
+
+`apply.py` writes scored ROOT outputs to:
+
+- `selected_events/MC_with_score_<train_tag>.root`
+- `selected_events/DATA_with_score_<train_tag>.root`
+
+`draw.py` reads `selected_events/DATA_with_score_<train_tag>.root` and saves score-scan mass plots to:
+
+- `selected_events/<train_tag>_pdf/`
 
 ## Local Python Environment
 
@@ -94,6 +106,9 @@ python -m pip install -r requirements.txt
 ```
 
 ## Batch Running
+
+These files are included as reference only while the repository lives on EOS. HTCondor on this setup should be launched from an AFS location instead.
+
 
 `run.sh` activates `.venv/` and launches:
 

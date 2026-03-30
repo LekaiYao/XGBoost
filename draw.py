@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 # train tag
 # =========================
 if len(sys.argv) != 2:
-    print("Usage: python3 plot_scan.py <train_tag>")
+    print("Usage: python3 draw.py <train_tag>")
     sys.exit(1)
 
 train_tag = sys.argv[1]

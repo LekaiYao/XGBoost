@@ -48,6 +48,26 @@ def save_feature_importance(model, feature_names, output_dir, train_tag):
         )
     print(f"Feature importance saved to: {importance_path}")
 
+    ordered_names = [name for name, _ in importance_pairs]
+    ordered_scores = np.array([float(score) for _, score in importance_pairs])
+    cumulative_percent = np.cumsum(ordered_scores) / np.sum(ordered_scores) * 100.0
+
+    plot_path = os.path.join(output_dir, f"feature_importance_cumulative_{train_tag}.pdf")
+    plt.figure(figsize=(8, 5))
+    plt.plot(ordered_names, cumulative_percent, color="black", linewidth=1, alpha=0.6)
+    plt.scatter(ordered_names, cumulative_percent, color="tab:blue", s=45)
+    plt.axhline(95.0, color="tab:red", linestyle="--", linewidth=1.5, label="95% cumulative importance")
+    plt.ylabel("Cumulative importance (%)")
+    plt.xlabel("Features ordered by importance")
+    plt.ylim(0, 105)
+    plt.xticks(rotation=25, ha="right")
+    plt.grid(alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(plot_path)
+    plt.close()
+    print(f"Feature importance plot saved to: {plot_path}")
+
 
 ak_sig = uproot.concatenate(SIG_PATH, library="pd")
 ak_bkg = uproot.concatenate(BKG_PATH, library="pd")
@@ -132,6 +152,7 @@ plt.ylabel("(Bin Width)$^{-1}$")
 plt.legend()
 plt.xlim(0, 1)
 plt.savefig(f"{output_dir}/xgb_score_{train_tag}.pdf")
+plt.close()
 
 joblib.dump(xgbc, f"{output_dir}/xgb_model_{train_tag}.pkl")
 joblib.dump(scaler, f"{output_dir}/scaler_{train_tag}.pkl")
