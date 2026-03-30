@@ -58,6 +58,10 @@ The current model uses four input variables:
 
 They are standardized with `StandardScaler` before training and inference.
 
+After training, both `XGBoost.py` and `optuna_XGBoost.py` print the feature importance ranking in descending order and save it to:
+
+- `xgb_output/feature_importance_<train_tag>.json`
+
 ## Local Python Environment
 
 Use a project-local virtual environment named `.venv/`.
