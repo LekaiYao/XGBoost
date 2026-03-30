@@ -10,6 +10,7 @@ The repository is currently stored under EOS for versioning and artifact sharing
 - `optuna_XGBoost.py`: Optuna-based hyperparameter scan and final training.
 - `apply.py`: applies a trained model to MC and DATA ROOT ntuples and writes `xgb_score`.
 - `draw.py`: scans score cuts and produces `Bmass` plots from scored DATA.
+- `shap_importance.py`: computes SHAP feature rankings, normalized fractions, and summary plots from a trained model.
 - `run.sh`: example batch entrypoint used by HTCondor after relocating the workflow to AFS.
 - `submit.sub`: example HTCondor submission file kept for later AFS-side usage.
 - `requirements.txt`: Python dependencies for the local virtual environment.
@@ -40,6 +41,12 @@ python3 apply.py <train_tag>
 python3 draw.py <train_tag>
 ```
 
+5. Compute SHAP importance, normalized fractions, and summary plots:
+
+```bash
+python3 shap_importance.py <train_tag> [max_events]
+```
+
 ## Input Data
 
 The scripts currently read ROOT ntuples from:
@@ -64,6 +71,11 @@ After training, both `XGBoost.py` and `optuna_XGBoost.py` print the feature impo
 
 - `xgb_output/feature_importance_<train_tag>.json`
 - `xgb_output/feature_importance_cumulative_<train_tag>.pdf`
+- `xgb_output/shap_importance_<train_tag>.json`
+- `xgb_output/shap_importance_fraction_<train_tag>.json`
+- `xgb_output/shap_summary_<train_tag>.pdf`
+- `xgb_output/shap_bar_<train_tag>.pdf`
+- `xgb_output/shap_cumulative_<train_tag>.pdf`
 
 `apply.py` writes scored ROOT outputs to:
 
@@ -95,6 +107,7 @@ The repository dependencies are listed in `requirements.txt`:
 - `xgboost`
 - `optuna`
 - `joblib`
+- `shap`
 
 To create the environment manually:
 
