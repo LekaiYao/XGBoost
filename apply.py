@@ -1,10 +1,19 @@
 import json
-import os
 import sys
 
 import joblib
 import pandas as pd
 import uproot
+
+from paths import (
+    data_output_path,
+    ensure_dir,
+    mc_output_path,
+    resolve_model_config_path,
+    resolve_model_path,
+    resolve_scaler_path,
+    selected_dir,
+)
 
 if len(sys.argv) != 2:
     print("Usage: python3 apply.py <train_tag>")
@@ -12,27 +21,29 @@ if len(sys.argv) != 2:
 
 train_tag = sys.argv[1]
 
-MODEL_DIR = "./xgb_output"
 MC_INPUT = "/eos/home-l/leyao/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_MC.root:ntmix"
 DATA_INPUT = "/eos/home-l/leyao/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_DATA.root:ntmix"
-OUTPUT_DIR = "./selected_events"
 
 MC_CUT = "isX3872 == 1"
 DATA_CUT = None
 
 print("Loading model artifacts...")
-xgbc = joblib.load(os.path.join(MODEL_DIR, f"xgb_model_{train_tag}.pkl"))
-scaler = joblib.load(os.path.join(MODEL_DIR, f"scaler_{train_tag}.pkl"))
+resolved_model_path = resolve_model_path(train_tag)
+resolved_scaler_path = resolve_scaler_path(train_tag)
+resolved_config_path = resolve_model_config_path(train_tag)
 
-config_path = os.path.join(MODEL_DIR, f"model_config_{train_tag}.json")
-with open(config_path) as f:
+xgbc = joblib.load(resolved_model_path)
+scaler = joblib.load(resolved_scaler_path)
+
+with open(resolved_config_path) as f:
     config = json.load(f)
 
 input_columns = config["input_columns"]
 trans_columns = config["trans_columns"]
 
-print(f"  Model loaded from: {MODEL_DIR}")
-print(f"  Config loaded from: {config_path}")
+print(f"  Model loaded from: {resolved_model_path}")
+print(f"  Scaler loaded from: {resolved_scaler_path}")
+print(f"  Config loaded from: {resolved_config_path}")
 print(f"  Input columns: {input_columns}")
 
 
@@ -50,6 +61,9 @@ def score_dataframe(df):
     return df_out
 
 
+output_dir = ensure_dir(selected_dir(train_tag))
+print(f"Writing scored events to: {output_dir}")
+
 print(f"\nProcessing MC: {MC_INPUT}")
 df_mc = uproot.concatenate(MC_INPUT, library="pd")
 print(f"  Loaded {len(df_mc)} events")
@@ -58,11 +72,10 @@ if MC_CUT:
     print(f"  After cut {MC_CUT}: {len(df_mc)} events")
 
 df_mc_out = score_dataframe(df_mc)
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-mc_output = os.path.join(OUTPUT_DIR, f"MC_with_score_{train_tag}.root")
-with uproot.recreate(mc_output) as f:
+mc_path = mc_output_path(train_tag)
+with uproot.recreate(mc_path) as f:
     f["tree"] = {col: df_mc_out[col].values for col in df_mc_out.columns}
-print(f"  Saved to: {mc_output}")
+print(f"  Saved to: {mc_path}")
 
 print(f"\nProcessing DATA: {DATA_INPUT}")
 df_data = uproot.concatenate(DATA_INPUT, library="pd")
@@ -72,9 +85,9 @@ if DATA_CUT:
     print(f"  After cut {DATA_CUT}: {len(df_data)} events")
 
 df_data_out = score_dataframe(df_data)
-data_output = os.path.join(OUTPUT_DIR, f"DATA_with_score_{train_tag}.root")
-with uproot.recreate(data_output) as f:
+data_path = data_output_path(train_tag)
+with uproot.recreate(data_path) as f:
     f["tree"] = {col: df_data_out[col].values for col in df_data_out.columns}
-print(f"  Saved to: {data_output}")
+print(f"  Saved to: {data_path}")
 
-print(f"\nAll done! Output in: {OUTPUT_DIR}")
+print(f"\nAll done! Output in: {output_dir}")

@@ -11,6 +11,7 @@ The repository is currently stored under EOS for versioning and artifact sharing
 - `apply.py`: applies a trained model to MC and DATA ROOT ntuples and writes `xgb_score`.
 - `draw.py`: scans score cuts and produces `Bmass` plots from scored DATA.
 - `shap_importance.py`: computes SHAP feature rankings, normalized fractions, and summary plots from a trained model.
+- `paths.py`: shared output-path helpers for the organized directory layout and legacy fallback.
 - `run.sh`: example batch entrypoint used by HTCondor after relocating the workflow to AFS.
 - `submit.sub`: example HTCondor submission file kept for later AFS-side usage.
 - `requirements.txt`: Python dependencies for the local virtual environment.
@@ -47,6 +48,41 @@ python3 draw.py <train_tag>
 python3 shap_importance.py <train_tag> [max_events]
 ```
 
+## Output Layout
+
+New runs are written into the organized layout below:
+
+```text
+xgb_output/
+  models/<train_tag>/
+    xgb_model.pkl
+    scaler.pkl
+    model_config.json
+
+  training/<train_tag>/
+    xgb_score.pdf
+    feature_importance.json
+    feature_importance_cumulative.pdf
+
+  shap/<train_tag>/
+    shap_importance.json
+    shap_importance_fraction.json
+    shap_summary.pdf
+    shap_bar.pdf
+    shap_cumulative.pdf
+
+selected_events/<train_tag>/
+  MC_with_score.root
+  DATA_with_score.root
+  cut_scan/
+    X_cut010.pdf
+    X_cut020.pdf
+    ...
+```
+
+The read-side scripts keep compatibility with the older flat layout. In particular, `apply.py` and `shap_importance.py` can still load models from the old `xgb_output/xgb_model_<train_tag>.pkl` style layout, and `draw.py` can still read `selected_events/DATA_with_score_<train_tag>.root` if needed.
+
+
 ## Input Data
 
 The scripts currently read ROOT ntuples from:
@@ -67,24 +103,34 @@ The current model uses four input variables:
 
 They are standardized with `StandardScaler` before training and inference.
 
-After training, both `XGBoost.py` and `optuna_XGBoost.py` print the feature importance ranking in descending order and save it to:
+Training outputs are saved to:
 
-- `xgb_output/feature_importance_<train_tag>.json`
-- `xgb_output/feature_importance_cumulative_<train_tag>.pdf`
-- `xgb_output/shap_importance_<train_tag>.json`
-- `xgb_output/shap_importance_fraction_<train_tag>.json`
-- `xgb_output/shap_summary_<train_tag>.pdf`
-- `xgb_output/shap_bar_<train_tag>.pdf`
-- `xgb_output/shap_cumulative_<train_tag>.pdf`
+- `xgb_output/training/<train_tag>/feature_importance.json`
+- `xgb_output/training/<train_tag>/feature_importance_cumulative.pdf`
+- `xgb_output/training/<train_tag>/xgb_score.pdf`
 
-`apply.py` writes scored ROOT outputs to:
+Model artifacts are saved to:
 
-- `selected_events/MC_with_score_<train_tag>.root`
-- `selected_events/DATA_with_score_<train_tag>.root`
+- `xgb_output/models/<train_tag>/xgb_model.pkl`
+- `xgb_output/models/<train_tag>/scaler.pkl`
+- `xgb_output/models/<train_tag>/model_config.json`
 
-`draw.py` reads `selected_events/DATA_with_score_<train_tag>.root` and saves score-scan mass plots to:
+SHAP outputs are saved to:
 
-- `selected_events/<train_tag>_pdf/`
+- `xgb_output/shap/<train_tag>/shap_importance.json`
+- `xgb_output/shap/<train_tag>/shap_importance_fraction.json`
+- `xgb_output/shap/<train_tag>/shap_summary.pdf`
+- `xgb_output/shap/<train_tag>/shap_bar.pdf`
+- `xgb_output/shap/<train_tag>/shap_cumulative.pdf`
+
+Scored ROOT outputs are saved to:
+
+- `selected_events/<train_tag>/MC_with_score.root`
+- `selected_events/<train_tag>/DATA_with_score.root`
+
+Cut-scan plots are saved to:
+
+- `selected_events/<train_tag>/cut_scan/`
 
 ## Local Python Environment
 
@@ -121,7 +167,6 @@ python -m pip install -r requirements.txt
 ## Batch Running
 
 These files are included as reference only while the repository lives on EOS. HTCondor on this setup should be launched from an AFS location instead.
-
 
 `run.sh` activates `.venv/` and launches:
 
