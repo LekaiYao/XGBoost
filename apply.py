@@ -46,6 +46,11 @@ print(f"  Scaler loaded from: {resolved_scaler_path}")
 print(f"  Config loaded from: {resolved_config_path}")
 print(f"  Input columns: {input_columns}")
 
+# Add any extra branches you want to keep in the output ROOT here.
+# Example:
+# extra_output_columns = ["Bpt", "Beta", "BsvpvDistance"]
+# They will be written together with Bmass, the training inputs, and xgb_score.
+extra_output_columns = []
 
 def score_dataframe(df):
     df_trans = pd.DataFrame(
@@ -56,7 +61,8 @@ def score_dataframe(df):
     scores = xgbc.predict_proba(df_trans[trans_columns])[:, 1]
     print(f"  Score range: [{scores.min():.4f}, {scores.max():.4f}]")
 
-    df_out = df[["Bmass"] + input_columns].copy()
+    output_columns = ["Bmass"] + input_columns + extra_output_columns
+    df_out = df[output_columns].copy()
     df_out["xgb_score"] = scores
     return df_out
 
