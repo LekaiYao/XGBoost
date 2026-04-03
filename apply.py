@@ -24,7 +24,8 @@ train_tag = sys.argv[1]
 MC_INPUT = "/eos/home-l/leyao/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_MC.root:ntmix"
 DATA_INPUT = "/eos/home-l/leyao/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_DATA.root:ntmix"
 
-MC_CUT = "isX3872 == 1"
+#MC_CUT = "isX3872 == 1"
+MC_CUT = None
 DATA_CUT = None
 
 print("Loading model artifacts...")
@@ -50,9 +51,12 @@ print(f"  Input columns: {input_columns}")
 # Example:
 # extra_output_columns = ["Bpt", "Beta", "BsvpvDistance"]
 # They will be written together with Bmass, the training inputs, and xgb_score.
-extra_output_columns = []
+extra_output_columns = ["BQvalue","nSelectedChargedTracks","CentBin","Bpt","By","BLxy"]
 
-def score_dataframe(df):
+# Toggle whether MC output keeps the truth label branch.
+keep_mc_isx3872 = True
+
+def score_dataframe(df, extra_columns=None):
     df_trans = pd.DataFrame(
         scaler.transform(df[input_columns]),
         columns=trans_columns,
@@ -61,7 +65,10 @@ def score_dataframe(df):
     scores = xgbc.predict_proba(df_trans[trans_columns])[:, 1]
     print(f"  Score range: [{scores.min():.4f}, {scores.max():.4f}]")
 
-    output_columns = ["Bmass"] + input_columns + extra_output_columns
+    if extra_columns is None:
+        extra_columns = []
+
+    output_columns = ["Bmass"] + input_columns + extra_output_columns + extra_columns
     df_out = df[output_columns].copy()
     df_out["xgb_score"] = scores
     return df_out
@@ -77,7 +84,8 @@ if MC_CUT:
     df_mc = df_mc.query(MC_CUT)
     print(f"  After cut {MC_CUT}: {len(df_mc)} events")
 
-df_mc_out = score_dataframe(df_mc)
+mc_extra_columns = ["isX3872"] if keep_mc_isx3872 else []
+df_mc_out = score_dataframe(df_mc, extra_columns=mc_extra_columns)
 mc_path = mc_output_path(train_tag)
 with uproot.recreate(mc_path) as f:
     f["tree"] = {col: df_mc_out[col].values for col in df_mc_out.columns}
