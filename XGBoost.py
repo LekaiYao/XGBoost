@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
-from paths import (
+from utils.paths import (
     ensure_dir,
     feature_importance_cumulative_path,
     feature_importance_path,
@@ -21,6 +21,7 @@ from paths import (
     training_dir,
     training_score_path,
 )
+from utils.run_metadata import save_run_metadata
 
 if len(sys.argv) != 2:
     print("Usage: python3 XGBoost.py <train_tag>")
@@ -34,6 +35,9 @@ SIG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_Pb
 BKG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root:ntmix"
 
 input_columns = ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bchi2Prob"]
+SIGNAL_SELECTION = "isX3872 == 1"
+BACKGROUND_SELECTION = "(3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)"
+FIXED_MODEL_PARAMS = {"eval_metric": "logloss"}
 
 
 def save_feature_importance(model, feature_names, train_tag):
@@ -159,5 +163,25 @@ with open(config_output_path, "w") as f:
 print(f"Config saved to: {config_output_path}")
 
 save_feature_importance(xgbc, input_columns, train_tag)
+
+save_run_metadata(
+    train_tag=train_tag,
+    training_script="XGBoost.py",
+    signal_path=SIG_PATH,
+    background_path=BKG_PATH,
+    signal_selection=SIGNAL_SELECTION,
+    background_selection=BACKGROUND_SELECTION,
+    input_columns=input_columns,
+    trans_columns=trans_columns,
+    pos_weight=pos_weight,
+    fixed_model_params={
+        **FIXED_MODEL_PARAMS,
+        "scale_pos_weight": float(pos_weight),
+    },
+    best_model_params={
+        **FIXED_MODEL_PARAMS,
+        "scale_pos_weight": float(pos_weight),
+    },
+)
 
 print("Training complete. Model artifacts saved.")

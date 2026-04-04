@@ -8,7 +8,7 @@ import pandas as pd
 import shap
 import uproot
 
-from paths import (
+from utils.paths import (
     ensure_dir,
     resolve_model_config_path,
     resolve_model_path,

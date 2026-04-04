@@ -5,7 +5,7 @@ import joblib
 import pandas as pd
 import uproot
 
-from paths import (
+from utils.paths import (
     data_output_path,
     ensure_dir,
     mc_output_path,

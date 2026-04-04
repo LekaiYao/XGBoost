@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import uproot
 
-from paths import cut_scan_dir, ensure_dir, resolve_data_output_path
+from utils.paths import cut_scan_dir, ensure_dir, resolve_data_output_path
 
 if len(sys.argv) != 2:
     print("Usage: python3 draw.py <train_tag>")

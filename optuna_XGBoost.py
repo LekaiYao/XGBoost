@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
-from paths import (
+from utils.paths import (
     ensure_dir,
     feature_importance_cumulative_path,
     feature_importance_path,
@@ -23,6 +23,7 @@ from paths import (
     training_dir,
     training_score_path,
 )
+from utils.run_metadata import save_run_metadata
 
 if len(sys.argv) != 2:
     print("Usage: python3 optuna_XGBoost.py <train_tag>")
@@ -37,6 +38,16 @@ SIG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_Pb
 BKG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root:ntmix"
 
 input_columns = ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bchi2Prob"]
+SIGNAL_SELECTION = "isX3872 == 1"
+BACKGROUND_SELECTION = "(3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)"
+FIXED_MODEL_PARAMS = {"eval_metric": "logloss"}
+OPTUNA_SEARCH_SPACE = {
+    "n_estimators": {"type": "int", "low": 200, "high": 800},
+    "learning_rate": {"type": "float", "low": 0.03, "high": 0.2},
+    "max_depth": {"type": "int", "low": 2, "high": 5},
+    "subsample": {"type": "float", "low": 0.6, "high": 1.0},
+    "colsample_bytree": {"type": "float", "low": 0.6, "high": 1.0},
+}
 
 
 def save_feature_importance(model, feature_names, train_tag):
@@ -126,11 +137,11 @@ def objective(trial):
     params = {
         "eval_metric": "logloss",
         "scale_pos_weight": pos_weight,
-        "n_estimators": trial.suggest_int("n_estimators", 200, 800),
-        "learning_rate": trial.suggest_float("learning_rate", 0.03, 0.2),
-        "max_depth": trial.suggest_int("max_depth", 2, 5),
-        "subsample": trial.suggest_float("subsample", 0.6, 1.0),
-        "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
+        "n_estimators": trial.suggest_int("n_estimators", OPTUNA_SEARCH_SPACE["n_estimators"]["low"], OPTUNA_SEARCH_SPACE["n_estimators"]["high"]),
+        "learning_rate": trial.suggest_float("learning_rate", OPTUNA_SEARCH_SPACE["learning_rate"]["low"], OPTUNA_SEARCH_SPACE["learning_rate"]["high"]),
+        "max_depth": trial.suggest_int("max_depth", OPTUNA_SEARCH_SPACE["max_depth"]["low"], OPTUNA_SEARCH_SPACE["max_depth"]["high"]),
+        "subsample": trial.suggest_float("subsample", OPTUNA_SEARCH_SPACE["subsample"]["low"], OPTUNA_SEARCH_SPACE["subsample"]["high"]),
+        "colsample_bytree": trial.suggest_float("colsample_bytree", OPTUNA_SEARCH_SPACE["colsample_bytree"]["low"], OPTUNA_SEARCH_SPACE["colsample_bytree"]["high"]),
     }
 
     model = XGBClassifier(**params)
@@ -188,5 +199,32 @@ with open(config_output_path, "w") as f:
 print(f"Config saved to: {config_output_path}")
 
 save_feature_importance(xgbc, input_columns, train_tag)
+
+save_run_metadata(
+    train_tag=train_tag,
+    training_script="optuna_XGBoost.py",
+    signal_path=SIG_PATH,
+    background_path=BKG_PATH,
+    signal_selection=SIGNAL_SELECTION,
+    background_selection=BACKGROUND_SELECTION,
+    input_columns=input_columns,
+    trans_columns=trans_columns,
+    pos_weight=pos_weight,
+    fixed_model_params={
+        **FIXED_MODEL_PARAMS,
+        "scale_pos_weight": float(pos_weight),
+    },
+    best_model_params={
+        **{key: (float(value) if isinstance(value, float) else value) for key, value in study.best_params.items()},
+        **FIXED_MODEL_PARAMS,
+        "scale_pos_weight": float(pos_weight),
+    },
+    is_optuna=True,
+    optuna_n_trials=number_trials,
+    optimized_hyperparameters=list(OPTUNA_SEARCH_SPACE.keys()),
+    hyperparameter_search_space=OPTUNA_SEARCH_SPACE,
+    optimization_metric="mean(sig_score) - mean(bkg_score)",
+    best_objective_value=study.best_value,
+)
 
 print("Training complete. Model artifacts saved.")
