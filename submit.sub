@@ -1,16 +1,17 @@
 executable = run.sh
 
 train_tag = cnd_opt_test1
+optuna_n_trials = 50
 
-arguments = $(train_tag)
+arguments = $(train_tag) $(optuna_n_trials)
 
 output = logs/job_$(train_tag).out
 error  = logs/job_$(train_tag).err
 log    = logs/job_$(train_tag).log
 
-+JobFlavour = "workday"
++JobFlavour = "tomorrow"
 
 request_cpus = 1
-request_memory = 2000
+request_memory = 4000
 
 queue 1
