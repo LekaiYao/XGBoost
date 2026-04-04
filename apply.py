@@ -21,8 +21,10 @@ if len(sys.argv) != 2:
 
 train_tag = sys.argv[1]
 
-MC_INPUT = "/eos/home-l/leyao/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_MC.root:ntmix"
-DATA_INPUT = "/eos/home-l/leyao/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_DATA.root:ntmix"
+#MC_INPUT = "/eos/home-l/leyao/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_MC.root:ntmix"
+#DATA_INPUT = "/eos/home-l/leyao/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_DATA.root:ntmix"
+MC_INPUT = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix"
+DATA_INPUT = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root:ntmix"
 
 #MC_CUT = "isX3872 == 1"
 MC_CUT = None
@@ -51,7 +53,8 @@ print(f"  Input columns: {input_columns}")
 # Example:
 # extra_output_columns = ["Bpt", "Beta", "BsvpvDistance"]
 # They will be written together with Bmass, the training inputs, and xgb_score.
-extra_output_columns = ["BQvalue","nSelectedChargedTracks","CentBin","Bpt","By","BLxy"]
+# extra_output_columns = ["BQvalue","nSelectedChargedTracks","CentBin","Bpt","By","BLxy"]
+extra_output_columns = ["BQvalue","nSelectedChargedTracks","CentBin","Bpt","By"]
 
 # Toggle whether MC output keeps the truth label branch.
 keep_mc_isx3872 = True
@@ -88,7 +91,7 @@ mc_extra_columns = ["isX3872"] if keep_mc_isx3872 else []
 df_mc_out = score_dataframe(df_mc, extra_columns=mc_extra_columns)
 mc_path = mc_output_path(train_tag)
 with uproot.recreate(mc_path) as f:
-    f["tree"] = {col: df_mc_out[col].values for col in df_mc_out.columns}
+    f["ntmix"] = {col: df_mc_out[col].values for col in df_mc_out.columns}
 print(f"  Saved to: {mc_path}")
 
 print(f"\nProcessing DATA: {DATA_INPUT}")
@@ -101,7 +104,7 @@ if DATA_CUT:
 df_data_out = score_dataframe(df_data)
 data_path = data_output_path(train_tag)
 with uproot.recreate(data_path) as f:
-    f["tree"] = {col: df_data_out[col].values for col in df_data_out.columns}
+    f["ntmix"] = {col: df_data_out[col].values for col in df_data_out.columns}
 print(f"  Saved to: {data_path}")
 
 print(f"\nAll done! Output in: {output_dir}")

@@ -12,9 +12,9 @@ if len(sys.argv) != 2:
     sys.exit(1)
 
 train_tag = sys.argv[1]
-TREE = "tree"
+TREE = "ntmix"
 MASS_RANGE = (3.6, 4.0)
-score_cuts = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+score_cuts = [0.0, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.92, 0.94, 0.95, 0.96, 0.97, 0.99]
 
 input_file = resolve_data_output_path(train_tag)
 output_dir = ensure_dir(cut_scan_dir(train_tag))
