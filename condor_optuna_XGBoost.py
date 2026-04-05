@@ -260,6 +260,7 @@ def objective(trial):
     params = {
         "eval_metric": FIXED_MODEL_PARAMS["eval_metric"],
         "scale_pos_weight": pos_weight,
+        "n_jobs": 4,
     }
     for name, config in OPTUNA_SEARCH_SPACE.items():
         params[name] = suggest_param(trial, name, config)
@@ -282,6 +283,7 @@ xgbc = XGBClassifier(
     **study.best_params,
     eval_metric=FIXED_MODEL_PARAMS["eval_metric"],
     scale_pos_weight=pos_weight,
+    n_jobs=4,
 )
 xgbc.fit(X_train, y_train["is_sig"])
 
@@ -333,11 +335,13 @@ save_run_metadata(
     fixed_model_params={
         **FIXED_MODEL_PARAMS,
         "scale_pos_weight": float(pos_weight),
+        "n_jobs": 4,
     },
     best_model_params={
         **{key: (float(value) if isinstance(value, float) else value) for key, value in study.best_params.items()},
         **FIXED_MODEL_PARAMS,
         "scale_pos_weight": float(pos_weight),
+        "n_jobs": 4,
     },
     is_optuna=True,
     optuna_n_trials=number_trials,

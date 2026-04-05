@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euo pipefail
+
 
 echo "===== Job start ====="
 echo "Host: $(hostname)"

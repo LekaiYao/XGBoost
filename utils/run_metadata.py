@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 
-from paths import (
+from utils.paths import (
     feature_importance_cumulative_path,
     feature_importance_path,
     model_config_path,
