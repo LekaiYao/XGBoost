@@ -17,11 +17,19 @@ from utils.paths import (
 )
 
 if len(sys.argv) < 2:
-    print("Usage: python3 batch_apply_scores.py <train_tag> [<train_tag> ...]")
+    print("Usage: python3 batch_apply_scores.py [--output-tag <output_tag>] <train_tag> [<train_tag> ...]")
     sys.exit(1)
 
-train_tags = sys.argv[1:]
+args = sys.argv[1:]
+output_tag = None
+if len(args) >= 3 and args[0] == "--output-tag":
+    output_tag = args[1]
+    train_tags = args[2:]
+else:
+    train_tags = args
+
 group_tag = train_group_tag(train_tags)
+output_tag = output_tag or group_tag
 
 MC_INPUT = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix"
 DATA_INPUT = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root:ntmix"
@@ -45,6 +53,7 @@ def score_branch_name(train_tag):
 
 
 print(f"Loading model artifacts for group: {group_tag}")
+print(f"Writing grouped outputs under: {output_tag}")
 models = []
 reference_input_columns = None
 reference_trans_columns = None
@@ -110,7 +119,7 @@ def score_dataframe(df, model_bundle, output_columns):
     return df_out
 
 
-output_dir = ensure_dir(selected_dir(group_tag))
+output_dir = ensure_dir(selected_dir(output_tag))
 print(f"Writing grouped scored events to: {output_dir}")
 
 print(f"\nProcessing MC once: {MC_INPUT}")
@@ -126,7 +135,7 @@ for model_bundle in models:
     else:
         df_mc_out[model_bundle["score_column"]] = df_scored[model_bundle["score_column"]]
 
-mc_path = mc_output_path(group_tag)
+mc_path = mc_output_path(output_tag)
 with uproot.recreate(mc_path) as f:
     f["ntmix"] = {col: df_mc_out[col].values for col in df_mc_out.columns}
 print(f"  Saved grouped MC to: {mc_path}")
@@ -143,7 +152,7 @@ for model_bundle in models:
     else:
         df_data_out[model_bundle["score_column"]] = df_scored[model_bundle["score_column"]]
 
-data_path = data_output_path(group_tag)
+data_path = data_output_path(output_tag)
 with uproot.recreate(data_path) as f:
     f["ntmix"] = {col: df_data_out[col].values for col in df_data_out.columns}
 print(f"  Saved grouped DATA to: {data_path}")

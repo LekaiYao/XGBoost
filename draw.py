@@ -20,7 +20,12 @@ TREE = "ntmix"
 MASS_RANGE = (3.62, 4.0)
 BINS = np.arange(MASS_RANGE[0], MASS_RANGE[1] + 0.01, 0.01)
 BQVALUE_MAX = 0.13
-score_cuts = [0.0, 0.5, 0.6, 0.8, 0.9, 0.92, 0.94, 0.95, 0.96, 0.97, 0.99, 0.993, 0.995]
+
+
+def score_cuts_for_train_tag(train_tag):
+    if train_tag.startswith("pp"):
+        return [cut / 100.0 for cut in range(10, 100, 10)]
+    return [0.0, 0.6, 0.8, 0.9, 0.95, 0.99, 0.993, 0.995, 0.997, 0.999]
 
 
 def output_name(output_dir, cut):
@@ -58,7 +63,7 @@ df_data = df_data[
 
 print(f"After DATA mass + BQvalue<{BQVALUE_MAX}: {len(df_data)}")
 
-for cut in score_cuts:
+for cut in score_cuts_for_train_tag(train_tag):
     df_cut = df_data[df_data["xgb_score"] > cut]
 
     plt.figure(figsize=(6, 6))

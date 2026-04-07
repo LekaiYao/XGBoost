@@ -29,14 +29,12 @@ if len(sys.argv) != 2:
 
 train_tag = sys.argv[1]
 
-#SIG_PATH = "/eos/home-l/leyao/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_MC.root:ntmix"
-#BKG_PATH = "/eos/home-l/leyao/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_DATA.root:ntmix"
-SIG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix"
-BKG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root:ntmix"
+SIG_PATH = "/afs/cern.ch/user/l/leyao/work/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_MC.root:ntmix"
+BKG_PATH = "/afs/cern.ch/user/l/leyao/work/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_DATA.root:ntmix"
 
-input_columns = ["Btrk1dR", "Btrk2Pt", "BtrkPtimb", "Bchi2Prob"]
-SIGNAL_SELECTION = "isX3872 == 0"
-BACKGROUND_SELECTION = "(3.72 < Bmass < 3.78) or (3.6 < Bmass < 3.66)"
+input_columns = ["Btrk1dR", "Btrk2dR", "Btrk2Pt", "BtrkPtimb", "Bchi2Prob"]
+SIGNAL_SELECTION = "isX3872 == 1"
+BACKGROUND_SELECTION = "(3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)"
 FIXED_MODEL_PARAMS = {"eval_metric": "logloss"}
 
 
@@ -90,10 +88,10 @@ ensure_dir(training_dir(train_tag))
 ak_sig = uproot.concatenate(SIG_PATH, library="pd")
 ak_bkg = uproot.concatenate(BKG_PATH, library="pd")
 
-ak_sig = ak_sig[ak_sig["isX3872"] == 0]
+ak_sig = ak_sig[ak_sig["isX3872"] == 1]
 ak_bkg = ak_bkg[
-    ((ak_bkg["Bmass"] < 3.78) & (ak_bkg["Bmass"] > 3.72))
-    | ((ak_bkg["Bmass"] > 3.6) & (ak_bkg["Bmass"] < 3.66))
+    ((ak_bkg["Bmass"] < 3.83) & (ak_bkg["Bmass"] > 3.75))
+    | ((ak_bkg["Bmass"] > 3.91) & (ak_bkg["Bmass"] < 4.00))
 ]
 
 ak_sig["is_sig"] = True

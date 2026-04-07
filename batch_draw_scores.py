@@ -8,20 +8,28 @@ import uproot
 from utils.paths import cut_scan_dir, data_output_path, ensure_dir, train_group_tag
 
 if len(sys.argv) < 2:
-    print("Usage: python3 batch_draw_scores.py <train_tag> [<train_tag> ...]")
+    print("Usage: python3 batch_draw_scores.py [--output-tag <output_tag>] <train_tag> [<train_tag> ...]")
     sys.exit(1)
 
-train_tags = sys.argv[1:]
+args = sys.argv[1:]
+output_tag = None
+if len(args) >= 3 and args[0] == "--output-tag":
+    output_tag = args[1]
+    train_tags = args[2:]
+else:
+    train_tags = args
+
 group_tag = train_group_tag(train_tags)
+output_tag = output_tag or group_tag
 TREE = "ntmix"
 MASS_RANGE = (3.62, 4.0)
 BINS = np.arange(MASS_RANGE[0], MASS_RANGE[1] + 0.01, 0.01)
 BQVALUE_MAX = 0.13
-score_cuts = [0.0, 0.5, 0.6, 0.8, 0.9, 0.92, 0.94, 0.95, 0.96, 0.97, 0.99, 0.993, 0.995]
+score_cuts = [0.0, 0.6, 0.8, 0.9, 0.95, 0.99, 0.993, 0.995, 0.997, 0.999]
 
-input_file = data_output_path(group_tag)
+input_file = data_output_path(output_tag)
 if not os.path.exists(input_file):
-    print(f"Grouped DATA file not found for group_tag={group_tag}: {input_file}")
+    print(f"Grouped DATA file not found for output_tag={output_tag}: {input_file}")
     sys.exit(1)
 
 score_branches = [f"xgb_score_{train_tag}" for train_tag in train_tags]

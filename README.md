@@ -90,9 +90,9 @@ Interpretation:
 - `vN`:
   search-space preset version
 
-## Current pb23v2_4v2 training setup
+## Current pb23v3_7v training setup
 
-The current `pb23v2_4v2` Condor training line uses:
+The current `pb23v3_7v` Condor training line uses:
 
 - signal MC:
   `/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix`
@@ -101,12 +101,15 @@ The current `pb23v2_4v2` Condor training line uses:
 - signal selection:
   `isX3872 == 1`
 - background selection:
-  `(3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)`
+  `(3.744 < Bmass < 3.802) or (3.942 < Bmass < 4.00)`
 - input variables:
   - `Btrk1dR`
+  - `Btrk2dR`
   - `Btrk2Pt`
   - `BtrkPtimb`
   - `Bchi2Prob`
+  - `Balpha`
+  - `Bnorm_trk1Dxy`
 
 Other current training details:
 
@@ -114,15 +117,19 @@ Other current training details:
 - class imbalance is handled with `scale_pos_weight = n_bkg / n_sig`
 - train/validation/test splitting is stratified
 - `random_state = 42`
-- the Optuna objective is based on validation-set cut scanning and maximization of `S/sqrt(S+B)`
+- the Optuna objective is based on validation-set cut scanning and maximization of weighted `S/sqrt(S+B)`
+- `S` is scaled by `3491.0 / 70439.0`
+- `B` is scaled by `signal-window-width / sideband-width`
 
 ## Search-space history
 
 The running record of hyperparameter-design choices is stored in:
 
 - `notes/optuna_search_space_history_pb23v2_4v2.md`
+- `notes/optuna_search_space_history_pb23v2_5v.md`
+- `notes/optuna_search_space_history_pb23v3_7v.md`
 
-This file currently summarizes the 60 Condor training runs:
+These files currently summarize:
 
 - `pb23_4v2_o50_v1-v10`
 - `pb23_4v_o100_v1-v10`
@@ -130,8 +137,10 @@ This file currently summarizes the 60 Condor training runs:
 - `pb23v2_4v2_o50_v11-v20`
 - `pb23v2_4v2_o100_v21-v30`
 - `pb23v2_4v2_o100_v31-v40`
+- `pb23v2_5v_o100_v1-v40`
+- `pb23v3_7v_o100_v1-v50`
 
-Future `pb23v2_4v2` training batches should continue to append new sections to that file.
+Future training batches should continue to append new sections to their corresponding history files.
 
 ## Plotting conventions
 
@@ -195,13 +204,15 @@ python3 draw.py <train_tag>
 ### Grouped score application
 
 ```bash
-python3 batch_apply_scores.py <train_tag1> <train_tag2> ...
+python3 batch_apply_scores.py [--output-tag <output_tag>] <train_tag1> <train_tag2> ...
 ```
 
 This writes grouped outputs to:
 
-- `selected_events/<group_tag>/MC_with_score.root`
-- `selected_events/<group_tag>/DATA_with_score.root`
+- `selected_events/<output_tag>/MC_with_score.root`
+- `selected_events/<output_tag>/DATA_with_score.root`
+
+If `--output-tag` is omitted, `<output_tag>` defaults to `<group_tag>`.
 
 ### Batch compare through Condor
 
@@ -225,6 +236,15 @@ and then runs:
 
 - `batch_apply_scores.py`
 - `batch_draw_scores.py`
+
+The grouped ROOT outputs are written under a version-range-specific directory:
+
+- `selected_events/<group_tag>_v<version_start>_v<version_end>/`
+
+For example:
+
+- `selected_events/pb23v2_4v2_o100_v21_v30/`
+- `selected_events/pb23v2_4v2_o100_v31_v40/`
 
 ## Output layout
 
