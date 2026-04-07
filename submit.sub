@@ -1,6 +1,6 @@
 executable = run.sh
 
-optuna_n_trials = 50
+optuna_n_trials = 100
 
 output = logs/job_$(train_tag).out
 error  = logs/job_$(train_tag).err
@@ -14,14 +14,14 @@ request_memory = 12000
 arguments = $(train_tag) $(optuna_n_trials) $(search_space_tag)
 
 queue train_tag, search_space_tag from (
-  pb23_4v_o100_v1 v1
-  pb23_4v_o100_v2 v2
-  pb23_4v_o100_v3 v3
-  pb23_4v_o100_v4 v4
-  pb23_4v_o100_v5 v5
-  pb23_4v_o100_v6 v6
-  pb23_4v_o100_v7 v7
-  pb23_4v_o100_v8 v8
-  pb23_4v_o100_v9 v9
-  pb23_4v_o100_v10 v10
+  pb23v2_4v2_o100_v31 v31
+  pb23v2_4v2_o100_v32 v32
+  pb23v2_4v2_o100_v33 v33
+  pb23v2_4v2_o100_v34 v34
+  pb23v2_4v2_o100_v35 v35
+  pb23v2_4v2_o100_v36 v36
+  pb23v2_4v2_o100_v37 v37
+  pb23v2_4v2_o100_v38 v38
+  pb23v2_4v2_o100_v39 v39
+  pb23v2_4v2_o100_v40 v40
 )

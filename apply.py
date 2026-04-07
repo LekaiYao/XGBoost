@@ -53,11 +53,21 @@ print(f"  Input columns: {input_columns}")
 # Example:
 # extra_output_columns = ["Bpt", "Beta", "BsvpvDistance"]
 # They will be written together with Bmass, the training inputs, and xgb_score.
-# extra_output_columns = ["BQvalue","nSelectedChargedTracks","CentBin","Bpt","By","BLxy"]
-extra_output_columns = ["BQvalue","nSelectedChargedTracks","CentBin","Bpt","By"]
+extra_output_columns = ["BQvalue", "nSelectedChargedTracks", "CentBin", "Bpt", "By"]
 
 # Toggle whether MC output keeps the truth label branch.
 keep_mc_isx3872 = True
+
+
+def ordered_unique(columns):
+    seen = set()
+    output = []
+    for column in columns:
+        if column not in seen:
+            seen.add(column)
+            output.append(column)
+    return output
+
 
 def score_dataframe(df, extra_columns=None):
     df_trans = pd.DataFrame(
@@ -71,7 +81,7 @@ def score_dataframe(df, extra_columns=None):
     if extra_columns is None:
         extra_columns = []
 
-    output_columns = ["Bmass"] + input_columns + extra_output_columns + extra_columns
+    output_columns = ordered_unique(["Bmass"] + input_columns + extra_output_columns + extra_columns)
     df_out = df[output_columns].copy()
     df_out["xgb_score"] = scores
     return df_out
@@ -80,8 +90,11 @@ def score_dataframe(df, extra_columns=None):
 output_dir = ensure_dir(selected_dir(train_tag))
 print(f"Writing scored events to: {output_dir}")
 
+mc_branches = ordered_unique(["Bmass"] + input_columns + extra_output_columns + (["isX3872"] if keep_mc_isx3872 else []))
+data_branches = ordered_unique(["Bmass"] + input_columns + extra_output_columns)
+
 print(f"\nProcessing MC: {MC_INPUT}")
-df_mc = uproot.concatenate(MC_INPUT, library="pd")
+df_mc = uproot.concatenate(MC_INPUT, filter_name=mc_branches, library="pd")
 print(f"  Loaded {len(df_mc)} events")
 if MC_CUT:
     df_mc = df_mc.query(MC_CUT)
@@ -95,7 +108,7 @@ with uproot.recreate(mc_path) as f:
 print(f"  Saved to: {mc_path}")
 
 print(f"\nProcessing DATA: {DATA_INPUT}")
-df_data = uproot.concatenate(DATA_INPUT, library="pd")
+df_data = uproot.concatenate(DATA_INPUT, filter_name=data_branches, library="pd")
 print(f"  Loaded {len(df_data)} events")
 if DATA_CUT:
     df_data = df_data.query(DATA_CUT)

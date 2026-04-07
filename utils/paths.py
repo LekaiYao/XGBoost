@@ -1,4 +1,5 @@
 import os
+import re
 
 XGB_OUTPUT_DIR = "xgb_output"
 SELECTED_EVENTS_DIR = "selected_events"
@@ -14,6 +15,20 @@ def resolve_existing(*candidates):
         if path and os.path.exists(path):
             return path
     return candidates[0] if candidates else None
+
+
+def group_base_tag(train_tag):
+    match = re.match(r"(.+)_v\d+$", train_tag)
+    return match.group(1) if match else train_tag
+
+
+def train_group_tag(train_tags):
+    if not train_tags:
+        raise ValueError("No train tags provided")
+    base_tags = [group_base_tag(tag) for tag in train_tags]
+    if len(set(base_tags)) != 1:
+        raise ValueError(f"Train tags do not belong to a single group: {train_tags}")
+    return base_tags[0] if len(train_tags) > 1 else train_tags[0]
 
 
 def model_dir(train_tag):

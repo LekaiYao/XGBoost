@@ -34,123 +34,346 @@ search_space_tag = sys.argv[2]
 number_trials = int(os.environ.get("OPTUNA_N_TRIALS", "100"))
 
 SIG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix"
-BKG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root:ntmix"
+BKG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root:ntmix"
 
-input_columns = ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bchi2Prob"]
+input_columns = ["Btrk1dR", "Btrk2Pt", "BtrkPtimb", "Bchi2Prob"]
 SIGNAL_SELECTION = "isX3872 == 1"
 BACKGROUND_SELECTION = "(3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)"
-FIXED_MODEL_PARAMS = {"eval_metric": "logloss"}
+FIXED_MODEL_PARAMS = {
+    "eval_metric": "logloss",
+    "random_state": 42,
+}
 
 SEARCH_SPACE_PRESETS = {
-    "v1": {
-        "n_estimators": {"type": "int", "low": 400, "high": 1400},
-        "learning_rate": {"type": "float", "low": 0.03, "high": 0.12, "log": True},
-        "max_depth": {"type": "int", "low": 3, "high": 5},
-        "min_child_weight": {"type": "int", "low": 2, "high": 8},
-        "subsample": {"type": "float", "low": 0.75, "high": 1.0},
-        "colsample_bytree": {"type": "float", "low": 0.75, "high": 1.0},
-        "gamma": {"type": "float", "low": 0.0, "high": 2.0},
-        "reg_alpha": {"type": "float", "low": 0.0, "high": 1.5},
-        "reg_lambda": {"type": "float", "low": 1.0, "high": 6.0},
-    },
-    "v2": {
-        "n_estimators": {"type": "int", "low": 600, "high": 1800},
+    "v11": {
+        "n_estimators": {"type": "int", "low": 500, "high": 1600},
         "learning_rate": {"type": "float", "low": 0.02, "high": 0.08, "log": True},
-        "max_depth": {"type": "int", "low": 4, "high": 6},
-        "min_child_weight": {"type": "int", "low": 1, "high": 6},
-        "subsample": {"type": "float", "low": 0.8, "high": 1.0},
-        "colsample_bytree": {"type": "float", "low": 0.8, "high": 1.0},
-        "gamma": {"type": "float", "low": 0.0, "high": 1.5},
-        "reg_alpha": {"type": "float", "low": 0.0, "high": 1.0},
-        "reg_lambda": {"type": "float", "low": 1.0, "high": 5.0},
+        "max_depth": {"type": "int", "low": 2, "high": 4},
+        "min_child_weight": {"type": "int", "low": 6, "high": 16},
+        "subsample": {"type": "float", "low": 0.65, "high": 0.85},
+        "colsample_bytree": {"type": "float", "low": 0.65, "high": 0.85},
+        "gamma": {"type": "float", "low": 1.0, "high": 4.0},
+        "reg_alpha": {"type": "float", "low": 0.5, "high": 3.0},
+        "reg_lambda": {"type": "float", "low": 3.0, "high": 10.0},
     },
-    "v3": {
+    "v12": {
+        "n_estimators": {"type": "int", "low": 700, "high": 2000},
+        "learning_rate": {"type": "float", "low": 0.015, "high": 0.06, "log": True},
+        "max_depth": {"type": "int", "low": 3, "high": 4},
+        "min_child_weight": {"type": "int", "low": 4, "high": 12},
+        "subsample": {"type": "float", "low": 0.70, "high": 0.90},
+        "colsample_bytree": {"type": "float", "low": 0.70, "high": 0.90},
+        "gamma": {"type": "float", "low": 0.5, "high": 3.0},
+        "reg_alpha": {"type": "float", "low": 0.2, "high": 2.0},
+        "reg_lambda": {"type": "float", "low": 2.0, "high": 8.0},
+    },
+    "v13": {
+        "n_estimators": {"type": "int", "low": 350, "high": 1100},
+        "learning_rate": {"type": "float", "low": 0.05, "high": 0.12},
+        "max_depth": {"type": "int", "low": 3, "high": 5},
+        "min_child_weight": {"type": "int", "low": 3, "high": 10},
+        "subsample": {"type": "float", "low": 0.70, "high": 0.90},
+        "colsample_bytree": {"type": "float", "low": 0.70, "high": 0.90},
+        "gamma": {"type": "float", "low": 0.5, "high": 2.0},
+        "reg_alpha": {"type": "float", "low": 0.1, "high": 1.5},
+        "reg_lambda": {"type": "float", "low": 2.0, "high": 6.0},
+    },
+    "v14": {
+        "n_estimators": {"type": "int", "low": 350, "high": 1200},
+        "learning_rate": {"type": "float", "low": 0.04, "high": 0.10},
+        "max_depth": {"type": "int", "low": 4, "high": 5},
+        "min_child_weight": {"type": "int", "low": 6, "high": 18},
+        "subsample": {"type": "float", "low": 0.75, "high": 0.95},
+        "colsample_bytree": {"type": "float", "low": 0.75, "high": 0.95},
+        "gamma": {"type": "float", "low": 1.0, "high": 4.0},
+        "reg_alpha": {"type": "float", "low": 0.5, "high": 3.0},
+        "reg_lambda": {"type": "float", "low": 3.0, "high": 10.0},
+    },
+    "v15": {
+        "n_estimators": {"type": "int", "low": 600, "high": 1800},
+        "learning_rate": {"type": "float", "low": 0.015, "high": 0.05, "log": True},
+        "max_depth": {"type": "int", "low": 2, "high": 4},
+        "min_child_weight": {"type": "int", "low": 8, "high": 20},
+        "subsample": {"type": "float", "low": 0.60, "high": 0.80},
+        "colsample_bytree": {"type": "float", "low": 0.60, "high": 0.80},
+        "gamma": {"type": "float", "low": 1.0, "high": 5.0},
+        "reg_alpha": {"type": "float", "low": 1.0, "high": 4.0},
+        "reg_lambda": {"type": "float", "low": 4.0, "high": 12.0},
+    },
+    "v16": {
+        "n_estimators": {"type": "int", "low": 450, "high": 1300},
+        "learning_rate": {"type": "float", "low": 0.03, "high": 0.09},
+        "max_depth": {"type": "int", "low": 3, "high": 4},
+        "min_child_weight": {"type": "int", "low": 4, "high": 10},
+        "subsample": {"type": "float", "low": 0.85, "high": 1.0},
+        "colsample_bytree": {"type": "float", "low": 0.85, "high": 1.0},
+        "gamma": {"type": "float", "low": 0.2, "high": 1.5},
+        "reg_alpha": {"type": "float", "low": 0.0, "high": 1.0},
+        "reg_lambda": {"type": "float", "low": 2.0, "high": 6.0},
+    },
+    "v17": {
+        "n_estimators": {"type": "int", "low": 900, "high": 2400},
+        "learning_rate": {"type": "float", "low": 0.01, "high": 0.04, "log": True},
+        "max_depth": {"type": "int", "low": 3, "high": 5},
+        "min_child_weight": {"type": "int", "low": 3, "high": 8},
+        "subsample": {"type": "float", "low": 0.70, "high": 0.90},
+        "colsample_bytree": {"type": "float", "low": 0.70, "high": 0.90},
+        "gamma": {"type": "float", "low": 0.3, "high": 2.0},
+        "reg_alpha": {"type": "float", "low": 0.0, "high": 1.5},
+        "reg_lambda": {"type": "float", "low": 2.0, "high": 8.0},
+    },
+    "v18": {
         "n_estimators": {"type": "int", "low": 250, "high": 900},
-        "learning_rate": {"type": "float", "low": 0.10, "high": 0.22},
-        "max_depth": {"type": "int", "low": 4, "high": 7},
+        "learning_rate": {"type": "float", "low": 0.08, "high": 0.16},
+        "max_depth": {"type": "int", "low": 4, "high": 6},
+        "min_child_weight": {"type": "int", "low": 2, "high": 6},
+        "subsample": {"type": "float", "low": 0.75, "high": 0.95},
+        "colsample_bytree": {"type": "float", "low": 0.75, "high": 0.95},
+        "gamma": {"type": "float", "low": 0.0, "high": 1.2},
+        "reg_alpha": {"type": "float", "low": 0.0, "high": 1.0},
+        "reg_lambda": {"type": "float", "low": 1.0, "high": 4.0},
+    },
+    "v19": {
+        "n_estimators": {"type": "int", "low": 400, "high": 1300},
+        "learning_rate": {"type": "float", "low": 0.03, "high": 0.10},
+        "max_depth": {"type": "int", "low": 4, "high": 6},
+        "min_child_weight": {"type": "int", "low": 8, "high": 22},
+        "subsample": {"type": "float", "low": 0.75, "high": 0.95},
+        "colsample_bytree": {"type": "float", "low": 0.75, "high": 0.95},
+        "gamma": {"type": "float", "low": 1.5, "high": 5.0},
+        "reg_alpha": {"type": "float", "low": 1.0, "high": 4.0},
+        "reg_lambda": {"type": "float", "low": 4.0, "high": 12.0},
+    },
+    "v20": {
+        "n_estimators": {"type": "int", "low": 250, "high": 800},
+        "learning_rate": {"type": "float", "low": 0.10, "high": 0.18},
+        "max_depth": {"type": "int", "low": 3, "high": 5},
+        "min_child_weight": {"type": "int", "low": 3, "high": 8},
+        "subsample": {"type": "float", "low": 0.80, "high": 1.0},
+        "colsample_bytree": {"type": "float", "low": 0.80, "high": 1.0},
+        "gamma": {"type": "float", "low": 0.2, "high": 2.0},
+        "reg_alpha": {"type": "float", "low": 0.0, "high": 1.5},
+        "reg_lambda": {"type": "float", "low": 2.0, "high": 6.0},
+    },
+    "v21": {
+        "n_estimators": {"type": "int", "low": 600, "high": 1800},
+        "learning_rate": {"type": "float", "low": 0.015, "high": 0.05, "log": True},
+        "max_depth": {"type": "int", "low": 2, "high": 3},
+        "min_child_weight": {"type": "int", "low": 10, "high": 24},
+        "subsample": {"type": "float", "low": 0.55, "high": 0.75},
+        "colsample_bytree": {"type": "float", "low": 0.55, "high": 0.75},
+        "gamma": {"type": "float", "low": 2.0, "high": 6.0},
+        "reg_alpha": {"type": "float", "low": 1.5, "high": 5.0},
+        "reg_lambda": {"type": "float", "low": 5.0, "high": 14.0},
+    },
+    "v22": {
+        "n_estimators": {"type": "int", "low": 900, "high": 2600},
+        "learning_rate": {"type": "float", "low": 0.008, "high": 0.03, "log": True},
+        "max_depth": {"type": "int", "low": 3, "high": 4},
+        "min_child_weight": {"type": "int", "low": 6, "high": 14},
+        "subsample": {"type": "float", "low": 0.65, "high": 0.85},
+        "colsample_bytree": {"type": "float", "low": 0.65, "high": 0.85},
+        "gamma": {"type": "float", "low": 0.8, "high": 3.5},
+        "reg_alpha": {"type": "float", "low": 0.5, "high": 2.5},
+        "reg_lambda": {"type": "float", "low": 3.0, "high": 9.0},
+    },
+    "v23": {
+        "n_estimators": {"type": "int", "low": 350, "high": 1100},
+        "learning_rate": {"type": "float", "low": 0.05, "high": 0.12},
+        "max_depth": {"type": "int", "low": 3, "high": 4},
+        "min_child_weight": {"type": "int", "low": 4, "high": 12},
+        "subsample": {"type": "float", "low": 0.60, "high": 0.80},
+        "colsample_bytree": {"type": "float", "low": 0.60, "high": 0.80},
+        "gamma": {"type": "float", "low": 0.5, "high": 2.5},
+        "reg_alpha": {"type": "float", "low": 0.5, "high": 2.0},
+        "reg_lambda": {"type": "float", "low": 2.0, "high": 7.0},
+    },
+    "v24": {
+        "n_estimators": {"type": "int", "low": 300, "high": 900},
+        "learning_rate": {"type": "float", "low": 0.08, "high": 0.18},
+        "max_depth": {"type": "int", "low": 5, "high": 7},
         "min_child_weight": {"type": "int", "low": 1, "high": 4},
-        "subsample": {"type": "float", "low": 0.7, "high": 0.95},
-        "colsample_bytree": {"type": "float", "low": 0.7, "high": 0.95},
+        "subsample": {"type": "float", "low": 0.80, "high": 1.0},
+        "colsample_bytree": {"type": "float", "low": 0.80, "high": 1.0},
         "gamma": {"type": "float", "low": 0.0, "high": 1.0},
         "reg_alpha": {"type": "float", "low": 0.0, "high": 0.8},
         "reg_lambda": {"type": "float", "low": 1.0, "high": 4.0},
     },
-    "v4": {
-        "n_estimators": {"type": "int", "low": 300, "high": 1200},
-        "learning_rate": {"type": "float", "low": 0.05, "high": 0.18},
-        "max_depth": {"type": "int", "low": 5, "high": 7},
-        "min_child_weight": {"type": "int", "low": 3, "high": 10},
-        "subsample": {"type": "float", "low": 0.8, "high": 1.0},
-        "colsample_bytree": {"type": "float", "low": 0.8, "high": 1.0},
-        "gamma": {"type": "float", "low": 0.5, "high": 3.0},
-        "reg_alpha": {"type": "float", "low": 0.0, "high": 2.0},
-        "reg_lambda": {"type": "float", "low": 2.0, "high": 8.0},
-    },
-    "v5": {
+    "v25": {
         "n_estimators": {"type": "int", "low": 500, "high": 1600},
-        "learning_rate": {"type": "float", "low": 0.025, "high": 0.09, "log": True},
-        "max_depth": {"type": "int", "low": 3, "high": 6},
-        "min_child_weight": {"type": "int", "low": 4, "high": 12},
-        "subsample": {"type": "float", "low": 0.6, "high": 0.85},
-        "colsample_bytree": {"type": "float", "low": 0.6, "high": 0.85},
-        "gamma": {"type": "float", "low": 0.5, "high": 3.0},
-        "reg_alpha": {"type": "float", "low": 0.5, "high": 3.0},
-        "reg_lambda": {"type": "float", "low": 2.0, "high": 10.0},
-    },
-    "v6": {
-        "n_estimators": {"type": "int", "low": 250, "high": 1000},
-        "learning_rate": {"type": "float", "low": 0.08, "high": 0.20},
-        "max_depth": {"type": "int", "low": 3, "high": 5},
+        "learning_rate": {"type": "float", "low": 0.03, "high": 0.08},
+        "max_depth": {"type": "int", "low": 5, "high": 6},
         "min_child_weight": {"type": "int", "low": 1, "high": 5},
-        "subsample": {"type": "float", "low": 0.9, "high": 1.0},
-        "colsample_bytree": {"type": "float", "low": 0.9, "high": 1.0},
-        "gamma": {"type": "float", "low": 0.0, "high": 0.8},
-        "reg_alpha": {"type": "float", "low": 0.0, "high": 0.5},
-        "reg_lambda": {"type": "float", "low": 1.0, "high": 3.0},
-    },
-    "v7": {
-        "n_estimators": {"type": "int", "low": 700, "high": 2200},
-        "learning_rate": {"type": "float", "low": 0.015, "high": 0.06, "log": True},
-        "max_depth": {"type": "int", "low": 4, "high": 7},
-        "min_child_weight": {"type": "int", "low": 1, "high": 4},
-        "subsample": {"type": "float", "low": 0.7, "high": 0.95},
-        "colsample_bytree": {"type": "float", "low": 0.7, "high": 0.95},
+        "subsample": {"type": "float", "low": 0.65, "high": 0.85},
+        "colsample_bytree": {"type": "float", "low": 0.65, "high": 0.85},
         "gamma": {"type": "float", "low": 0.0, "high": 1.5},
+        "reg_alpha": {"type": "float", "low": 0.0, "high": 1.2},
+        "reg_lambda": {"type": "float", "low": 1.0, "high": 5.0},
+    },
+    "v26": {
+        "n_estimators": {"type": "int", "low": 800, "high": 2200},
+        "learning_rate": {"type": "float", "low": 0.01, "high": 0.04, "log": True},
+        "max_depth": {"type": "int", "low": 4, "high": 6},
+        "min_child_weight": {"type": "int", "low": 2, "high": 8},
+        "subsample": {"type": "float", "low": 0.85, "high": 1.0},
+        "colsample_bytree": {"type": "float", "low": 0.85, "high": 1.0},
+        "gamma": {"type": "float", "low": 0.0, "high": 1.2},
         "reg_alpha": {"type": "float", "low": 0.0, "high": 1.0},
         "reg_lambda": {"type": "float", "low": 1.0, "high": 5.0},
     },
-    "v8": {
-        "n_estimators": {"type": "int", "low": 300, "high": 1100},
-        "learning_rate": {"type": "float", "low": 0.12, "high": 0.25},
-        "max_depth": {"type": "int", "low": 5, "high": 8},
+    "v27": {
+        "n_estimators": {"type": "int", "low": 350, "high": 1200},
+        "learning_rate": {"type": "float", "low": 0.04, "high": 0.12},
+        "max_depth": {"type": "int", "low": 4, "high": 6},
+        "min_child_weight": {"type": "int", "low": 8, "high": 18},
+        "subsample": {"type": "float", "low": 0.70, "high": 0.90},
+        "colsample_bytree": {"type": "float", "low": 0.70, "high": 0.90},
+        "gamma": {"type": "float", "low": 1.5, "high": 4.5},
+        "reg_alpha": {"type": "float", "low": 1.0, "high": 3.5},
+        "reg_lambda": {"type": "float", "low": 4.0, "high": 12.0},
+    },
+    "v28": {
+        "n_estimators": {"type": "int", "low": 250, "high": 850},
+        "learning_rate": {"type": "float", "low": 0.12, "high": 0.22},
+        "max_depth": {"type": "int", "low": 6, "high": 8},
         "min_child_weight": {"type": "int", "low": 1, "high": 3},
         "subsample": {"type": "float", "low": 0.75, "high": 0.95},
         "colsample_bytree": {"type": "float", "low": 0.75, "high": 0.95},
-        "gamma": {"type": "float", "low": 0.0, "high": 0.6},
-        "reg_alpha": {"type": "float", "low": 0.0, "high": 0.4},
-        "reg_lambda": {"type": "float", "low": 1.0, "high": 2.5},
+        "gamma": {"type": "float", "low": 0.0, "high": 0.8},
+        "reg_alpha": {"type": "float", "low": 0.0, "high": 0.8},
+        "reg_lambda": {"type": "float", "low": 1.0, "high": 3.5},
     },
-    "v9": {
-        "n_estimators": {"type": "int", "low": 350, "high": 1300},
-        "learning_rate": {"type": "float", "low": 0.04, "high": 0.14},
-        "max_depth": {"type": "int", "low": 5, "high": 6},
-        "min_child_weight": {"type": "int", "low": 6, "high": 16},
-        "subsample": {"type": "float", "low": 0.75, "high": 1.0},
-        "colsample_bytree": {"type": "float", "low": 0.75, "high": 1.0},
-        "gamma": {"type": "float", "low": 1.0, "high": 4.0},
-        "reg_alpha": {"type": "float", "low": 0.5, "high": 3.0},
-        "reg_lambda": {"type": "float", "low": 3.0, "high": 12.0},
+    "v29": {
+        "n_estimators": {"type": "int", "low": 450, "high": 1400},
+        "learning_rate": {"type": "float", "low": 0.02, "high": 0.07, "log": True},
+        "max_depth": {"type": "int", "low": 5, "high": 7},
+        "min_child_weight": {"type": "int", "low": 6, "high": 14},
+        "subsample": {"type": "float", "low": 0.55, "high": 0.75},
+        "colsample_bytree": {"type": "float", "low": 0.55, "high": 0.75},
+        "gamma": {"type": "float", "low": 1.0, "high": 3.5},
+        "reg_alpha": {"type": "float", "low": 0.5, "high": 2.5},
+        "reg_lambda": {"type": "float", "low": 2.0, "high": 8.0},
     },
-    "v10": {
+    "v30": {
+        "n_estimators": {"type": "int", "low": 500, "high": 1700},
+        "learning_rate": {"type": "float", "low": 0.02, "high": 0.06, "log": True},
+        "max_depth": {"type": "int", "low": 4, "high": 5},
+        "min_child_weight": {"type": "int", "low": 2, "high": 10},
+        "subsample": {"type": "float", "low": 0.60, "high": 1.0},
+        "colsample_bytree": {"type": "float", "low": 0.60, "high": 1.0},
+        "gamma": {"type": "float", "low": 0.0, "high": 3.0},
+        "reg_alpha": {"type": "float", "low": 0.0, "high": 2.0},
+        "reg_lambda": {"type": "float", "low": 1.0, "high": 8.0},
+    },
+    "v31": {
+        "n_estimators": {"type": "int", "low": 700, "high": 2200},
+        "learning_rate": {"type": "float", "low": 0.006, "high": 0.02, "log": True},
+        "max_depth": {"type": "int", "low": 2, "high": 3},
+        "min_child_weight": {"type": "int", "low": 12, "high": 28},
+        "subsample": {"type": "float", "low": 0.45, "high": 0.65},
+        "colsample_bytree": {"type": "float", "low": 0.45, "high": 0.65},
+        "gamma": {"type": "float", "low": 2.5, "high": 7.0},
+        "reg_alpha": {"type": "float", "low": 2.0, "high": 6.0},
+        "reg_lambda": {"type": "float", "low": 6.0, "high": 16.0},
+    },
+    "v32": {
         "n_estimators": {"type": "int", "low": 250, "high": 700},
-        "learning_rate": {"type": "float", "low": 0.14, "high": 0.22},
-        "max_depth": {"type": "int", "low": 5, "high": 6},
+        "learning_rate": {"type": "float", "low": 0.14, "high": 0.26},
+        "max_depth": {"type": "int", "low": 2, "high": 3},
+        "min_child_weight": {"type": "int", "low": 1, "high": 4},
+        "subsample": {"type": "float", "low": 0.85, "high": 1.0},
+        "colsample_bytree": {"type": "float", "low": 0.85, "high": 1.0},
+        "gamma": {"type": "float", "low": 0.0, "high": 0.8},
+        "reg_alpha": {"type": "float", "low": 0.0, "high": 0.6},
+        "reg_lambda": {"type": "float", "low": 1.0, "high": 3.5},
+    },
+    "v33": {
+        "n_estimators": {"type": "int", "low": 900, "high": 2600},
+        "learning_rate": {"type": "float", "low": 0.008, "high": 0.03, "log": True},
+        "max_depth": {"type": "int", "low": 5, "high": 7},
         "min_child_weight": {"type": "int", "low": 1, "high": 5},
-        "subsample": {"type": "float", "low": 0.75, "high": 0.9},
-        "colsample_bytree": {"type": "float", "low": 0.8, "high": 1.0},
+        "subsample": {"type": "float", "low": 0.80, "high": 1.0},
+        "colsample_bytree": {"type": "float", "low": 0.80, "high": 1.0},
+        "gamma": {"type": "float", "low": 0.0, "high": 1.0},
+        "reg_alpha": {"type": "float", "low": 0.0, "high": 0.8},
+        "reg_lambda": {"type": "float", "low": 1.0, "high": 4.0},
+    },
+    "v34": {
+        "n_estimators": {"type": "int", "low": 300, "high": 1000},
+        "learning_rate": {"type": "float", "low": 0.06, "high": 0.16},
+        "max_depth": {"type": "int", "low": 6, "high": 8},
+        "min_child_weight": {"type": "int", "low": 10, "high": 24},
+        "subsample": {"type": "float", "low": 0.70, "high": 0.90},
+        "colsample_bytree": {"type": "float", "low": 0.70, "high": 0.90},
+        "gamma": {"type": "float", "low": 2.0, "high": 6.0},
+        "reg_alpha": {"type": "float", "low": 1.5, "high": 5.0},
+        "reg_lambda": {"type": "float", "low": 5.0, "high": 14.0},
+    },
+    "v35": {
+        "n_estimators": {"type": "int", "low": 450, "high": 1400},
+        "learning_rate": {"type": "float", "low": 0.02, "high": 0.07, "log": True},
+        "max_depth": {"type": "int", "low": 4, "high": 5},
+        "min_child_weight": {"type": "int", "low": 2, "high": 8},
+        "subsample": {"type": "float", "low": 0.40, "high": 0.60},
+        "colsample_bytree": {"type": "float", "low": 0.40, "high": 0.60},
+        "gamma": {"type": "float", "low": 0.5, "high": 2.5},
+        "reg_alpha": {"type": "float", "low": 0.3, "high": 2.0},
+        "reg_lambda": {"type": "float", "low": 2.0, "high": 8.0},
+    },
+    "v36": {
+        "n_estimators": {"type": "int", "low": 250, "high": 850},
+        "learning_rate": {"type": "float", "low": 0.12, "high": 0.24},
+        "max_depth": {"type": "int", "low": 5, "high": 7},
+        "min_child_weight": {"type": "int", "low": 1, "high": 4},
+        "subsample": {"type": "float", "low": 0.55, "high": 0.75},
+        "colsample_bytree": {"type": "float", "low": 0.55, "high": 0.75},
+        "gamma": {"type": "float", "low": 0.0, "high": 1.2},
+        "reg_alpha": {"type": "float", "low": 0.0, "high": 1.0},
+        "reg_lambda": {"type": "float", "low": 1.0, "high": 4.0},
+    },
+    "v37": {
+        "n_estimators": {"type": "int", "low": 600, "high": 1800},
+        "learning_rate": {"type": "float", "low": 0.015, "high": 0.05, "log": True},
+        "max_depth": {"type": "int", "low": 3, "high": 5},
+        "min_child_weight": {"type": "int", "low": 1, "high": 6},
+        "subsample": {"type": "float", "low": 0.90, "high": 1.0},
+        "colsample_bytree": {"type": "float", "low": 0.35, "high": 0.55},
         "gamma": {"type": "float", "low": 0.0, "high": 1.5},
         "reg_alpha": {"type": "float", "low": 0.0, "high": 1.0},
         "reg_lambda": {"type": "float", "low": 1.0, "high": 5.0},
+    },
+    "v38": {
+        "n_estimators": {"type": "int", "low": 500, "high": 1600},
+        "learning_rate": {"type": "float", "low": 0.02, "high": 0.08},
+        "max_depth": {"type": "int", "low": 4, "high": 6},
+        "min_child_weight": {"type": "int", "low": 12, "high": 30},
+        "subsample": {"type": "float", "low": 0.85, "high": 1.0},
+        "colsample_bytree": {"type": "float", "low": 0.85, "high": 1.0},
+        "gamma": {"type": "float", "low": 2.0, "high": 6.0},
+        "reg_alpha": {"type": "float", "low": 0.0, "high": 0.5},
+        "reg_lambda": {"type": "float", "low": 6.0, "high": 18.0},
+    },
+    "v39": {
+        "n_estimators": {"type": "int", "low": 350, "high": 1100},
+        "learning_rate": {"type": "float", "low": 0.03, "high": 0.09},
+        "max_depth": {"type": "int", "low": 6, "high": 8},
+        "min_child_weight": {"type": "int", "low": 3, "high": 8},
+        "subsample": {"type": "float", "low": 0.40, "high": 0.65},
+        "colsample_bytree": {"type": "float", "low": 0.80, "high": 1.0},
+        "gamma": {"type": "float", "low": 0.3, "high": 2.0},
+        "reg_alpha": {"type": "float", "low": 0.2, "high": 1.5},
+        "reg_lambda": {"type": "float", "low": 1.0, "high": 6.0},
+    },
+    "v40": {
+        "n_estimators": {"type": "int", "low": 250, "high": 1800},
+        "learning_rate": {"type": "float", "low": 0.01, "high": 0.20, "log": True},
+        "max_depth": {"type": "int", "low": 2, "high": 7},
+        "min_child_weight": {"type": "int", "low": 1, "high": 20},
+        "subsample": {"type": "float", "low": 0.40, "high": 1.0},
+        "colsample_bytree": {"type": "float", "low": 0.35, "high": 1.0},
+        "gamma": {"type": "float", "low": 0.0, "high": 6.0},
+        "reg_alpha": {"type": "float", "low": 0.0, "high": 5.0},
+        "reg_lambda": {"type": "float", "low": 1.0, "high": 16.0},
     },
 }
 
@@ -225,8 +448,8 @@ ak_bkg = uproot.concatenate(BKG_PATH, library="pd")
 
 ak_sig = ak_sig[ak_sig["isX3872"] == 1]
 ak_bkg = ak_bkg[
-    ((ak_bkg["Bmass"] < 3.83) & (ak_bkg["Bmass"] > 3.75))
-    | ((ak_bkg["Bmass"] > 3.91) & (ak_bkg["Bmass"] < 4.0))
+    ((ak_bkg["Bmass"] > 3.75) & (ak_bkg["Bmass"] < 3.83))
+    | ((ak_bkg["Bmass"] > 3.91) & (ak_bkg["Bmass"] < 4.00))
 ]
 
 ak_sig["is_sig"] = True
@@ -248,17 +471,66 @@ trans_columns = [f"{col}_trans" for col in input_columns]
 X = df[trans_columns]
 y = df[["is_sig", "is_bkg"]]
 
-X_train, X_valtest, y_train, y_valtest = train_test_split(X, y, test_size=0.2)
-X_val, X_test, y_val, y_test = train_test_split(X_valtest, y_valtest, test_size=0.5)
+X_train, X_valtest, y_train, y_valtest = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    stratify=y["is_sig"],
+    random_state=FIXED_MODEL_PARAMS["random_state"],
+)
+X_val, X_test, y_val, y_test = train_test_split(
+    X_valtest,
+    y_valtest,
+    test_size=0.5,
+    stratify=y_valtest["is_sig"],
+    random_state=FIXED_MODEL_PARAMS["random_state"],
+)
 
 n_sig = (y_train["is_sig"] == 1).sum()
 n_bkg = (y_train["is_sig"] == 0).sum()
 pos_weight = n_bkg / n_sig
 
 
+def best_significance_from_scores(signal_scores, background_scores):
+    if len(signal_scores) == 0 or len(background_scores) == 0:
+        return 0.0, 0.0, 0, 0
+
+    candidate_cuts = np.unique(
+        np.concatenate(
+            [
+                np.linspace(0.0, 0.999, 400),
+                np.quantile(signal_scores, np.linspace(0.05, 0.95, 19)),
+                np.quantile(background_scores, np.linspace(0.05, 0.95, 19)),
+            ]
+        )
+    )
+
+    best_significance = 0.0
+    best_cut = 0.0
+    best_signal = 0
+    best_background = 0
+
+    for cut in candidate_cuts:
+        passed_signal = int(np.count_nonzero(signal_scores > cut))
+        passed_background = int(np.count_nonzero(background_scores > cut))
+        total = passed_signal + passed_background
+        if total <= 0:
+            continue
+
+        significance = passed_signal / np.sqrt(total)
+        if significance > best_significance:
+            best_significance = significance
+            best_cut = float(cut)
+            best_signal = passed_signal
+            best_background = passed_background
+
+    return best_significance, best_cut, best_signal, best_background
+
+
 def objective(trial):
     params = {
         "eval_metric": FIXED_MODEL_PARAMS["eval_metric"],
+        "random_state": FIXED_MODEL_PARAMS["random_state"],
         "scale_pos_weight": pos_weight,
         "n_jobs": 4,
     }
@@ -271,17 +543,26 @@ def objective(trial):
     pred = model.predict_proba(X_val)[:, 1]
     sig = pred[y_val["is_sig"] == 1]
     bkg = pred[y_val["is_sig"] == 0]
-    return np.mean(sig) - np.mean(bkg)
+    best_significance, best_cut, best_signal, best_background = best_significance_from_scores(sig, bkg)
+    trial.set_user_attr("best_cut", best_cut)
+    trial.set_user_attr("best_signal_yield", best_signal)
+    trial.set_user_attr("best_background_yield", best_background)
+    return best_significance
 
 
 study = optuna.create_study(direction="maximize")
 study.optimize(objective, n_trials=number_trials)
 
 print("Best params:", study.best_params)
+print(f"Best validation cut: {study.best_trial.user_attrs.get('best_cut', 0.0):.4f}")
+print(f"Best validation S: {study.best_trial.user_attrs.get('best_signal_yield', 0)}")
+print(f"Best validation B: {study.best_trial.user_attrs.get('best_background_yield', 0)}")
+print(f"Best validation S/sqrt(S+B): {study.best_value:.6f}")
 
 xgbc = XGBClassifier(
     **study.best_params,
     eval_metric=FIXED_MODEL_PARAMS["eval_metric"],
+    random_state=FIXED_MODEL_PARAMS["random_state"],
     scale_pos_weight=pos_weight,
     n_jobs=4,
 )
@@ -347,9 +628,14 @@ save_run_metadata(
     optuna_n_trials=number_trials,
     optimized_hyperparameters=list(OPTUNA_SEARCH_SPACE.keys()),
     hyperparameter_search_space=OPTUNA_SEARCH_SPACE,
-    optimization_metric="mean(sig_score) - mean(bkg_score)",
+    optimization_metric="max validation S/sqrt(S+B) from score-cut scan",
     best_objective_value=study.best_value,
-    notes={"search_space_tag": search_space_tag},
+    notes={
+        "search_space_tag": search_space_tag,
+        "best_validation_cut": float(study.best_trial.user_attrs.get("best_cut", 0.0)),
+        "best_validation_signal_yield": int(study.best_trial.user_attrs.get("best_signal_yield", 0)),
+        "best_validation_background_yield": int(study.best_trial.user_attrs.get("best_background_yield", 0)),
+    },
 )
 
 print("Training complete. Model artifacts saved.")

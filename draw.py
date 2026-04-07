@@ -5,7 +5,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import uproot
 
-from utils.paths import cut_scan_dir, ensure_dir, resolve_data_output_path
+from utils.paths import (
+    cut_scan_dir,
+    ensure_dir,
+    resolve_data_output_path,
+)
 
 if len(sys.argv) != 2:
     print("Usage: python3 draw.py <train_tag>")
@@ -13,32 +17,54 @@ if len(sys.argv) != 2:
 
 train_tag = sys.argv[1]
 TREE = "ntmix"
-MASS_RANGE = (3.6, 4.0)
-score_cuts = [0.0, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.92, 0.94, 0.95, 0.96, 0.97, 0.99]
+MASS_RANGE = (3.62, 4.0)
+BINS = np.arange(MASS_RANGE[0], MASS_RANGE[1] + 0.01, 0.01)
+BQVALUE_MAX = 0.13
+score_cuts = [0.0, 0.5, 0.6, 0.8, 0.9, 0.92, 0.94, 0.95, 0.96, 0.97, 0.99, 0.993, 0.995]
 
-input_file = resolve_data_output_path(train_tag)
+
+def output_name(output_dir, cut):
+    if cut >= 0.99:
+        cut_tag = int(round(cut * 1000))
+        cut_suffix = f"cut{cut_tag:04d}"
+    else:
+        cut_tag = int(round(cut * 100))
+        cut_suffix = f"cut{cut_tag:03d}"
+    return os.path.join(output_dir, f"DATA_{cut_suffix}.pdf")
+
+
+data_input_file = resolve_data_output_path(train_tag)
 output_dir = ensure_dir(cut_scan_dir(train_tag))
 
-if not os.path.exists(input_file):
-    print(f"Input file not found for train_tag={train_tag}: {input_file}")
+if not os.path.exists(data_input_file):
+    print(f"DATA input file not found for train_tag={train_tag}: {data_input_file}")
     sys.exit(1)
 
-print(f"Loading: {input_file}")
-df = uproot.open(input_file)[TREE].arrays(library="pd")
-print(f"Total events: {len(df)}")
+branches = ["Bmass", "BQvalue", "xgb_score"]
 
-df = df[(df["Bmass"] > MASS_RANGE[0]) & (df["Bmass"] < MASS_RANGE[1])]
-print(f"After mass cut: {len(df)}")
+print(f"Loading DATA: {data_input_file}")
+df_data = uproot.open(data_input_file)[TREE].arrays(branches, library="pd")
+print(f"Total DATA events: {len(df_data)}")
 
-bins = np.linspace(MASS_RANGE[0], MASS_RANGE[1], 80)
+if "xgb_score" not in df_data.columns:
+    print("Missing score branch in DATA file: xgb_score")
+    sys.exit(1)
+
+df_data = df_data[
+    (df_data["Bmass"] > MASS_RANGE[0])
+    & (df_data["Bmass"] < MASS_RANGE[1])
+    & (df_data["BQvalue"] < BQVALUE_MAX)
+].copy()
+
+print(f"After DATA mass + BQvalue<{BQVALUE_MAX}: {len(df_data)}")
 
 for cut in score_cuts:
-    df_cut = df[df["xgb_score"] > cut]
+    df_cut = df_data[df_data["xgb_score"] > cut]
 
     plt.figure(figsize=(6, 6))
     plt.hist(
         df_cut["Bmass"],
-        bins=bins,
+        bins=BINS,
         histtype="step",
         linewidth=2,
     )
@@ -51,6 +77,7 @@ for cut in score_cuts:
             f"Entries = {n_entries}",
             f"Mean = {mean:.4f}",
             f"Std Dev = {std:.4f}",
+            f"BQvalue < {BQVALUE_MAX}",
         )
     )
 
@@ -72,8 +99,7 @@ for cut in score_cuts:
     plt.grid(alpha=0.3)
     plt.tight_layout()
 
-    cut_tag = int(cut * 100)
-    out_name = os.path.join(output_dir, f"X_cut{cut_tag:03d}.pdf")
+    out_name = output_name(output_dir, cut)
     plt.savefig(out_name)
     plt.close()
 

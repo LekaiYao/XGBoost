@@ -1,56 +1,249 @@
 # XGBoost
 
-This directory contains a small XGBoost-based workflow for training, hyperparameter tuning, score application, and mass-shape plotting for the X(3872) analysis.
+This directory contains the current XGBoost workflow for the PbPb mass-spectrum analysis, including:
 
-The repository is currently stored under EOS for versioning and artifact sharing. The HTCondor helper files are kept here as examples/documentation, but are not meant to be launched directly from this EOS path. For actual batch running, copy or mirror the workflow to an AFS path first.
+- single-model training
+- Optuna hyperparameter scans
+- grouped score application
+- grouped cut-scan plotting
+- Condor submission wrappers
+- hyperparameter-design notes
 
-## Repository Structure
+The repository code lives under EOS, while the actual HTCondor submission wrappers must be launched from AFS.
 
-- `XGBoost.py`: baseline training script.
-- `optuna_XGBoost.py`: Optuna-based hyperparameter scan and final training.
-- `apply.py`: applies a trained model to MC and DATA ROOT ntuples and writes `xgb_score`.
-- `draw.py`: scans score cuts and produces `Bmass` plots from scored DATA.
-- `shap_importance.py`: computes SHAP feature rankings, normalized fractions, and summary plots from a trained model.
-- `paths.py`: shared output-path helpers for the organized directory layout and legacy fallback.
-- `run.sh`: example batch entrypoint used by HTCondor after relocating the workflow to AFS.
-- `submit.sub`: example HTCondor submission file kept for later AFS-side usage.
-- `requirements.txt`: Python dependencies for the local virtual environment.
+## AFS and EOS
 
-## Workflow
+Current split:
 
-1. Train a baseline model:
+- EOS repo path:
+  `/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost`
+- AFS Condor submission path:
+  `/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost`
+
+The current Condor pattern is:
+
+1. submit from AFS
+2. run AFS-side wrapper scripts such as `run.sh` or `run_batch_compare.sh`
+3. `cd` into the EOS repository
+4. activate `.venv`
+5. execute the EOS-side Python scripts
+
+## Main scripts
+
+- `XGBoost.py`
+  Baseline single-model training script.
+- `optuna_XGBoost.py`
+  Legacy local Optuna scan script.
+- `condor_optuna_XGBoost.py`
+  Current main Condor training script. Supports named search-space presets such as `v11`, `v21`, `v31`, etc.
+- `apply.py`
+  Applies one trained model to MC and DATA and writes `xgb_score`.
+- `draw.py`
+  Draws cut-scan mass plots for one scored `train_tag` from `selected_events/<train_tag>/DATA_with_score.root`.
+- `batch_apply_scores.py`
+  Loads multiple trained models from one group and writes all scores into one grouped ROOT output.
+- `batch_draw_scores.py`
+  Legacy grouped draw script that reads one grouped DATA ROOT and writes plots into each `train_tag` output directory.
+- `batch_compare_draw.py`
+  Legacy grouped compare script that applies models directly to DATA and draws per-model cut scans.
+- `batch_draw_from_group_root.py`
+  Current grouped draw helper. Input is a grouped `DATA_with_score.root`; it reads all `xgb_score_*` branches and writes plots into each corresponding `selected_events/<train_tag>/cut_scan/`.
+- `shap_importance.py`
+  SHAP feature-importance workflow for trained models.
+
+## Condor wrapper scripts
+
+AFS-side Condor helpers:
+
+- `run.sh`
+  Wrapper for training jobs.
+- `submit.sub`
+  Training submission file. The queued `train_tag` values determine which search-space presets are launched.
+- `run_batch_compare.sh`
+  Wrapper for grouped apply plus grouped draw.
+- `submit_batch_compare.sub`
+  Batch compare submission file. Now supports explicit version ranges.
+- `submit_batch_compare_4v1.sub`
+  Example batch compare submit file for the `pb23_4v_o100` line.
+- `submit_batch_compare_p2s.sub`
+  Example batch compare submit file for the `pb23p2s_4v2_o50` line.
+
+## Naming rule
+
+Current training tags follow:
+
+`<sample>_<feature-version>_o<optuna-trials>_v<search-space-version>`
+
+Examples:
+
+- `pb23_4v2_o50_v1`
+- `pb23_4v_o100_v7`
+- `pb23p2s_4v2_o50_v10`
+- `pb23v2_4v2_o50_v11`
+- `pb23v2_4v2_o100_v21`
+- `pb23v2_4v2_o100_v40`
+
+Interpretation:
+
+- `pb23`, `pb23p2s`, `pb23v2`:
+  sample line
+- `4v`, `4v2`:
+  input-variable version
+- `o50`, `o100`:
+  Optuna trial count
+- `vN`:
+  search-space preset version
+
+## Current pb23v2_4v2 training setup
+
+The current `pb23v2_4v2` Condor training line uses:
+
+- signal MC:
+  `/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix`
+- background DATA:
+  `/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root:ntmix`
+- signal selection:
+  `isX3872 == 1`
+- background selection:
+  `(3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)`
+- input variables:
+  - `Btrk1dR`
+  - `Btrk2Pt`
+  - `BtrkPtimb`
+  - `Bchi2Prob`
+
+Other current training details:
+
+- inputs are standardized with `StandardScaler`
+- class imbalance is handled with `scale_pos_weight = n_bkg / n_sig`
+- train/validation/test splitting is stratified
+- `random_state = 42`
+- the Optuna objective is based on validation-set cut scanning and maximization of `S/sqrt(S+B)`
+
+## Search-space history
+
+The running record of hyperparameter-design choices is stored in:
+
+- `notes/optuna_search_space_history_pb23v2_4v2.md`
+
+This file currently summarizes the 60 Condor training runs:
+
+- `pb23_4v2_o50_v1-v10`
+- `pb23_4v_o100_v1-v10`
+- `pb23p2s_4v2_o50_v1-v10`
+- `pb23v2_4v2_o50_v11-v20`
+- `pb23v2_4v2_o100_v21-v30`
+- `pb23v2_4v2_o100_v31-v40`
+
+Future `pb23v2_4v2` training batches should continue to append new sections to that file.
+
+## Plotting conventions
+
+All current mass-spectrum plotting scripts are standardized to:
+
+- mass range:
+  `3.62 < Bmass < 4.0`
+- histogram bin width:
+  `0.01`
+- additional cut:
+  `BQvalue < 0.13`
+- output naming:
+  `DATA_cutXXX.pdf` or `DATA_cutXXXX.pdf`
+
+The old `X_cut...pdf` naming should no longer be used in the active plotting scripts.
+
+## Typical workflows
+
+### Single training
 
 ```bash
 python3 XGBoost.py <train_tag>
 ```
 
-2. Train with Optuna tuning:
+### Legacy local Optuna
 
 ```bash
 python3 optuna_XGBoost.py <train_tag>
 ```
 
-3. Apply the trained model:
+### Current Condor-style Optuna training
+
+Local direct run for debugging:
+
+```bash
+OPTUNA_N_TRIALS=100 python3 condor_optuna_XGBoost.py <train_tag> <search_space_tag>
+```
+
+Typical Condor run:
+
+1. edit AFS `submit.sub`
+2. set the queued `train_tag, search_space_tag`
+3. run:
+
+```bash
+condor_submit submit.sub
+```
+
+### Single-model score application
 
 ```bash
 python3 apply.py <train_tag>
 ```
 
-4. Draw score-cut mass distributions:
+### Single-model drawing
 
 ```bash
 python3 draw.py <train_tag>
 ```
 
-5. Compute SHAP importance, normalized fractions, and summary plots:
+### Grouped score application
 
 ```bash
-python3 shap_importance.py <train_tag> [max_events]
+python3 batch_apply_scores.py <train_tag1> <train_tag2> ...
 ```
 
-## Output Layout
+This writes grouped outputs to:
 
-New runs are written into the organized layout below:
+- `selected_events/<group_tag>/MC_with_score.root`
+- `selected_events/<group_tag>/DATA_with_score.root`
+
+### Grouped drawing from an existing grouped DATA ROOT
+
+```bash
+python3 batch_draw_from_group_root.py selected_events/<group_tag>/DATA_with_score.root
+```
+
+This scans all `xgb_score_*` branches in the grouped ROOT and writes:
+
+- `selected_events/<train_tag>/cut_scan/DATA_cut000.pdf`
+- ...
+
+### Batch compare through Condor
+
+Current `run_batch_compare.sh` accepts:
+
+```bash
+run_batch_compare.sh <group_tag> <version_start> <version_end>
+```
+
+For example, this expands:
+
+- `pb23v2_4v2_o50 11 20`
+
+into:
+
+- `pb23v2_4v2_o50_v11`
+- ...
+- `pb23v2_4v2_o50_v20`
+
+and then runs:
+
+- `batch_apply_scores.py`
+- `batch_draw_scores.py`
+
+## Output layout
+
+Model and training artifacts are stored in:
 
 ```text
 xgb_output/
@@ -58,6 +251,7 @@ xgb_output/
     xgb_model.pkl
     scaler.pkl
     model_config.json
+    run_metadata.json
 
   training/<train_tag>/
     xgb_score.pdf
@@ -70,79 +264,38 @@ xgb_output/
     shap_summary.pdf
     shap_bar.pdf
     shap_cumulative.pdf
+```
 
+Scored ROOT outputs and cut scans are stored in:
+
+```text
 selected_events/<train_tag>/
   MC_with_score.root
   DATA_with_score.root
   cut_scan/
-    X_cut010.pdf
-    X_cut020.pdf
+    DATA_cut000.pdf
+    DATA_cut050.pdf
     ...
+
+selected_events/<group_tag>/
+  MC_with_score.root
+  DATA_with_score.root
 ```
 
-The read-side scripts keep compatibility with the older flat layout. In particular, `apply.py` and `shap_importance.py` can still load models from the old `xgb_output/xgb_model_<train_tag>.pkl` style layout, and `draw.py` can still read `selected_events/DATA_with_score_<train_tag>.root` if needed.
+## Local Python environment
 
+Use the project-local `.venv`.
 
-## Input Data
+Typical setup:
 
-The scripts currently read ROOT ntuples from:
+```bash
+python3.9 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install -r requirements.txt
+```
 
-- `SIG_PATH = /eos/home-l/leyao/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_MC.root:ntmix`
-- `BKG_PATH = /eos/home-l/leyao/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_DATA.root:ntmix`
-
-Signal events are selected with `isX3872 == 1`, while background is taken from `Bmass` sidebands.
-
-## Features
-
-The current model uses four input variables:
-
-- `Btrk1dR`
-- `Btrk2dR`
-- `BtrkPtimb`
-- `Bchi2Prob`
-
-They are standardized with `StandardScaler` before training and inference.
-
-Training outputs are saved to:
-
-- `xgb_output/training/<train_tag>/feature_importance.json`
-- `xgb_output/training/<train_tag>/feature_importance_cumulative.pdf`
-- `xgb_output/training/<train_tag>/xgb_score.pdf`
-
-Model artifacts are saved to:
-
-- `xgb_output/models/<train_tag>/xgb_model.pkl`
-- `xgb_output/models/<train_tag>/scaler.pkl`
-- `xgb_output/models/<train_tag>/model_config.json`
-
-SHAP outputs are saved to:
-
-- `xgb_output/shap/<train_tag>/shap_importance.json`
-- `xgb_output/shap/<train_tag>/shap_importance_fraction.json`
-- `xgb_output/shap/<train_tag>/shap_summary.pdf`
-- `xgb_output/shap/<train_tag>/shap_bar.pdf`
-- `xgb_output/shap/<train_tag>/shap_cumulative.pdf`
-
-Scored ROOT outputs are saved to:
-
-- `selected_events/<train_tag>/MC_with_score.root`
-- `selected_events/<train_tag>/DATA_with_score.root`
-
-Cut-scan plots are saved to:
-
-- `selected_events/<train_tag>/cut_scan/`
-
-## Local Python Environment
-
-Use a project-local virtual environment named `.venv/`.
-
-Recommended interpreter:
-
-- Base interpreter location: `/usr/bin/python3.9`
-- Python version: `3.9.x`
-- `include-system-site-packages = false`
-
-The repository dependencies are listed in `requirements.txt`:
+Main dependencies:
 
 - `uproot`
 - `awkward`
@@ -154,24 +307,3 @@ The repository dependencies are listed in `requirements.txt`:
 - `optuna`
 - `joblib`
 - `shap`
-
-To create the environment manually:
-
-```bash
-python3.9 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip setuptools wheel
-python -m pip install -r requirements.txt
-```
-
-## Batch Running
-
-These files are included as reference only while the repository lives on EOS. HTCondor on this setup should be launched from an AFS location instead.
-
-`run.sh` activates `.venv/` and launches:
-
-```bash
-python3 optuna_XGBoost.py ${train_tag}
-```
-
-The provided `submit.sub` submits one Condor job with a configurable `train_tag`.
