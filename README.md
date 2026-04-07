@@ -44,8 +44,6 @@ The current Condor pattern is:
   Loads multiple trained models from one group and writes all scores into one grouped ROOT output.
 - `batch_draw_scores.py`
   Legacy grouped draw script that reads one grouped DATA ROOT and writes plots into each `train_tag` output directory.
-- `batch_draw_from_group_root.py`
-  Current grouped draw helper. Input is a grouped `DATA_with_score.root`; it reads all `xgb_score_*` branches and writes plots into each corresponding `selected_events/<train_tag>/cut_scan/`.
 - `shap_importance.py`
   SHAP feature-importance workflow for trained models.
 
@@ -204,17 +202,6 @@ This writes grouped outputs to:
 
 - `selected_events/<group_tag>/MC_with_score.root`
 - `selected_events/<group_tag>/DATA_with_score.root`
-
-### Grouped drawing from an existing grouped DATA ROOT
-
-```bash
-python3 batch_draw_from_group_root.py selected_events/<group_tag>/DATA_with_score.root
-```
-
-This scans all `xgb_score_*` branches in the grouped ROOT and writes:
-
-- `selected_events/<train_tag>/cut_scan/DATA_cut000.pdf`
-- ...
 
 ### Batch compare through Condor
 
