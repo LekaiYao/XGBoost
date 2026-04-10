@@ -1,8 +1,16 @@
 import json
 import os
+import re
 from datetime import datetime
 
 from utils.paths import (
+    condor_feature_importance_cumulative_path,
+    condor_feature_importance_path,
+    condor_model_config_path,
+    condor_model_dir,
+    condor_model_path,
+    condor_scaler_path,
+    condor_training_score_path,
     feature_importance_cumulative_path,
     feature_importance_path,
     model_config_path,
@@ -14,6 +22,8 @@ from utils.paths import (
 
 
 def metadata_path(train_tag):
+    if infer_training_mode(train_tag) == "condor":
+        return os.path.join(condor_model_dir(train_tag), "run_metadata.json")
     return os.path.join(model_dir(train_tag), "run_metadata.json")
 
 
@@ -34,6 +44,8 @@ def infer_sample_tag(train_tag):
 
 def infer_feature_set_tag(train_tag, feature_count):
     for part in train_tag.split("_"):
+        if re.fullmatch(r"\d+v\d+", part):
+            return part
         if part.endswith("var") or part.endswith("v"):
             return part
     return f"{feature_count}var"
@@ -49,6 +61,15 @@ def infer_dataset_label(*paths):
 
 
 def build_artifacts(train_tag):
+    if infer_training_mode(train_tag) == "condor":
+        return {
+            "model_path": condor_model_path(train_tag),
+            "scaler_path": condor_scaler_path(train_tag),
+            "model_config_path": condor_model_config_path(train_tag),
+            "score_plot_path": condor_training_score_path(train_tag),
+            "feature_importance_path": condor_feature_importance_path(train_tag),
+            "feature_importance_cumulative_path": condor_feature_importance_cumulative_path(train_tag),
+        }
     return {
         "model_path": model_path(train_tag),
         "scaler_path": scaler_path(train_tag),
@@ -137,7 +158,7 @@ def save_run_metadata(
         "artifacts": build_artifacts(train_tag),
         "notes": {
             "train_tag_note": "legacy tag before new naming convention" if train_tag.startswith("cnd_") else "tag follows current naming convention",
-            "naming_recommendation": "<sample>_<nvar>v_<mode><n>_<version>",
+            "naming_recommendation": "<sample>_<feature-version>_<objective-version>o<optuna-trials>_v<search-space-version>",
             **notes,
         },
     }

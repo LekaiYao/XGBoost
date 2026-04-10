@@ -68,7 +68,7 @@ AFS-side Condor helpers:
 
 Current training tags follow:
 
-`<sample>_<feature-version>_o<optuna-trials>_v<search-space-version>`
+`<sample>_<feature-version>_<objective-version>o<optuna-trials>_v<search-space-version>`
 
 Examples:
 
@@ -78,17 +78,26 @@ Examples:
 - `pb23v2_4v2_o50_v11`
 - `pb23v2_4v2_o100_v21`
 - `pb23v2_4v2_o100_v40`
+- `pb23v4_4v2_3o200_v1`
+- `pb23v4_7v_3o200_v28`
 
 Interpretation:
 
 - `pb23`, `pb23p2s`, `pb23v2`:
   sample line
-- `4v`, `4v2`:
+- `4v`, `4v2`, `5v`, `7v`:
   input-variable version
+- `3o200`:
+  objective version `3` with `200` Optuna trials
 - `o50`, `o100`:
   Optuna trial count
 - `vN`:
   search-space preset version
+
+Compatibility note:
+
+- Older historical trainings may still use tags without the explicit objective-version field, for example `..._o100_v21`
+- New trainings should use the explicit form `..._<objective-version>o<trials>_vN`
 
 ## Current pb23v3_7v training setup
 
@@ -248,7 +257,41 @@ For example:
 
 ## Output layout
 
-Model and training artifacts are stored in:
+Grouped score-application outputs are stored in:
+
+- `selected_events/<group_tag>_v<start>_v<end>/`
+
+Inside each grouped directory:
+
+- grouped ROOT files stay directly under the group directory:
+  - `MC_with_score.root`
+  - `DATA_with_score.root`
+- grouped cut-scan plots are written directly under:
+  - `selected_events/<grouped_output_tag>/<train_tag>/`
+
+Examples:
+
+- `selected_events/pb23v4_5v_3o200_v61_v70/DATA_with_score.root`
+- `selected_events/pb23v4_5v_3o200_v61_v70/pb23v4_5v_3o200_v61/DATA_fid_cut090.pdf`
+
+For the Condor workflow, model and training artifacts are now also grouped by version range:
+
+- `xgb_output/models/<grouped_output_tag>/<train_tag>/`
+- `xgb_output/training/<grouped_output_tag>/<train_tag>/`
+
+Examples:
+
+- `xgb_output/models/pb23v4_5v_3o200_v61_v70/pb23v4_5v_3o200_v61/xgb_model.pkl`
+- `xgb_output/models/pb23v4_5v_3o200_v61_v70/pb23v4_5v_3o200_v61/run_metadata.json`
+- `xgb_output/training/pb23v4_5v_3o200_v61_v70/pb23v4_5v_3o200_v61/xgb_score.pdf`
+- `xgb_output/training/pb23v4_5v_3o200_v61_v70/pb23v4_5v_3o200_v61/test_roc.pdf`
+
+This grouped `xgb_output` layout applies to Condor training only.
+
+Local single-model workflows remain unchanged:
+
+- `xgb_output/models/<train_tag>/`
+- `xgb_output/training/<train_tag>/`
 
 ```text
 xgb_output/
