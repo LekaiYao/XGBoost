@@ -47,15 +47,6 @@ print(f"  Scaler loaded from: {resolved_scaler_path}")
 print(f"  Config loaded from: {resolved_config_path}")
 print(f"  Input columns: {input_columns}")
 
-# Add any extra branches you want to keep in the output ROOT here.
-# Example:
-# extra_output_columns = ["Bpt", "Beta", "BsvpvDistance"]
-# They will be written together with Bmass, the training inputs, and xgb_score.
-extra_output_columns = ["BQvalue", "nSelectedChargedTracks", "CentBin", "Bpt", "By"]
-
-# Toggle whether MC output keeps the truth label branch.
-keep_mc_isx3872 = True
-
 
 def ordered_unique(columns):
     seen = set()
@@ -67,7 +58,7 @@ def ordered_unique(columns):
     return output
 
 
-def score_dataframe(df, extra_columns=None):
+def score_dataframe(df):
     df_trans = pd.DataFrame(
         scaler.transform(df[input_columns]),
         columns=trans_columns,
@@ -75,12 +66,7 @@ def score_dataframe(df, extra_columns=None):
     )
     scores = xgbc.predict_proba(df_trans[trans_columns])[:, 1]
     print(f"  Score range: [{scores.min():.4f}, {scores.max():.4f}]")
-
-    if extra_columns is None:
-        extra_columns = []
-
-    output_columns = ordered_unique(["Bmass"] + input_columns + extra_output_columns + extra_columns)
-    df_out = df[output_columns].copy()
+    df_out = df.copy()
     df_out["xgb_score"] = scores
     return df_out
 
@@ -88,25 +74,21 @@ def score_dataframe(df, extra_columns=None):
 output_dir = ensure_dir(selected_dir(train_tag))
 print(f"Writing scored events to: {output_dir}")
 
-mc_branches = ordered_unique(["Bmass"] + input_columns + extra_output_columns + (["isX3872"] if keep_mc_isx3872 else []))
-data_branches = ordered_unique(["Bmass"] + input_columns + extra_output_columns)
-
 print(f"\nProcessing MC: {MC_INPUT}")
-df_mc = uproot.concatenate(MC_INPUT, filter_name=mc_branches, library="pd")
+df_mc = uproot.concatenate(MC_INPUT, library="pd")
 print(f"  Loaded {len(df_mc)} events")
 if MC_CUT:
     df_mc = df_mc.query(MC_CUT)
     print(f"  After cut {MC_CUT}: {len(df_mc)} events")
 
-mc_extra_columns = ["isX3872"] if keep_mc_isx3872 else []
-df_mc_out = score_dataframe(df_mc, extra_columns=mc_extra_columns)
+df_mc_out = score_dataframe(df_mc)
 mc_path = mc_output_path(train_tag)
 with uproot.recreate(mc_path) as f:
     f["ntmix"] = {col: df_mc_out[col].values for col in df_mc_out.columns}
 print(f"  Saved to: {mc_path}")
 
 print(f"\nProcessing DATA: {DATA_INPUT}")
-df_data = uproot.concatenate(DATA_INPUT, filter_name=data_branches, library="pd")
+df_data = uproot.concatenate(DATA_INPUT, library="pd")
 print(f"  Loaded {len(df_data)} events")
 if DATA_CUT:
     df_data = df_data.query(DATA_CUT)

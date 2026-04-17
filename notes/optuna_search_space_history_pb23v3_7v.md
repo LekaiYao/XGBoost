@@ -101,3 +101,35 @@ Typical features:
 
 Future `pb23v3_7v` batches should append new sections here rather than create a
 new file.
+
+## pb23v3_7v_o100_v51-v60
+
+This block is a focused refinement family built from the historical convergence
+pattern of `pb23v2_4v2_o100_v31`.
+
+Observed high-value region from that earlier line:
+
+- `n_estimators` near the upper boundary, around `2050-2200`
+- `learning_rate` around `0.016-0.019`
+- `max_depth = 3`
+- `min_child_weight` high, around `24-26`
+- `subsample` and `colsample_bytree` both around `0.51-0.53`
+- `gamma` around `4.0-4.3`
+- `reg_alpha` around `5.0-5.5`
+- `reg_lambda` around `13-14`
+
+These `v51-v60` presets therefore do not explore a new style family. They zoom
+in on one specific shallow-tree, strongly regularized, low-sampling region that
+showed late-trial convergence and stable high objective values.
+
+The 10 presets cover:
+
+- `v51-v53`
+  tight refinements around the historical optimum
+- `v54-v55`
+  slight widening in `max_depth`, `min_child_weight`, and learning rate
+- `v56-v57`
+  very tight high-regularization refinements around the apparent best basin
+- `v58-v60`
+  wider guard-band scans around the same basin, to test whether the optimum is
+  robust or sitting on a narrow edge

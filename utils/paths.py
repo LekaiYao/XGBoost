@@ -17,9 +17,22 @@ def resolve_existing(*candidates):
     return candidates[0] if candidates else None
 
 
+def split_version_suffix(train_tag):
+    match = re.match(r"(.+)_((?:\d+)?v)(\d+)$", train_tag)
+    if not match:
+        return None
+    base, token, version_text = match.groups()
+    return base, token, int(version_text)
+
+
 def group_base_tag(train_tag):
-    match = re.match(r"(.+)_v\d+$", train_tag)
-    return match.group(1) if match else train_tag
+    parsed = split_version_suffix(train_tag)
+    if not parsed:
+        return train_tag
+    base, token, _ = parsed
+    if token == "v":
+        return base
+    return f"{base}_{token}"
 
 
 def train_group_tag(train_tags):
@@ -32,14 +45,15 @@ def train_group_tag(train_tags):
 
 
 def train_batch_tag(train_tag):
-    match = re.match(r"(.+)_v(\d+)$", train_tag)
-    if not match:
+    parsed = split_version_suffix(train_tag)
+    if not parsed:
         return train_tag
-    base_tag, version_text = match.groups()
-    version = int(version_text)
+    base_tag, token, version = parsed
     start = ((version - 1) // 10) * 10 + 1
     end = start + 9
-    return f"{base_tag}_v{start}_v{end}"
+    if token == "v":
+        return f"{base_tag}_v{start}_v{end}"
+    return f"{base_tag}_{token}{start}_{token}{end}"
 
 
 def model_dir(train_tag):

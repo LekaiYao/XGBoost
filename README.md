@@ -30,16 +30,8 @@ The current Condor pattern is:
 
 ## Main scripts
 
-- `XGBoost.py`
-  Baseline single-model training script.
-- `optuna_XGBoost.py`
-  Legacy local Optuna scan script.
 - `condor_optuna_XGBoost.py`
   Current main Condor training script. Supports named search-space presets such as `v11`, `v21`, `v31`, etc.
-- `apply.py`
-  Applies one trained model to MC and DATA and writes `xgb_score`.
-- `draw.py`
-  Draws cut-scan mass plots for one scored `train_tag` from `selected_events/<train_tag>/DATA_with_score.root`.
 - `batch_apply_scores.py`
   Loads multiple trained models from one group and writes all scores into one grouped ROOT output.
 - `batch_draw_scores.py`
@@ -47,22 +39,32 @@ The current Condor pattern is:
 - `shap_importance.py`
   SHAP feature-importance workflow for trained models.
 
+Legacy scripts archived under:
+
+- `workflow_archive/legacy_non_dag/XGBoost.py`
+- `workflow_archive/legacy_non_dag/apply.py`
+- `workflow_archive/legacy_non_dag/draw.py`
+- `workflow_archive/legacy_non_dag/optuna_XGBoost.py`
+
 ## Condor wrapper scripts
 
 AFS-side Condor helpers:
 
-- `run.sh`
-  Wrapper for training jobs.
-- `submit.sub`
-  Training submission file. The queued `train_tag` values determine which search-space presets are launched.
 - `run_batch_compare.sh`
   Wrapper for grouped apply plus grouped draw.
 - `submit_batch_compare.sub`
-  Batch compare submission file. Now supports explicit version ranges.
-- `submit_batch_compare_4v1.sub`
-  Example batch compare submit file for the `pb23_4v_o100` line.
-- `submit_batch_compare_p2s.sub`
-  Example batch compare submit file for the `pb23p2s_4v2_o50` line.
+  Batch compare submission template. Reads group rows from `groups_file`.
+- `batch_compare_groups.txt`
+  Default group-list file consumed by `submit_batch_compare.sub`.
+- `submit_dagman_workflow.sh`
+  DAG workflow entry: parallel training + final grouped apply/draw.
+- `submit_single_legacy_dag.sh`
+  DAG wrapper for archived single-model flow (`train -> apply -> draw`).
+
+Legacy non-DAG Condor entry scripts archived under:
+
+- `workflow_archive/legacy_non_dag/run.sh`
+- `workflow_archive/legacy_non_dag/submit.sub`
 
 ## Naming rule
 
@@ -168,16 +170,16 @@ The old `X_cut...pdf` naming should no longer be used in the active plotting scr
 
 ## Typical workflows
 
-### Single training
+### Single training (archived direct mode)
 
 ```bash
-python3 XGBoost.py <train_tag>
+python3 workflow_archive/legacy_non_dag/XGBoost.py <train_tag>
 ```
 
-### Legacy local Optuna
+### Legacy local Optuna (archived)
 
 ```bash
-python3 optuna_XGBoost.py <train_tag>
+python3 workflow_archive/legacy_non_dag/optuna_XGBoost.py <train_tag>
 ```
 
 ### Current Condor-style Optuna training
@@ -188,26 +190,24 @@ Local direct run for debugging:
 OPTUNA_N_TRIALS=100 python3 condor_optuna_XGBoost.py <train_tag> <search_space_tag>
 ```
 
-Typical Condor run:
+Typical Condor run (current): use `submit_dagman_workflow.sh` for DAG submission.
 
-1. edit AFS `submit.sub`
-2. set the queued `train_tag, search_space_tag`
-3. run:
+### Single-model score application (archived direct mode)
 
 ```bash
-condor_submit submit.sub
+python3 workflow_archive/legacy_non_dag/apply.py <train_tag>
 ```
 
-### Single-model score application
+### Single-model drawing (archived direct mode)
 
 ```bash
-python3 apply.py <train_tag>
+python3 workflow_archive/legacy_non_dag/draw.py <train_tag>
 ```
 
-### Single-model drawing
+### Single-model DAG (archived flow wrapped as DAG)
 
 ```bash
-python3 draw.py <train_tag>
+bash submit_single_legacy_dag.sh <train_tag>
 ```
 
 ### Grouped score application
@@ -228,7 +228,7 @@ If `--output-tag` is omitted, `<output_tag>` defaults to `<group_tag>`.
 Current `run_batch_compare.sh` accepts:
 
 ```bash
-run_batch_compare.sh <group_tag> <version_start> <version_end>
+run_batch_compare.sh <group_tag> <version_start> <version_end> [skip_version] [draw_only] [version_token]
 ```
 
 For example, this expands:
@@ -246,6 +246,8 @@ and then runs:
 - `batch_apply_scores.py`
 - `batch_draw_scores.py`
 
+`draw_only=1` skips apply and executes only draw.
+
 The grouped ROOT outputs are written under a version-range-specific directory:
 
 - `selected_events/<group_tag>_v<version_start>_v<version_end>/`
@@ -254,6 +256,23 @@ For example:
 
 - `selected_events/pb23v2_4v2_o100_v21_v30/`
 - `selected_events/pb23v2_4v2_o100_v31_v40/`
+
+`submit_batch_compare.sub` is now parameterized:
+
+- `version_token` is a per-row field in the group list file (`v`, `2v`, etc.)
+- group rows are loaded from `groups_file` (default: `batch_compare_groups.txt`)
+
+Typical usage:
+
+```bash
+condor_submit submit_batch_compare.sub
+```
+
+Use a custom list file (for example only `2v` groups):
+
+```bash
+condor_submit submit_batch_compare.sub -append 'groups_file=batch_compare_groups_2v.txt'
+```
 
 ## Output layout
 

@@ -25,6 +25,7 @@ from utils.paths import (
     ensure_dir,
 )
 from utils.run_metadata import save_run_metadata
+from utils.varsets import VARSET_COLUMNS, infer_varset_from_tag
 
 if len(sys.argv) != 3:
     print("Usage: python3 condor_optuna_XGBoost.py <train_tag> <search_space_tag>")
@@ -37,17 +38,9 @@ number_trials = int(os.environ.get("OPTUNA_N_TRIALS", "100"))
 SIG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix"
 BKG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root:ntmix"
 
-FEATURE_SETS = {
-    "4v2": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk2Pt"],
-    "5v": ["Bchi2Prob", "Btrk1dR", "Btrk2dR", "BtrkPtimb", "Btrk2Pt"],
-    "7v": ["Bchi2Prob", "Btrk1dR", "Btrk2dR", "BtrkPtimb", "Btrk2Pt", "Balpha", "Bnorm_trk1Dxy"],
-}
+FEATURE_SETS = VARSET_COLUMNS
 
-feature_set_tag = None
-for candidate in FEATURE_SETS:
-    if f"_{candidate}_" in train_tag:
-        feature_set_tag = candidate
-        break
+feature_set_tag = infer_varset_from_tag(train_tag)
 
 if feature_set_tag is None:
     print(f"Unable to infer feature set from train_tag: {train_tag}")
@@ -55,8 +48,8 @@ if feature_set_tag is None:
     sys.exit(1)
 
 input_columns = FEATURE_SETS[feature_set_tag]
-SIGNAL_SELECTION = "isX3872 == 1 and abs(By) < 1.6 and 15 < Bpt < 50 and 0 < CentBin < 90"
-BACKGROUND_SELECTION = "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50 and 0 < CentBin < 90"
+SIGNAL_SELECTION = "isX3872 == 1 and abs(By) < 1.6 and 15 < Bpt < 50"
+BACKGROUND_SELECTION = "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50"
 SIGNAL_SCALE_FACTOR = 3491.0 / 70439.0
 SIGNAL_WINDOW_WIDTH = 3.91 - 3.83
 SIDEBAND_WINDOW_WIDTH = (3.83 - 3.75) + (4.00 - 3.91)
@@ -263,8 +256,6 @@ ak_sig = ak_sig[
     & (np.abs(ak_sig["By"]) < 1.6)
     & (ak_sig["Bpt"] > 15.0)
     & (ak_sig["Bpt"] < 50.0)
-    & (ak_sig["CentBin"] > 0)
-    & (ak_sig["CentBin"] < 90)
 ]
 ak_bkg = ak_bkg[
     ((ak_bkg["Bmass"] > 3.75) & (ak_bkg["Bmass"] < 3.83))
@@ -274,8 +265,6 @@ ak_bkg = ak_bkg[
     (np.abs(ak_bkg["By"]) < 1.6)
     & (ak_bkg["Bpt"] > 15.0)
     & (ak_bkg["Bpt"] < 50.0)
-    & (ak_bkg["CentBin"] > 0)
-    & (ak_bkg["CentBin"] < 90)
 ]
 
 ak_sig["is_sig"] = True
@@ -317,50 +306,10 @@ n_bkg = (y_train["is_sig"] == 0).sum()
 pos_weight = n_bkg / n_sig
 
 
-def best_significance_from_scores(signal_scores, background_scores):
-    if len(signal_scores) == 0 or len(background_scores) == 0:
-        return 0.0, 0.0, 0, 0, 0.0, 0.0
-
-    candidate_cuts = np.unique(
-        np.concatenate(
-            [
-                np.linspace(0.0, 0.999, 400),
-                np.quantile(signal_scores, np.linspace(0.05, 0.95, 19)),
-                np.quantile(background_scores, np.linspace(0.05, 0.95, 19)),
-            ]
-        )
-    )
-
-    best_significance = 0.0
-    best_cut = 0.0
-    best_signal = 0
-    best_background = 0
-    best_weighted_signal = 0.0
-    best_weighted_background = 0.0
-
-    for cut in candidate_cuts:
-        passed_signal = int(np.count_nonzero(signal_scores > cut))
-        passed_background = int(np.count_nonzero(background_scores > cut))
-        weighted_signal = SIGNAL_SCALE_FACTOR * passed_signal
-        weighted_background = BACKGROUND_SCALE_FACTOR * passed_background
-        total = weighted_signal + weighted_background
-        if total <= 0:
-            continue
-
-        significance = weighted_signal / np.sqrt(total)
-        if significance > best_significance:
-            best_significance = significance
-            best_cut = float(cut)
-            best_signal = passed_signal
-            best_background = passed_background
-            best_weighted_signal = weighted_signal
-            best_weighted_background = weighted_background
-
-    return best_significance, best_cut, best_signal, best_background, best_weighted_signal, best_weighted_background
-
-
 def objective(trial):
     params = {
+        "booster": FIXED_MODEL_PARAMS["booster"],
+        "objective": FIXED_MODEL_PARAMS["objective"],
         "eval_metric": FIXED_MODEL_PARAMS["eval_metric"],
         "random_state": FIXED_MODEL_PARAMS["random_state"],
         "scale_pos_weight": pos_weight,
@@ -373,37 +322,22 @@ def objective(trial):
     model.fit(X_train, y_train["is_sig"])
 
     pred = model.predict_proba(X_val)[:, 1]
-    sig = pred[y_val["is_sig"] == 1]
-    bkg = pred[y_val["is_sig"] == 0]
-    (
-        best_significance,
-        best_cut,
-        best_signal,
-        best_background,
-        best_weighted_signal,
-        best_weighted_background,
-    ) = best_significance_from_scores(sig, bkg)
-    trial.set_user_attr("best_cut", best_cut)
-    trial.set_user_attr("best_signal_yield", best_signal)
-    trial.set_user_attr("best_background_yield", best_background)
-    trial.set_user_attr("best_weighted_signal_yield", best_weighted_signal)
-    trial.set_user_attr("best_weighted_background_yield", best_weighted_background)
-    return best_significance
+    val_fpr, val_tpr, _ = roc_curve(y_val["is_sig"].astype(int).to_numpy(), pred)
+    val_auc = auc(val_fpr, val_tpr)
+    trial.set_user_attr("validation_auc", float(val_auc))
+    return val_auc
 
 
 study = optuna.create_study(direction="maximize")
 study.optimize(objective, n_trials=number_trials)
 
 print("Best params:", study.best_params)
-print(f"Best validation score cut for objective: {study.best_trial.user_attrs.get('best_cut', 0.0):.4f}")
-print(f"Best validation raw S: {study.best_trial.user_attrs.get('best_signal_yield', 0)}")
-print(f"Best validation raw B: {study.best_trial.user_attrs.get('best_background_yield', 0)}")
-print(f"Best validation weighted S: {study.best_trial.user_attrs.get('best_weighted_signal_yield', 0.0):.6f}")
-print(f"Best validation weighted B: {study.best_trial.user_attrs.get('best_weighted_background_yield', 0.0):.6f}")
-print(f"Best validation S/sqrt(S+B): {study.best_value:.6f}")
+print(f"Best validation AUC: {study.best_value:.6f}")
 
 xgbc = XGBClassifier(
     **study.best_params,
+    booster=FIXED_MODEL_PARAMS["booster"],
+    objective=FIXED_MODEL_PARAMS["objective"],
     eval_metric=FIXED_MODEL_PARAMS["eval_metric"],
     random_state=FIXED_MODEL_PARAMS["random_state"],
     scale_pos_weight=pos_weight,
@@ -509,16 +443,11 @@ save_run_metadata(
     optuna_n_trials=number_trials,
     optimized_hyperparameters=list(OPTUNA_SEARCH_SPACE.keys()),
     hyperparameter_search_space=OPTUNA_SEARCH_SPACE,
-    optimization_metric="max validation weighted S/sqrt(S+B) from score-cut scan",
+    optimization_metric="max validation AUC",
     best_objective_value=study.best_value,
     notes={
         "search_space_tag": search_space_tag,
-        "best_validation_cut": float(study.best_trial.user_attrs.get("best_cut", 0.0)),
-        "best_validation_score_cut_for_objective": float(study.best_trial.user_attrs.get("best_cut", 0.0)),
-        "best_validation_signal_yield_raw": int(study.best_trial.user_attrs.get("best_signal_yield", 0)),
-        "best_validation_background_yield_raw": int(study.best_trial.user_attrs.get("best_background_yield", 0)),
-        "best_validation_signal_yield_weighted": float(study.best_trial.user_attrs.get("best_weighted_signal_yield", 0.0)),
-        "best_validation_background_yield_weighted": float(study.best_trial.user_attrs.get("best_weighted_background_yield", 0.0)),
+        "best_validation_auc": float(study.best_trial.user_attrs.get("validation_auc", study.best_value)),
         "signal_scale_factor": float(SIGNAL_SCALE_FACTOR),
         "background_scale_factor": float(BACKGROUND_SCALE_FACTOR),
         "signal_window_width": float(SIGNAL_WINDOW_WIDTH),

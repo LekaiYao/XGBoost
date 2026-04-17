@@ -20,6 +20,7 @@ TREE = "ntmix"
 MASS_RANGE = (3.62, 4.0)
 BINS = np.arange(MASS_RANGE[0], MASS_RANGE[1] + 0.01, 0.01)
 BQVALUE_MAX = 0.13
+REFERENCE_MASSES = [3.686, 3.872]
 
 
 def score_cuts_for_train_tag(train_tag):
@@ -73,6 +74,8 @@ for cut in score_cuts_for_train_tag(train_tag):
         histtype="step",
         linewidth=2,
     )
+    for mass in REFERENCE_MASSES:
+        plt.axvline(mass, linestyle="--", linewidth=1.2, color="gray", alpha=0.8)
 
     n_entries = len(df_cut)
     mean = df_cut["Bmass"].mean()

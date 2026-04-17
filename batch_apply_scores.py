@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 
 import joblib
@@ -6,9 +7,7 @@ import pandas as pd
 import uproot
 
 from utils.paths import (
-    data_output_path,
     ensure_dir,
-    mc_output_path,
     resolve_model_config_path,
     resolve_model_path,
     resolve_scaler_path,
@@ -17,22 +16,43 @@ from utils.paths import (
 )
 
 if len(sys.argv) < 2:
-    print("Usage: python3 batch_apply_scores.py [--output-tag <output_tag>] <train_tag> [<train_tag> ...]")
+    print(
+        "Usage: python3 batch_apply_scores.py "
+        "[--output-tag <output_tag>] [--data-input <root:tree>] [--output-prefix <prefix>] "
+        "<train_tag> [<train_tag> ...]"
+    )
     sys.exit(1)
 
 args = sys.argv[1:]
 output_tag = None
-if len(args) >= 3 and args[0] == "--output-tag":
-    output_tag = args[1]
-    train_tags = args[2:]
-else:
-    train_tags = args
+data_input_override = None
+output_prefix = ""
+train_tags = []
+
+i = 0
+while i < len(args):
+    token = args[i]
+    if token == "--output-tag" and i + 1 < len(args):
+        output_tag = args[i + 1]
+        i += 2
+        continue
+    if token == "--data-input" and i + 1 < len(args):
+        data_input_override = args[i + 1]
+        i += 2
+        continue
+    if token == "--output-prefix" and i + 1 < len(args):
+        output_prefix = args[i + 1]
+        i += 2
+        continue
+    train_tags.append(token)
+    i += 1
 
 group_tag = train_group_tag(train_tags)
 output_tag = output_tag or group_tag
 
 MC_INPUT = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix"
-DATA_INPUT = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root:ntmix"
+DATA_INPUT_DEFAULT = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root:ntmix"
+DATA_INPUT = data_input_override or DATA_INPUT_DEFAULT
 
 extra_output_columns = ["BQvalue", "nSelectedChargedTracks", "CentBin", "Bpt", "By"]
 keep_mc_isx3872 = True
@@ -55,19 +75,25 @@ def score_branch_name(train_tag):
 print(f"Loading model artifacts for group: {group_tag}")
 print(f"Writing grouped outputs under: {output_tag}")
 models = []
+skipped_models = []
 reference_input_columns = None
 reference_trans_columns = None
 
 for train_tag in train_tags:
-    resolved_model_path = resolve_model_path(train_tag)
-    resolved_scaler_path = resolve_scaler_path(train_tag)
-    resolved_config_path = resolve_model_config_path(train_tag)
+    try:
+        resolved_model_path = resolve_model_path(train_tag)
+        resolved_scaler_path = resolve_scaler_path(train_tag)
+        resolved_config_path = resolve_model_config_path(train_tag)
 
-    xgbc = joblib.load(resolved_model_path)
-    scaler = joblib.load(resolved_scaler_path)
+        xgbc = joblib.load(resolved_model_path)
+        scaler = joblib.load(resolved_scaler_path)
 
-    with open(resolved_config_path) as f:
-        config = json.load(f)
+        with open(resolved_config_path) as f:
+            config = json.load(f)
+    except Exception as exc:
+        skipped_models.append({"train_tag": train_tag, "reason": str(exc)})
+        print(f"  [SKIP] {train_tag}: {exc}")
+        continue
 
     input_columns = config["input_columns"]
     trans_columns = config["trans_columns"]
@@ -95,6 +121,14 @@ for train_tag in train_tags:
         }
     )
 
+if not models:
+    print("No valid models found in this group; nothing to apply.")
+    if skipped_models:
+        print("Skipped models:")
+        for item in skipped_models:
+            print(f"  - {item['train_tag']}: {item['reason']}")
+    sys.exit(1)
+
 input_columns = reference_input_columns
 trans_columns = reference_trans_columns
 
@@ -121,6 +155,7 @@ def score_dataframe(df, model_bundle, output_columns):
 
 output_dir = ensure_dir(selected_dir(output_tag))
 print(f"Writing grouped scored events to: {output_dir}")
+print(f"Output prefix: '{output_prefix}'")
 
 print(f"\nProcessing MC once: {MC_INPUT}")
 df_mc = uproot.concatenate(MC_INPUT, filter_name=mc_branches, library="pd")
@@ -135,7 +170,7 @@ for model_bundle in models:
     else:
         df_mc_out[model_bundle["score_column"]] = df_scored[model_bundle["score_column"]]
 
-mc_path = mc_output_path(output_tag)
+mc_path = os.path.join(output_dir, f"{output_prefix}MC_with_score.root")
 with uproot.recreate(mc_path) as f:
     f["ntmix"] = {col: df_mc_out[col].values for col in df_mc_out.columns}
 print(f"  Saved grouped MC to: {mc_path}")
@@ -152,9 +187,34 @@ for model_bundle in models:
     else:
         df_data_out[model_bundle["score_column"]] = df_scored[model_bundle["score_column"]]
 
-data_path = data_output_path(output_tag)
+data_path = os.path.join(output_dir, f"{output_prefix}DATA_with_score.root")
 with uproot.recreate(data_path) as f:
     f["ntmix"] = {col: df_data_out[col].values for col in df_data_out.columns}
 print(f"  Saved grouped DATA to: {data_path}")
+
+summary_path = os.path.join(output_dir, f"{output_prefix}batch_apply_summary.json")
+with open(summary_path, "w") as f:
+    json.dump(
+        {
+            "group_tag": group_tag,
+            "output_tag": output_tag,
+            "output_prefix": output_prefix,
+            "requested_train_tags": train_tags,
+            "applied_train_tags": [m["train_tag"] for m in models],
+            "skipped_models": skipped_models,
+            "data_input": DATA_INPUT,
+            "mc_input": MC_INPUT,
+            "mc_output": mc_path,
+            "data_output": data_path,
+        },
+        f,
+        indent=2,
+    )
+print(f"Saved apply summary: {summary_path}")
+
+if skipped_models:
+    print("Skipped models:")
+    for item in skipped_models:
+        print(f"  - {item['train_tag']}: {item['reason']}")
 
 print(f"\nAll grouped outputs saved in: {output_dir}")

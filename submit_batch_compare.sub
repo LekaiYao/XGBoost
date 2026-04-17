@@ -1,9 +1,8 @@
 executable = run_batch_compare.sh
 
-group_tag = pb23_4v2_o50
-version_start = 1
-version_end = 10
-job_tag = pb23_4v2_o50_batchcmp_20260406a
+groups_file = batch_compare_groups.txt
+data_input_override =
+output_prefix =
 
 output = logs/job_$(job_tag).out
 error  = logs/job_$(job_tag).err
@@ -14,6 +13,6 @@ log    = logs/job_$(job_tag).log
 request_cpus = 4
 request_memory = 12000
 
-arguments = $(group_tag) $(version_start) $(version_end)
+arguments = $(group_tag) $(version_start) $(version_end) $(skip_version) $(draw_only) $(version_token) $(data_input_override) $(output_prefix)
 
-queue 1
+queue group_tag, version_start, version_end, skip_version, draw_only, version_token, job_tag from $(groups_file)

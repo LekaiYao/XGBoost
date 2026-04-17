@@ -1,8 +1,5 @@
 executable = run_batch_compare.sh
 
-group_tag = pb23p2s_4v2_o50
-job_tag = pb23p2s_4v2_o50_batchcmp_20260406a
-
 output = logs/job_$(job_tag).out
 error  = logs/job_$(job_tag).err
 log    = logs/job_$(job_tag).log
@@ -12,6 +9,6 @@ log    = logs/job_$(job_tag).log
 request_cpus = 4
 request_memory = 12000
 
-arguments = $(group_tag)
+arguments = $(group_tag) $(version_start) $(version_end) $(skip_version) $(draw_only) $(version_token)
 
 queue 1

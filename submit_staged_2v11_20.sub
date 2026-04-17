@@ -1,0 +1,58 @@
+executable = run_staged.sh
+
+optuna_n_trials = 200
+resume_flag = 0
+
+output = logs/job_$(train_tag).out
+error  = logs/job_$(train_tag).err
+log    = logs/job_$(train_tag).log
+
++JobFlavour = "tomorrow"
+
+request_cpus = 4
+request_memory = 12000
+
+arguments = $(train_tag) $(optuna_n_trials) $(stage_group) $(resume_flag)
+
+queue train_tag, stage_group from (
+  pb23v5_4v2_4o200_2v11 2v1
+  pb23v5_4v2_4o200_2v12 2v2
+  pb23v5_4v2_4o200_2v13 2v3
+  pb23v5_4v2_4o200_2v14 2v4
+  pb23v5_4v2_4o200_2v15 2v5
+  pb23v5_4v2_4o200_2v16 2v6
+  pb23v5_4v2_4o200_2v17 2v7
+  pb23v5_4v2_4o200_2v18 2v8
+  pb23v5_4v2_4o200_2v19 2v9
+  pb23v5_4v2_4o200_2v20 2v10
+  pb23v5_5v_4o200_2v11 2v1
+  pb23v5_5v_4o200_2v12 2v2
+  pb23v5_5v_4o200_2v13 2v3
+  pb23v5_5v_4o200_2v14 2v4
+  pb23v5_5v_4o200_2v15 2v5
+  pb23v5_5v_4o200_2v16 2v6
+  pb23v5_5v_4o200_2v17 2v7
+  pb23v5_5v_4o200_2v18 2v8
+  pb23v5_5v_4o200_2v19 2v9
+  pb23v5_5v_4o200_2v20 2v10
+  pb23v5_6v_4o200_2v11 2v1
+  pb23v5_6v_4o200_2v12 2v2
+  pb23v5_6v_4o200_2v13 2v3
+  pb23v5_6v_4o200_2v14 2v4
+  pb23v5_6v_4o200_2v15 2v5
+  pb23v5_6v_4o200_2v16 2v6
+  pb23v5_6v_4o200_2v17 2v7
+  pb23v5_6v_4o200_2v18 2v8
+  pb23v5_6v_4o200_2v19 2v9
+  pb23v5_6v_4o200_2v20 2v10
+  pb23v5_7v2_4o200_2v11 2v1
+  pb23v5_7v2_4o200_2v12 2v2
+  pb23v5_7v2_4o200_2v13 2v3
+  pb23v5_7v2_4o200_2v14 2v4
+  pb23v5_7v2_4o200_2v15 2v5
+  pb23v5_7v2_4o200_2v16 2v6
+  pb23v5_7v2_4o200_2v17 2v7
+  pb23v5_7v2_4o200_2v18 2v8
+  pb23v5_7v2_4o200_2v19 2v9
+  pb23v5_7v2_4o200_2v20 2v10
+)
