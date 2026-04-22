@@ -17,8 +17,12 @@ def make_dag(out_dir: Path, train_tag: str) -> Path:
         "JOB DRAW submit_single_legacy_step.sub",
         f'VARS DRAW step="draw" train_tag="{train_tag}" job_tag="{train_tag}_single_draw"',
         "",
+        "JOB SHAP submit_single_legacy_step.sub",
+        f'VARS SHAP step="shap" train_tag="{train_tag}" job_tag="{train_tag}_single_shap"',
+        "",
         "PARENT TRAIN CHILD APPLY",
         "PARENT APPLY CHILD DRAW",
+        "PARENT DRAW CHILD SHAP",
         "",
     ]
 

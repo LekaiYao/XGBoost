@@ -35,9 +35,14 @@ def make_dag(
     resume_flag: int,
     skip_version: int,
     draw_only: int,
+    dataset_year: str,
+    selection_profile: str,
+    fid_profile: str,
 ) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     dag_path = out_dir / f"wf_{group_tag}_{version_token}{version_start}_{version_token}{version_end}.dag"
+    dataset_year_var = dataset_year if dataset_year else "__EMPTY__"
+    selection_profile_var = selection_profile if selection_profile else "__EMPTY__"
 
     lines = []
     for version in range(version_start, version_end + 1):
@@ -48,7 +53,8 @@ def make_dag(
         lines.append(f"JOB {node} submit_staged_single.sub")
         lines.append(
             f'VARS {node} train_tag="{tag}" stage_group="{stage_group}" '
-            f'optuna_n_trials="{optuna_n_trials}" resume_flag="{resume_flag}" job_tag="{job_tag}"'
+            f'optuna_n_trials="{optuna_n_trials}" resume_flag="{resume_flag}" job_tag="{job_tag}" '
+            f'dataset_year="{dataset_year_var}" selection_profile="{selection_profile_var}"'
         )
         lines.append("")
 
@@ -58,7 +64,8 @@ def make_dag(
     lines.append(
         f'VARS {post_node} group_tag="{group_tag}" version_start="{version_start}" '
         f'version_end="{version_end}" skip_version="{skip_version}" draw_only="{draw_only}" '
-        f'version_token="{version_token}" job_tag="{post_job_tag}"'
+        f'version_token="{version_token}" dataset_year="{dataset_year_var}" '
+        f'fid_profile="{fid_profile}" job_tag="{post_job_tag}"'
     )
     lines.append("")
 
@@ -76,6 +83,9 @@ def main():
     parser.add_argument("--resume-flag", type=int, default=0)
     parser.add_argument("--skip-version", type=int, default=0)
     parser.add_argument("--draw-only", type=int, default=0)
+    parser.add_argument("--dataset-year", default="")
+    parser.add_argument("--selection-profile", default="")
+    parser.add_argument("--fid-profile", default="auto")
     parser.add_argument("--out-dir", default="dags")
     args = parser.parse_args()
 
@@ -96,6 +106,9 @@ def main():
         resume_flag=args.resume_flag,
         skip_version=args.skip_version,
         draw_only=args.draw_only,
+        dataset_year=args.dataset_year,
+        selection_profile=args.selection_profile,
+        fid_profile=args.fid_profile,
     )
     print(dag)
 

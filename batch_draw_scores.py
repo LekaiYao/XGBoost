@@ -18,6 +18,7 @@ if len(sys.argv) < 2:
 args = sys.argv[1:]
 output_tag = None
 output_prefix = ""
+fid_profile = "auto"
 train_tags = []
 
 i = 0
@@ -31,15 +32,41 @@ while i < len(args):
         output_prefix = args[i + 1]
         i += 2
         continue
+    if token == "--fid-profile" and i + 1 < len(args):
+        fid_profile = args[i + 1]
+        i += 2
+        continue
     train_tags.append(token)
     i += 1
+
+if fid_profile not in {"auto", "fid", "fid3"}:
+    print(f"Invalid --fid-profile value: {fid_profile}. Expected one of: auto, fid, fid3")
+    sys.exit(1)
 
 group_tag = train_group_tag(train_tags)
 output_tag = output_tag or group_tag
 TREE = "ntmix"
 MASS_RANGE = (3.62, 4.0)
 BINS = np.arange(MASS_RANGE[0], MASS_RANGE[1] + 0.01, 0.01)
-if output_tag.startswith("pb23v6_") or any(tag.startswith("pb23v6_") for tag in train_tags):
+if fid_profile == "fid3":
+    FID_LABEL = "fid3"
+    BQVALUE_MAX = 0.2
+    BY_MAX = 1.2
+    BPT_MIN = 10.0
+    BPT_MAX = 50.0
+    CENTBIN_MIN = 20.0
+    CENTBIN_USE_MAX = False
+    CENTBIN_MAX = None
+elif fid_profile == "fid":
+    FID_LABEL = "fid"
+    BQVALUE_MAX = 0.13
+    BY_MAX = 1.6
+    BPT_MIN = 15.0
+    BPT_MAX = 50.0
+    CENTBIN_MIN = 0
+    CENTBIN_USE_MAX = True
+    CENTBIN_MAX = 90
+elif output_tag.startswith("pb23v6_") or any(tag.startswith("pb23v6_") for tag in train_tags):
     FID_LABEL = "fid3"
     BQVALUE_MAX = 0.2
     BY_MAX = 1.2
@@ -113,6 +140,7 @@ if CENTBIN_USE_MAX and CENTBIN_MAX is not None:
     centbin_desc = f"{CENTBIN_MIN} < CentBin < {CENTBIN_MAX}"
 else:
     centbin_desc = f"CentBin > {CENTBIN_MIN}"
+print("Requested fid profile:", fid_profile)
 print("Using fiducial profile:", FID_LABEL)
 print(
     "After mass + fiducial cuts: "

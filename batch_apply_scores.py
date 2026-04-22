@@ -18,7 +18,7 @@ from utils.paths import (
 if len(sys.argv) < 2:
     print(
         "Usage: python3 batch_apply_scores.py "
-        "[--output-tag <output_tag>] [--data-input <root:tree>] [--output-prefix <prefix>] "
+        "[--output-tag <output_tag>] [--data-input <root:tree>] [--output-prefix <prefix>] [--dataset-year <2023|2024>] "
         "<train_tag> [<train_tag> ...]"
     )
     sys.exit(1)
@@ -27,6 +27,7 @@ args = sys.argv[1:]
 output_tag = None
 data_input_override = None
 output_prefix = ""
+dataset_year_override = None
 train_tags = []
 
 i = 0
@@ -44,15 +45,50 @@ while i < len(args):
         output_prefix = args[i + 1]
         i += 2
         continue
+    if token == "--dataset-year" and i + 1 < len(args):
+        dataset_year_override = args[i + 1]
+        i += 2
+        continue
     train_tags.append(token)
     i += 1
 
 group_tag = train_group_tag(train_tags)
 output_tag = output_tag or group_tag
 
-MC_INPUT = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix"
-DATA_INPUT_DEFAULT = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root:ntmix"
-DATA_INPUT = data_input_override or DATA_INPUT_DEFAULT
+APPLY_DATASET_OPTIONS = {
+    "2023": {
+        "mc_input": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix",
+        "data_input": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root:ntmix",
+    },
+    "2024": {
+        "mc_input": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC.root:ntmix",
+        "data_input": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA.root:ntmix",
+    },
+}
+
+def infer_default_dataset_year(tag):
+    if tag.startswith("pb23"):
+        return "2023"
+    if tag.startswith("pb24"):
+        return "2024"
+    return None
+
+
+dataset_year = dataset_year_override or infer_default_dataset_year(output_tag) or infer_default_dataset_year(group_tag)
+if dataset_year is None or dataset_year not in APPLY_DATASET_OPTIONS:
+    raise ValueError(
+        f"Unable to resolve dataset year for output_tag='{output_tag}' group_tag='{group_tag}'. "
+        f"Please pass --dataset-year with one of: {sorted(APPLY_DATASET_OPTIONS)}"
+    )
+inputs = APPLY_DATASET_OPTIONS[dataset_year]
+dataset_source = f"PbPb{dataset_year}"
+
+MC_INPUT = inputs["mc_input"]
+DATA_INPUT = data_input_override or inputs["data_input"]
+
+print(f"Apply dataset source: {dataset_source}")
+print(f"Apply MC input: {MC_INPUT}")
+print(f"Apply DATA input: {DATA_INPUT}")
 
 extra_output_columns = ["BQvalue", "nSelectedChargedTracks", "CentBin", "Bpt", "By"]
 keep_mc_isx3872 = True

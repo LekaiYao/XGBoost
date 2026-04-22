@@ -30,8 +30,16 @@ from utils.paths import (
 from utils.run_metadata import save_run_metadata
 from utils.varsets import VARSET_COLUMNS, infer_varset_from_tag
 
-SIG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix"
-BKG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root:ntmix"
+DATASET_OPTIONS = {
+    "2023": {
+        "signal_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix",
+        "background_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root:ntmix",
+    },
+    "2024": {
+        "signal_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC.root:ntmix",
+        "background_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA_SMALL.root:ntmix",
+    },
+}
 
 FEATURE_SETS = VARSET_COLUMNS
 
@@ -414,6 +422,7 @@ def main():
     parser.add_argument("train_tag")
     parser.add_argument("--stage-group", default=None)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--dataset-year", choices=["2023", "2024"], default=None)
     args = parser.parse_args()
 
     train_tag = args.train_tag
@@ -437,6 +446,9 @@ def main():
     print(f"Stage group resolved: {stage_group}")
     print(f"Feature set: {feature_set_tag}")
     print(f"OPTUNA_N_TRIALS per step: {n_trials}")
+    print(f"Dataset source: {dataset_source}")
+    print(f"Signal path: {sig_path}")
+    print(f"Background path: {bkg_path}")
 
     selection_cfg = get_selection_config(train_tag)
     signal_selection = selection_cfg["signal_selection"]
@@ -452,8 +464,8 @@ def main():
     print(f"Signal selection: {signal_selection}")
     print(f"Background selection: {background_selection}")
 
-    ak_sig = uproot.concatenate(SIG_PATH, library="pd")
-    ak_bkg = uproot.concatenate(BKG_PATH, library="pd")
+    ak_sig = uproot.concatenate(sig_path, library="pd")
+    ak_bkg = uproot.concatenate(bkg_path, library="pd")
     sig_mask = (
         (ak_sig["isX3872"] == 1)
         & (np.abs(ak_sig["By"]) < by_max)
@@ -659,8 +671,8 @@ def main():
     save_run_metadata(
         train_tag=train_tag,
         training_script="staged_optuna_pipeline.py",
-        signal_path=SIG_PATH,
-        background_path=BKG_PATH,
+        signal_path=sig_path,
+        background_path=bkg_path,
         signal_selection=signal_selection,
         background_selection=background_selection,
         input_columns=input_columns,
@@ -693,3 +705,20 @@ def main():
 
 if __name__ == "__main__":
     main()
+    if args.dataset_year is not None:
+        dataset_year = args.dataset_year
+    elif train_tag.startswith("pb23"):
+        dataset_year = "2023"
+    elif train_tag.startswith("pb24"):
+        dataset_year = "2024"
+    else:
+        dataset_year = None
+    if dataset_year is None or dataset_year not in DATASET_OPTIONS:
+        raise ValueError(
+            f"Unable to resolve dataset year for train_tag='{train_tag}'. "
+            "Please pass --dataset-year {2023,2024} or use a tag prefix like pb23*/pb24*."
+        )
+    dataset_paths = DATASET_OPTIONS[dataset_year]
+    dataset_source = f"PbPb{dataset_year}"
+    sig_path = dataset_paths["signal_path"]
+    bkg_path = dataset_paths["background_path"]

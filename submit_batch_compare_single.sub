@@ -1,5 +1,10 @@
 executable = run_batch_compare.sh
 
+dataset_year = __EMPTY__
+fid_profile = auto
+data_input_override = __EMPTY__
+output_prefix = __EMPTY__
+
 output = logs/job_$(job_tag).out
 error  = logs/job_$(job_tag).err
 log    = logs/job_$(job_tag).log
@@ -9,6 +14,6 @@ log    = logs/job_$(job_tag).log
 request_cpus = 4
 request_memory = 12000
 
-arguments = $(group_tag) $(version_start) $(version_end) $(skip_version) $(draw_only) $(version_token)
+arguments = $(group_tag) $(version_start) $(version_end) $(skip_version) $(draw_only) $(version_token) $(dataset_year) $(data_input_override) $(output_prefix) $(fid_profile)
 
 queue 1

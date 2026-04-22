@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import sys
@@ -27,16 +28,95 @@ from utils.paths import (
 from utils.run_metadata import save_run_metadata
 from utils.varsets import VARSET_COLUMNS, infer_varset_from_tag
 
-if len(sys.argv) != 3:
-    print("Usage: python3 condor_optuna_XGBoost.py <train_tag> <search_space_tag>")
-    sys.exit(1)
 
-train_tag = sys.argv[1]
-search_space_tag = sys.argv[2]
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Mainline Condor Optuna training for v1-v100 / 3v1-v100.",
+    )
+    parser.add_argument("train_tag", help="Full training tag")
+    parser.add_argument("search_space_tag", help="Search-space preset tag, e.g. v17 or 3v42")
+    parser.add_argument(
+        "--dataset-year",
+        choices=["2023", "2024"],
+        default=None,
+        help="Optional override for PbPb training dataset year",
+    )
+    parser.add_argument(
+        "--selection-profile",
+        choices=["legacy", "pb24v2"],
+        default=None,
+        help="Optional override for training selection profile",
+    )
+    return parser.parse_args()
+
+
+args = parse_args()
+train_tag = args.train_tag
+search_space_tag = args.search_space_tag
 number_trials = int(os.environ.get("OPTUNA_N_TRIALS", "100"))
 
-SIG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix"
-BKG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root:ntmix"
+DATASET_OPTIONS = {
+    "2023": {
+        "signal_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix",
+        "background_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root:ntmix",
+    },
+    "2024": {
+        "signal_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC.root:ntmix",
+        "background_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA_SMALL.root:ntmix",
+    },
+}
+
+SELECTION_PROFILES = {
+    "legacy": {
+        "signal_selection": "isX3872 == 1 and abs(By) < 1.6 and 15 < Bpt < 50",
+        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50",
+        "by_max": 1.6,
+        "bpt_min": 15.0,
+        "bpt_max": 50.0,
+        "centbin_min": None,
+    },
+    "pb24v2": {
+        "signal_selection": "isX3872 == 1 and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+        "by_max": 1.2,
+        "bpt_min": 10.0,
+        "bpt_max": None,
+        "centbin_min": 20.0,
+    },
+}
+
+
+def infer_default_selection_profile(tag):
+    if tag.startswith("pb24v2_"):
+        return "pb24v2"
+    return "legacy"
+
+
+def infer_default_dataset_year(tag):
+    if tag.startswith("pb23"):
+        return "2023"
+    if tag.startswith("pb24"):
+        return "2024"
+    if tag.startswith("pb24v2_"):
+        return "2024"
+    return None
+
+
+def resolve_training_inputs():
+    profile_key = args.selection_profile or infer_default_selection_profile(train_tag)
+    profile = SELECTION_PROFILES[profile_key]
+    dataset_year = args.dataset_year or infer_default_dataset_year(train_tag)
+    if dataset_year is None or dataset_year not in DATASET_OPTIONS:
+        raise ValueError(
+            f"Unable to resolve dataset year for train_tag='{train_tag}'. "
+            "Please pass --dataset-year {2023,2024} or use a tag prefix like pb23*/pb24*."
+        )
+    paths = DATASET_OPTIONS[dataset_year]
+    dataset_source = f"PbPb{dataset_year}"
+    return dataset_year, dataset_source, profile_key, profile, paths["signal_path"], paths["background_path"]
+
+
+DATASET_YEAR, DATASET_SOURCE, SELECTION_PROFILE, SELECTION_CONFIG, SIG_PATH, BKG_PATH = resolve_training_inputs()
 
 FEATURE_SETS = VARSET_COLUMNS
 
@@ -48,8 +128,8 @@ if feature_set_tag is None:
     sys.exit(1)
 
 input_columns = FEATURE_SETS[feature_set_tag]
-SIGNAL_SELECTION = "isX3872 == 1 and abs(By) < 1.6 and 15 < Bpt < 50"
-BACKGROUND_SELECTION = "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50"
+SIGNAL_SELECTION = SELECTION_CONFIG["signal_selection"]
+BACKGROUND_SELECTION = SELECTION_CONFIG["background_selection"]
 SIGNAL_SCALE_FACTOR = 3491.0 / 70439.0
 SIGNAL_WINDOW_WIDTH = 3.91 - 3.83
 SIDEBAND_WINDOW_WIDTH = (3.83 - 3.75) + (4.00 - 3.91)
@@ -180,6 +260,124 @@ SEARCH_SPACE_PRESETS = {
     "v100": {"n_estimators": int_range(700, 1800), "learning_rate": float_range(0.02, 0.07, log=True), "max_depth": int_range(2, 5), "min_child_weight": int_range(2, 20), "subsample": float_range(0.70, 0.90), "colsample_bytree": float_range(0.70, 0.90)},
 }
 
+# Ordered 3v1-v100 presets.
+# IMPORTANT: presets are mapped strictly by the input order (1..100),
+# ignoring B/C/A/K label semantics.
+_PRESET_3V_ORDERED = [
+    (2, 4, 1, 8, 0.020, 0.080, 300, 900, 0.70, 0.90, 0.70, 0.90),
+    (2, 4, 3, 10, 0.020, 0.080, 500, 1200, 0.70, 0.90, 0.70, 0.90),
+    (2, 4, 6, 15, 0.010, 0.050, 800, 1800, 0.75, 0.95, 0.75, 0.95),
+    (3, 5, 1, 8, 0.020, 0.080, 300, 900, 0.65, 0.85, 0.65, 0.85),
+    (3, 5, 3, 10, 0.020, 0.080, 500, 1200, 0.65, 0.85, 0.65, 0.85),
+    (3, 5, 6, 15, 0.010, 0.050, 800, 1800, 0.70, 0.90, 0.70, 0.90),
+    (4, 6, 1, 8, 0.030, 0.100, 300, 900, 0.65, 0.85, 0.65, 0.85),
+    (4, 6, 3, 10, 0.020, 0.080, 500, 1200, 0.65, 0.85, 0.65, 0.85),
+    (4, 6, 6, 15, 0.010, 0.050, 800, 1800, 0.70, 0.90, 0.70, 0.90),
+    (5, 7, 1, 8, 0.030, 0.120, 300, 1000, 0.60, 0.80, 0.60, 0.80),
+    (2, 5, 1, 12, 0.010, 0.080, 400, 1400, 0.70, 0.95, 0.70, 0.95),
+    (2, 5, 3, 12, 0.015, 0.100, 300, 1200, 0.65, 0.90, 0.65, 0.90),
+    (2, 5, 6, 20, 0.008, 0.050, 800, 2000, 0.75, 1.00, 0.75, 1.00),
+    (3, 6, 1, 12, 0.015, 0.100, 300, 1400, 0.65, 0.90, 0.65, 0.90),
+    (3, 6, 3, 12, 0.020, 0.120, 300, 1200, 0.65, 0.90, 0.65, 0.90),
+    (3, 6, 6, 20, 0.008, 0.050, 800, 2000, 0.70, 0.95, 0.70, 0.95),
+    (4, 7, 1, 12, 0.020, 0.120, 300, 1200, 0.60, 0.85, 0.60, 0.85),
+    (4, 7, 3, 12, 0.015, 0.100, 400, 1400, 0.60, 0.85, 0.60, 0.85),
+    (4, 7, 6, 20, 0.008, 0.050, 800, 2000, 0.65, 0.90, 0.65, 0.90),
+    (5, 8, 1, 12, 0.020, 0.150, 300, 1200, 0.60, 0.80, 0.60, 0.80),
+    (2, 6, 1, 15, 0.010, 0.100, 300, 1600, 0.65, 0.95, 0.65, 0.95),
+    (2, 6, 3, 15, 0.015, 0.120, 300, 1400, 0.65, 0.90, 0.65, 0.90),
+    (2, 6, 8, 25, 0.005, 0.040, 1000, 2500, 0.75, 1.00, 0.75, 1.00),
+    (3, 7, 1, 15, 0.015, 0.120, 300, 1400, 0.60, 0.90, 0.60, 0.90),
+    (3, 7, 3, 15, 0.020, 0.120, 300, 1600, 0.60, 0.90, 0.60, 0.90),
+    (3, 7, 8, 25, 0.005, 0.040, 1000, 2500, 0.70, 0.95, 0.70, 0.95),
+    (4, 8, 1, 15, 0.020, 0.150, 300, 1400, 0.55, 0.85, 0.55, 0.85),
+    (4, 8, 3, 15, 0.015, 0.120, 400, 1600, 0.55, 0.85, 0.55, 0.85),
+    (4, 8, 8, 25, 0.005, 0.040, 1000, 2500, 0.65, 0.90, 0.65, 0.90),
+    (2, 8, 1, 20, 0.010, 0.100, 500, 1800, 0.65, 0.95, 0.65, 0.95),
+    (2, 3, 8, 20, 0.005, 0.030, 1200, 2500, 0.80, 1.00, 0.80, 1.00),
+    (2, 3, 10, 25, 0.005, 0.030, 1500, 2500, 0.85, 1.00, 0.85, 1.00),
+    (2, 3, 12, 30, 0.005, 0.020, 1800, 2500, 0.85, 1.00, 0.85, 1.00),
+    (2, 4, 8, 20, 0.008, 0.040, 1000, 2200, 0.80, 1.00, 0.80, 1.00),
+    (2, 4, 10, 25, 0.008, 0.040, 1200, 2500, 0.80, 1.00, 0.80, 1.00),
+    (2, 4, 12, 30, 0.005, 0.030, 1500, 2500, 0.85, 1.00, 0.80, 1.00),
+    (3, 4, 8, 20, 0.010, 0.050, 900, 2000, 0.75, 0.95, 0.75, 0.95),
+    (3, 4, 10, 25, 0.008, 0.040, 1200, 2200, 0.75, 0.95, 0.75, 0.95),
+    (3, 4, 12, 30, 0.005, 0.030, 1500, 2500, 0.80, 1.00, 0.75, 0.95),
+    (3, 5, 8, 20, 0.008, 0.050, 900, 1800, 0.75, 0.95, 0.75, 0.95),
+    (3, 5, 10, 25, 0.008, 0.040, 1200, 2200, 0.75, 0.95, 0.75, 0.95),
+    (3, 5, 12, 30, 0.005, 0.030, 1500, 2500, 0.80, 1.00, 0.80, 1.00),
+    (2, 4, 15, 30, 0.005, 0.020, 1800, 2500, 0.90, 1.00, 0.85, 1.00),
+    (2, 5, 12, 25, 0.005, 0.030, 1500, 2500, 0.85, 1.00, 0.80, 1.00),
+    (2, 5, 15, 30, 0.005, 0.020, 1800, 2500, 0.85, 1.00, 0.85, 1.00),
+    (3, 5, 15, 30, 0.005, 0.025, 1800, 2500, 0.80, 1.00, 0.80, 1.00),
+    (2, 6, 10, 20, 0.008, 0.040, 1200, 2200, 0.75, 0.95, 0.75, 0.95),
+    (2, 6, 12, 25, 0.005, 0.030, 1500, 2500, 0.80, 1.00, 0.80, 1.00),
+    (2, 6, 15, 30, 0.005, 0.020, 1800, 2500, 0.85, 1.00, 0.85, 1.00),
+    (3, 6, 10, 30, 0.005, 0.030, 1500, 2500, 0.80, 1.00, 0.80, 1.00),
+    (5, 8, 1, 5, 0.050, 0.200, 150, 800, 0.55, 0.75, 0.55, 0.75),
+    (5, 8, 1, 5, 0.080, 0.300, 150, 600, 0.55, 0.75, 0.55, 0.75),
+    (5, 8, 1, 8, 0.050, 0.150, 300, 900, 0.55, 0.80, 0.55, 0.80),
+    (6, 8, 1, 5, 0.050, 0.200, 150, 800, 0.55, 0.70, 0.55, 0.70),
+    (6, 8, 1, 5, 0.080, 0.300, 150, 600, 0.55, 0.70, 0.55, 0.70),
+    (6, 8, 1, 8, 0.050, 0.150, 300, 900, 0.55, 0.75, 0.55, 0.75),
+    (4, 8, 1, 5, 0.050, 0.200, 150, 1000, 0.55, 0.80, 0.55, 0.80),
+    (4, 8, 1, 8, 0.050, 0.150, 300, 1000, 0.55, 0.80, 0.55, 0.80),
+    (5, 7, 1, 3, 0.080, 0.250, 150, 500, 0.60, 0.80, 0.60, 0.80),
+    (5, 7, 1, 3, 0.100, 0.300, 150, 400, 0.60, 0.80, 0.60, 0.80),
+    (6, 8, 1, 3, 0.080, 0.250, 150, 500, 0.55, 0.75, 0.55, 0.75),
+    (6, 8, 1, 3, 0.100, 0.300, 150, 400, 0.55, 0.75, 0.55, 0.75),
+    (5, 8, 3, 8, 0.050, 0.120, 500, 1200, 0.55, 0.75, 0.55, 0.75),
+    (5, 8, 1, 5, 0.030, 0.100, 600, 1500, 0.55, 0.75, 0.55, 0.75),
+    (6, 8, 3, 8, 0.030, 0.100, 600, 1500, 0.55, 0.70, 0.55, 0.70),
+    (4, 7, 1, 5, 0.050, 0.120, 500, 1200, 0.60, 0.80, 0.60, 0.80),
+    (4, 7, 1, 8, 0.030, 0.100, 600, 1500, 0.60, 0.80, 0.60, 0.80),
+    (5, 8, 1, 10, 0.050, 0.150, 300, 1200, 0.55, 0.75, 0.55, 0.75),
+    (6, 8, 1, 10, 0.050, 0.150, 300, 1200, 0.55, 0.70, 0.55, 0.70),
+    (4, 8, 1, 10, 0.050, 0.150, 300, 1200, 0.55, 0.80, 0.55, 0.80),
+    (5, 8, 1, 6, 0.120, 0.300, 150, 350, 0.65, 0.90, 0.65, 0.90),
+    (6, 8, 1, 6, 0.120, 0.300, 150, 350, 0.65, 0.90, 0.65, 0.90),
+    (5, 8, 1, 6, 0.080, 0.200, 200, 600, 0.70, 1.00, 0.70, 1.00),
+    (6, 8, 1, 6, 0.080, 0.200, 200, 600, 0.70, 1.00, 0.70, 1.00),
+    (5, 7, 1, 4, 0.150, 0.300, 150, 300, 0.75, 1.00, 0.75, 1.00),
+    (6, 8, 1, 4, 0.150, 0.300, 150, 300, 0.75, 1.00, 0.75, 1.00),
+    (5, 8, 3, 10, 0.030, 0.120, 700, 1800, 0.55, 0.70, 0.55, 0.70),
+    (6, 8, 3, 10, 0.030, 0.120, 700, 1800, 0.55, 0.65, 0.55, 0.65),
+    (4, 8, 1, 6, 0.020, 0.080, 1000, 2200, 0.55, 0.75, 0.55, 0.75),
+    (5, 8, 1, 6, 0.020, 0.080, 1000, 2500, 0.55, 0.70, 0.55, 0.70),
+    (2, 4, 1, 8, 0.005, 0.020, 1500, 2500, 0.75, 1.00, 0.75, 1.00),
+    (3, 5, 1, 8, 0.005, 0.020, 1500, 2500, 0.70, 0.95, 0.70, 0.95),
+    (4, 6, 3, 10, 0.005, 0.020, 1800, 2500, 0.65, 0.90, 0.65, 0.90),
+    (5, 7, 6, 15, 0.005, 0.020, 1800, 2500, 0.60, 0.85, 0.60, 0.85),
+    (6, 8, 8, 20, 0.005, 0.020, 1800, 2500, 0.55, 0.80, 0.55, 0.80),
+    (2, 4, 1, 8, 0.020, 0.050, 800, 1800, 0.75, 1.00, 0.75, 1.00),
+    (3, 5, 1, 8, 0.020, 0.050, 800, 1800, 0.70, 0.95, 0.70, 0.95),
+    (4, 6, 3, 10, 0.020, 0.050, 900, 1800, 0.65, 0.90, 0.65, 0.90),
+    (5, 7, 6, 15, 0.020, 0.050, 1000, 2000, 0.60, 0.85, 0.60, 0.85),
+    (6, 8, 8, 20, 0.020, 0.050, 1200, 2200, 0.55, 0.80, 0.55, 0.80),
+    (2, 4, 1, 6, 0.080, 0.150, 150, 500, 0.80, 1.00, 0.80, 1.00),
+    (3, 5, 1, 6, 0.080, 0.150, 150, 500, 0.75, 0.95, 0.75, 0.95),
+    (4, 6, 1, 6, 0.080, 0.150, 150, 500, 0.70, 0.90, 0.70, 0.90),
+    (5, 7, 3, 10, 0.080, 0.150, 200, 700, 0.65, 0.85, 0.65, 0.85),
+    (6, 8, 6, 15, 0.080, 0.150, 250, 800, 0.60, 0.80, 0.60, 0.80),
+    (2, 4, 8, 20, 0.020, 0.080, 500, 1400, 0.55, 0.70, 0.55, 0.70),
+    (3, 5, 8, 20, 0.020, 0.080, 500, 1400, 0.55, 0.70, 0.55, 0.70),
+    (4, 6, 10, 25, 0.020, 0.080, 700, 1600, 0.55, 0.70, 0.55, 0.70),
+    (5, 7, 12, 30, 0.020, 0.080, 900, 1800, 0.55, 0.70, 0.55, 0.70),
+    (6, 8, 12, 30, 0.020, 0.080, 1000, 2000, 0.55, 0.70, 0.55, 0.70),
+]
+
+assert len(_PRESET_3V_ORDERED) == 100, f"Expected 100 ordered presets for 3v1-v100, got {len(_PRESET_3V_ORDERED)}"
+
+for idx, (md_lo, md_hi, mcw_lo, mcw_hi, lr_lo, lr_hi, ne_lo, ne_hi, ss_lo, ss_hi, cs_lo, cs_hi) in enumerate(_PRESET_3V_ORDERED, start=1):
+    SEARCH_SPACE_PRESETS[f"3v{idx}"] = {
+        "max_depth": int_range(md_lo, md_hi),
+        "min_child_weight": int_range(mcw_lo, mcw_hi),
+        "learning_rate": float_range(lr_lo, lr_hi),
+        "n_estimators": int_range(ne_lo, ne_hi),
+        "subsample": float_range(ss_lo, ss_hi),
+        "colsample_bytree": float_range(cs_lo, cs_hi),
+    }
+
 if search_space_tag not in SEARCH_SPACE_PRESETS:
     print(f"Unknown search_space_tag: {search_space_tag}")
     print(f"Available presets: {sorted(SEARCH_SPACE_PRESETS)}")
@@ -240,32 +438,117 @@ def save_feature_importance(model, feature_names, train_tag):
     print(f"Feature importance plot saved to: {cumulative_plot_path}")
 
 
+def summarize_top_trials(study, search_space, top_n=20):
+    completed_trials = [trial for trial in study.trials if trial.value is not None]
+    ranked_trials = sorted(completed_trials, key=lambda trial: trial.value, reverse=True)
+    top_trials = ranked_trials[:top_n]
+
+    range_summary = {}
+    for param_name, config in search_space.items():
+        values = [trial.params[param_name] for trial in top_trials if param_name in trial.params]
+        if not values:
+            continue
+        top_min = min(values)
+        top_max = max(values)
+        initial_low = config.get("low")
+        initial_high = config.get("high")
+        if config.get("type") == "int":
+            top_min = int(round(top_min))
+            top_max = int(round(top_max))
+        else:
+            top_min = float(top_min)
+            top_max = float(top_max)
+        range_summary[param_name] = {
+            "parameter_type": config.get("type"),
+            "initial_range_low": initial_low,
+            "initial_range_high": initial_high,
+            "top20_range_low": top_min,
+            "top20_range_high": top_max,
+            "n_top20_unique_values": len(set(values)),
+            "comparison_to_initial": {
+                "low_shift": float(top_min) - float(initial_low),
+                "high_shift": float(top_max) - float(initial_high),
+                "is_narrowed_or_equal": float(top_min) >= float(initial_low) and float(top_max) <= float(initial_high),
+            },
+        }
+        if "log" in config:
+            range_summary[param_name]["sampling_log"] = bool(config["log"])
+
+    return top_trials, range_summary
+
+
+def save_top20_range_json(train_tag, search_space_tag, search_space, study, top_n=20):
+    top_trials, range_summary = summarize_top_trials(study, search_space, top_n=top_n)
+    output_path = os.path.join(condor_model_dir(train_tag), "optuna_top20_ranges.json")
+    payload = {
+        "field_meanings": {
+            "ranking_metric": "Optuna objective value (validation AUC) sorted descending",
+            "initial_range_low/high": "The low/high boundary of this run's search space at start",
+            "top20_range_low/high": "Min/max of the parameter among the best 20 completed trials",
+            "low_shift/high_shift": "top20 boundary minus initial boundary",
+            "is_narrowed_or_equal": "Whether top20 range is inside or equal to initial range",
+        },
+        "train_tag": train_tag,
+        "search_space_tag": search_space_tag,
+        "dataset_source": DATASET_SOURCE,
+        "dataset_year": DATASET_YEAR,
+        "selection_profile": SELECTION_PROFILE,
+        "n_trials_requested": number_trials,
+        "n_trials_completed": len([trial for trial in study.trials if trial.value is not None]),
+        "n_top_trials_used": min(top_n, len([trial for trial in study.trials if trial.value is not None])),
+        "ranking_metric": "validation_auc",
+        "optimization_direction": "maximize",
+        "initial_search_space": search_space,
+        "parameter_range_summary": range_summary,
+        "top_trials": [
+            {
+                "rank": rank,
+                "trial_number": int(trial.number),
+                "objective_value": float(trial.value),
+                "params": {
+                    key: (float(value) if isinstance(value, float) else value)
+                    for key, value in trial.params.items()
+                },
+            }
+            for rank, trial in enumerate(top_trials, start=1)
+        ],
+    }
+    with open(output_path, "w") as f:
+        json.dump(payload, f, indent=2)
+    print(f"Top20 range summary saved to: {output_path}")
+    return output_path
+
+
 ensure_dir(condor_model_dir(train_tag))
 ensure_dir(condor_training_dir(train_tag))
 
 print(f"Using feature set: {feature_set_tag}")
 print(f"Input columns: {input_columns}")
 print(f"Using search space preset: {search_space_tag}")
+print(f"Dataset source: {DATASET_SOURCE}")
+print(f"Selection profile: {SELECTION_PROFILE}")
 print(json.dumps(OPTUNA_SEARCH_SPACE, indent=2))
 
 ak_sig = uproot.concatenate(SIG_PATH, library="pd")
 ak_bkg = uproot.concatenate(BKG_PATH, library="pd")
 
-ak_sig = ak_sig[
-    (ak_sig["isX3872"] == 1)
-    & (np.abs(ak_sig["By"]) < 1.6)
-    & (ak_sig["Bpt"] > 15.0)
-    & (ak_sig["Bpt"] < 50.0)
-]
+sig_mask = (ak_sig["isX3872"] == 1) & (np.abs(ak_sig["By"]) < SELECTION_CONFIG["by_max"]) & (ak_sig["Bpt"] > SELECTION_CONFIG["bpt_min"])
+if SELECTION_CONFIG["bpt_max"] is not None:
+    sig_mask = sig_mask & (ak_sig["Bpt"] < SELECTION_CONFIG["bpt_max"])
+if SELECTION_CONFIG["centbin_min"] is not None:
+    sig_mask = sig_mask & (ak_sig["CentBin"] > SELECTION_CONFIG["centbin_min"])
+ak_sig = ak_sig[sig_mask]
+
 ak_bkg = ak_bkg[
     ((ak_bkg["Bmass"] > 3.75) & (ak_bkg["Bmass"] < 3.83))
     | ((ak_bkg["Bmass"] > 3.91) & (ak_bkg["Bmass"] < 4.00))
 ]
-ak_bkg = ak_bkg[
-    (np.abs(ak_bkg["By"]) < 1.6)
-    & (ak_bkg["Bpt"] > 15.0)
-    & (ak_bkg["Bpt"] < 50.0)
-]
+bkg_mask = (np.abs(ak_bkg["By"]) < SELECTION_CONFIG["by_max"]) & (ak_bkg["Bpt"] > SELECTION_CONFIG["bpt_min"])
+if SELECTION_CONFIG["bpt_max"] is not None:
+    bkg_mask = bkg_mask & (ak_bkg["Bpt"] < SELECTION_CONFIG["bpt_max"])
+if SELECTION_CONFIG["centbin_min"] is not None:
+    bkg_mask = bkg_mask & (ak_bkg["CentBin"] > SELECTION_CONFIG["centbin_min"])
+ak_bkg = ak_bkg[bkg_mask]
 
 ak_sig["is_sig"] = True
 ak_bkg["is_sig"] = False
@@ -333,6 +616,13 @@ study.optimize(objective, n_trials=number_trials)
 
 print("Best params:", study.best_params)
 print(f"Best validation AUC: {study.best_value:.6f}")
+top20_ranges_json_path = save_top20_range_json(
+    train_tag=train_tag,
+    search_space_tag=search_space_tag,
+    search_space=OPTUNA_SEARCH_SPACE,
+    study=study,
+    top_n=20,
+)
 
 xgbc = XGBClassifier(
     **study.best_params,
@@ -455,6 +745,10 @@ save_run_metadata(
         "test_auc": float(roc_auc),
         "test_roc_json_path": roc_json_path,
         "test_roc_plot_path": roc_plot_path,
+        "dataset_source": DATASET_SOURCE,
+        "dataset_year": DATASET_YEAR,
+        "selection_profile": SELECTION_PROFILE,
+        "optuna_top20_ranges_json_path": top20_ranges_json_path,
     },
 )
 
