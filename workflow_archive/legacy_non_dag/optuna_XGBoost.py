@@ -32,12 +32,15 @@ if len(sys.argv) != 2:
 train_tag = sys.argv[1]
 number_trials = int(os.environ.get("OPTUNA_N_TRIALS", "150"))
 
-SIG_PATH = "/afs/cern.ch/user/l/leyao/work/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_MC.root:ntmix"
-BKG_PATH = "/afs/cern.ch/user/l/leyao/work/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_DATA.root:ntmix"
+SIG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872.root:ntmix_X3872"
+BKG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root:ntmix"
 
 input_columns = ["Btrk1dR", "Btrk2dR", "Btrk2Pt", "BtrkPtimb", "Bchi2Prob"]
-SIGNAL_SELECTION = "isX3872 == 1"
-BACKGROUND_SELECTION = "(3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)"
+SIGNAL_SELECTION = "Bchi2Prob > 0.02 and Btrk1dR < 0.5"
+BACKGROUND_SELECTION = (
+    "Bchi2Prob > 0.02 and Btrk1dR < 0.5 and "
+    "((3.95 < Bmass < 4.00) or (3.75 < Bmass < 3.80))"
+)
 FIXED_MODEL_PARAMS = {"eval_metric": "logloss"}
 OPTUNA_SEARCH_SPACE = {
     "n_estimators": {"type": "int", "low": 200, "high": 800},
@@ -98,10 +101,17 @@ ensure_dir(training_dir(train_tag))
 ak_sig = uproot.concatenate(SIG_PATH, library="pd")
 ak_bkg = uproot.concatenate(BKG_PATH, library="pd")
 
-ak_sig = ak_sig[ak_sig["isX3872"] == 1]
+ak_sig = ak_sig[
+    (ak_sig["Bchi2Prob"] > 0.02)
+    & (ak_sig["Btrk1dR"] < 0.5)
+]
 ak_bkg = ak_bkg[
-    ((ak_bkg["Bmass"] < 3.83) & (ak_bkg["Bmass"] > 3.75))
-    | ((ak_bkg["Bmass"] > 3.91) & (ak_bkg["Bmass"] < 4.00))
+    (ak_bkg["Bchi2Prob"] > 0.02)
+    & (ak_bkg["Btrk1dR"] < 0.5)
+    & (
+        ((ak_bkg["Bmass"] > 3.95) & (ak_bkg["Bmass"] < 4.00))
+        | ((ak_bkg["Bmass"] > 3.75) & (ak_bkg["Bmass"] < 3.80))
+    )
 ]
 
 ak_sig["is_sig"] = True

@@ -1,10 +1,5 @@
 executable = run_batch_compare.sh
 
-dataset_year = __EMPTY__
-fid_profile = auto
-data_input_override = __EMPTY__
-output_prefix = __EMPTY__
-
 output = logs/job_$(job_tag).out
 error  = logs/job_$(job_tag).err
 log    = logs/job_$(job_tag).log

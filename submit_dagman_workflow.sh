@@ -78,6 +78,8 @@ echo "Dry-run batch submit template"
     -append "draw_only=0" \
     -append "version_token=${version_token}" \
     -append "dataset_year=${dataset_year_arg}" \
+    -append "data_input_override=__EMPTY__" \
+    -append "output_prefix=__EMPTY__" \
     -append "fid_profile=${fid_profile}" \
     -append "job_tag=dryrun_batch"
 )

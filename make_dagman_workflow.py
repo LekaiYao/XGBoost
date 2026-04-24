@@ -60,11 +60,14 @@ def make_dag(
 
     post_node = "POST_BATCH"
     post_job_tag = f"{group_tag}_{version_token}{version_start}_{version_token}{version_end}_batchcmp"
+    data_input_override_var = "__EMPTY__"
+    output_prefix_var = "__EMPTY__"
     lines.append(f"FINAL {post_node} submit_batch_compare_single.sub")
     lines.append(
         f'VARS {post_node} group_tag="{group_tag}" version_start="{version_start}" '
         f'version_end="{version_end}" skip_version="{skip_version}" draw_only="{draw_only}" '
         f'version_token="{version_token}" dataset_year="{dataset_year_var}" '
+        f'data_input_override="{data_input_override_var}" output_prefix="{output_prefix_var}" '
         f'fid_profile="{fid_profile}" job_tag="{post_job_tag}"'
     )
     lines.append("")

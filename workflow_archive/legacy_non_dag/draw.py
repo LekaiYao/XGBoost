@@ -9,6 +9,7 @@ from utils.paths import (
     cut_scan_dir,
     ensure_dir,
     resolve_data_output_path,
+    selected_dir,
 )
 
 if len(sys.argv) != 2:
@@ -39,7 +40,10 @@ def output_name(output_dir, cut):
     return os.path.join(output_dir, f"DATA_{cut_suffix}.pdf")
 
 
-data_input_file = resolve_data_output_path(train_tag)
+if train_tag.startswith("pp"):
+    data_input_file = os.path.join(selected_dir(train_tag), "DATA_wScore.root")
+else:
+    data_input_file = resolve_data_output_path(train_tag)
 output_dir = ensure_dir(cut_scan_dir(train_tag))
 
 if not os.path.exists(data_input_file):

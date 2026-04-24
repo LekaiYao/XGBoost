@@ -1,41 +1,48 @@
 # Handoff (for new Codex session)
 
-## 0. 当前状态（2026-04-20）
+## 0. 当前状态（2026-04-24）
 
 ### 当前目标
-- 监控并验收本轮主线 `pb24v2` 全量重跑结果：`8v/8v4` 的 `v1-100` 与 `3v1-100`（共 40 个 DAG 批次，`fid3` 画图）。
+- 验收 `pb24v2` 的 apply/draw 重跑结果（40 组，`fid3`），并补齐缺失模型对应批次输出。
 
 ### 已完成内容
-- 已清理上一轮失败状态与产物：
-  - EOS 输出（`xgb_output/models`、`xgb_output/training`、`selected_events`）中 `pb24v2_8v*` / `pb24v2_8v4*` 失败批次已删除。
-  - AFS 提交侧旧 DAG/rescue/log（`dags/wf_pb24v2_8v*_4o200_*`、`logs/job_pb24v2_8v*_4o200_*`）已清空。
-- 已完成 40 组全量重新提交（每组 10 个版本）：
-  - `pb24v2_8v_4o200_v1-v100`
-  - `pb24v2_8v_4o200_3v1-3v100`
-  - `pb24v2_8v4_4o200_v1-v100`
-  - `pb24v2_8v4_4o200_3v1-3v100`
-  - 参数：`dataset_year=2024`、`selection_profile=pb24v2`、`fid_profile=fid3`、`optuna_n_trials=200`
-  - 提交结果：`ok=40, fail=0`；`condor_q -dag` 可见 40 个 DAG。
-- 提交后快速排查中，暂未出现上一轮两类系统性错误：
-  - `Unknown stage group`
-  - `FileNotFoundError: .../auto`
+- 数据输入已统一为“按年份成组”：
+  - 训练：
+    - `2023`: `PbPb23_MC` + `PbPb23_DATA0`
+    - `2024`: `PbPb24_MC` + `PbPb24_DATA_SMALL`
+  - apply/draw：
+    - `2023`: `PbPb23_MC` + `PbPb23_DATA`
+    - `2024`: `PbPb24_MC` + `PbPb24_DATA`
+  - 已移除 legacy 混配 fallback（`23MC + 24DATA`）。
+- 修复了 POST_BATCH 参数链路问题：
+  - 解决空参数塌缩导致 `auto` 被当成 DATA 路径的问题。
+  - 解决 DAG 指令（`fid3`/`dataset_year=2024`）与运行值不一致的问题。
+  - 当前 `run_batch_compare.sh` 实际队列参数已为：`... 2024 __EMPTY__ __EMPTY__ fid3`。
+- 已完成一次“停止旧任务 + 仅重做 apply/draw”：
+  - 已中止仍在运行的旧 DAG 与子作业。
+  - 已删除上一轮 40 组 `selected_events` 输出。
+  - 已基于已有训练模型重提 40 组 batch apply+draw（不重训），提交结果 `ok=40, fail=0`。
+- 目录清理脚本已落地并执行：
+  - 新增 `cleanup_selected_events.py`
+  - 本次执行结果：移动旧目录 74 个、删除 >500MB ROOT 88 个、释放约 `161.77 GB`。
+- 代码已同步到 GitHub：
+  - `main` 最新提交：`8929047`
 
 ### 未完成内容
-- 40 组 DAG 仍在运行，尚未全部完成。
-- 尚未完成本轮完整验收：
-  - 训练节点成功率统计
-  - FINAL（apply+draw）完成率统计
-  - `selected_events` 下 `fid3` 出图与 sigma summary 完整性核查
-- 尚未形成“失败批次补跑清单”。
+- `fid3` 重跑批次的完整性验收未完成（需按组检查 apply summary 与 draw 输出）。
+- 当前 40 组对应训练模型并非 400/400 完整，现有约 396 个模型目录；缺失模型会触发 batch apply skip 机制。
+- 尚未输出最终“缺失模型批次补跑清单 + 完成率摘要”。
+
+### 2024数据集切换问题（简要）
+1. 历史输入存在混配风险：曾出现 `23MC + 24DATA` 的 fallback 逻辑，不符合“按年份成组一致”要求。
+2. POST_BATCH 参数错位：空参数在 submit/脚本位置参数链中塌缩，`auto` 被误当作 DATA 输入路径。
+3. 指令与运行不一致：DAG 中设置了 `fid3`/`dataset_year=2024`，运行日志却出现 `FID profile: auto` 与 `Dataset year:` 为空。
+4. AFS/EOS 同步风险：提交侧与代码侧文件若不同步，会导致“代码已改、运行仍旧配置”的问题反复出现。
 
 ### 下一步
-1. 按批次监控 40 个 DAG（优先看 `3v*` 训练节点和 `POST_BATCH`）。
-2. 完成后做三类验收：
-   - 训练输出：`xgb_output/models` 与 `xgb_output/training`
-   - apply 输出：`selected_events/<group>/...with_score.root`
-   - draw 输出：`DATA_fid3_cut*.pdf` 与 `X3872_sigma_summary_fid3.md`
-3. 对失败节点补跑并更新失败原因归档。
-4. 汇总本轮最终完成率并更新 `docs/worklog.md`。
+1. 逐组核查 40 组 `batchcmp_fid3redo` 输出完整性（`MC/DATA_with_score.root`、`batch_apply_summary.json`、`X3872_sigma_summary_fid3.md`）。
+2. 整理并确认 4 个缺失模型 tag 的影响批次，决定是否补训后再补做 apply/draw。
+3. 形成最终验收表（成功组/跳过组/失败组）并更新 `docs/worklog.md` 与 `docs/handoff.md`。
 
 ### 相关文件
 - 提交与 DAG：
@@ -48,8 +55,11 @@
 - 批处理执行链：
   - `run_batch_compare.sh`
   - `submit_batch_compare_single.sub`
+  - `submit_batch_compare.sub`
   - `batch_apply_scores.py`
   - `batch_draw_scores.py`
+- 运维脚本：
+  - `cleanup_selected_events.py`
 - 运行侧目录（AFS）：
   - `dags/wf_pb24v2_8v*_4o200_*.dag*`
   - `logs/job_pb24v2_8v*_4o200_*`
@@ -101,8 +111,11 @@ EOS/AFS 分离：
 ### `condor_optuna_XGBoost.py`
 - 输入：
   - CLI: `<train_tag> <search_space_tag>`
+  - CLI可选: `--dataset-year {2023,2024}`、`--selection-profile {legacy,pb24v2}`
   - Env: `OPTUNA_N_TRIALS`
-  - ROOT: `PbPb23 MC` + `PbPb24 DATA`
+  - ROOT(训练):
+    - `2023`: `PbPb23_MC` + `PbPb23_DATA0`
+    - `2024`: `PbPb24_MC` + `PbPb24_DATA_SMALL`
   - varset 来自 `utils/varsets.py`
 - 输出：
   - `xgb_output/models/<batch>/<train_tag>/...`
@@ -113,9 +126,11 @@ EOS/AFS 分离：
 
 ### `staged_optuna_pipeline.py`
 - 输入：
-  - CLI: `<train_tag> [--stage-group ...] [--resume]`
+  - CLI: `<train_tag> [--stage-group ...] [--resume] [--dataset-year {2023,2024}]`
   - Env: `OPTUNA_N_TRIALS`
-  - ROOT: `PbPb23 MC` + `PbPb24 DATA`
+  - ROOT(训练):
+    - `2023`: `PbPb23_MC` + `PbPb23_DATA0`
+    - `2024`: `PbPb24_MC` + `PbPb24_DATA_SMALL`
 - 功能：
   - Step1~Step5 分阶段扫描
   - `scale_pos_weight` 可按 `ratio` 基线缩放
@@ -126,7 +141,10 @@ EOS/AFS 分离：
 ### `batch_apply_scores.py`
 - 输入：
   - train tags 列表
-  - 可选 `--output-tag`、`--data-input`、`--output-prefix`
+  - 可选 `--output-tag`、`--data-input`、`--output-prefix`、`--dataset-year`
+- ROOT(apply):
+  - `2023`: `PbPb23_MC` + `PbPb23_DATA`
+  - `2024`: `PbPb24_MC` + `PbPb24_DATA`
 - 输出：
   - `selected_events/<output_tag>/<prefix>DATA_with_score.root`
   - `selected_events/<output_tag>/<prefix>MC_with_score.root`
@@ -134,7 +152,7 @@ EOS/AFS 分离：
 - 关键特性：
   - 自动跳过坏模型（记录 `skipped_models`）
   - 要求同组模型输入列一致
-  - 默认 DATA 输入已切换为 PbPb24
+  - 年份可由 tag 推断（`pb23*`/`pb24*`）或显式传参覆盖
 
 ### `batch_draw_scores.py`
 - 输入：
@@ -145,6 +163,7 @@ EOS/AFS 分离：
   - `selected_events/<output_tag>/<prefix>X3872_sigma_summary_<fid>.md`
 - 关键特性：
   - 自动识别 pb23v6 fid profile
+  - 支持显式 `--fid-profile auto|fid|fid3`
   - 计算 `3.872` bin 的近似 sigma
 
 ### `workflow_archive/legacy_non_dag/XGBoost.py`
@@ -170,10 +189,7 @@ EOS/AFS 分离：
   - `shap_summary.pdf`, `shap_bar.pdf`, `shap_cumulative.pdf`
 
 ## 4. 当前 `<varset>`（来自 `utils/varsets.py`）
-- `4v`, `4v2`, `5v`, `6v`, `7v`, `7v2`, `8v2`, `8v3`, `9v`
-
-已删除（含 `Bnorm_svpvDistance_2D`）：
-- `10v`, `8v`, `8v4`, `9v2`
+- `4v`, `4v2`, `5v`, `5v2`, `5v3`, `6v`, `6v2`, `6v3`, `7v2`, `7v3`, `7v4`, `8v`, `8v2`, `8v3`, `8v4`, `9v`
 
 ## 5. 已完成内容（近期）
 - 单模型 DAG 已包含 SHAP 节点

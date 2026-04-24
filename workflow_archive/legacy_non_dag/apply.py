@@ -6,9 +6,7 @@ import pandas as pd
 import uproot
 
 from utils.paths import (
-    data_output_path,
     ensure_dir,
-    mc_output_path,
     resolve_model_config_path,
     resolve_model_path,
     resolve_scaler_path,
@@ -21,10 +19,33 @@ if len(sys.argv) != 2:
 
 train_tag = sys.argv[1]
 
-MC_INPUT = "/afs/cern.ch/user/l/leyao/work/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_MC.root:ntmix"
-DATA_INPUT = "/afs/cern.ch/user/l/leyao/work/pbpb_work/X_analysis/ppRef24/flat_ntmix_ppRef_DATA.root:ntmix"
+DATA_INPUT_FILE = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root"
+DATA_INPUT_TREE = "ntmix"
+DATA_OUTPUT_FILE = "DATA_wScore.root"
 
-#MC_CUT = "isX3872 == 1"
+MC_INPUTS = [
+    {
+        "input_file": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_PSI2S_nonPrompt.root",
+        "input_tree": "ntmix_PSI2S",
+        "output_file": "MC_PSI2S_nonPrompt_wScore.root",
+    },
+    {
+        "input_file": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_PSI2S.root",
+        "input_tree": "ntmix_PSI2S",
+        "output_file": "MC_PSI2S_wScore.root",
+    },
+    {
+        "input_file": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872_nonPrompt.root",
+        "input_tree": "ntmix_X3872",
+        "output_file": "MC_X3872_nonPrompt_wScore.root",
+    },
+    {
+        "input_file": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872.root",
+        "input_tree": "ntmix_X3872",
+        "output_file": "MC_X3872_wScore.root",
+    },
+]
+
 MC_CUT = None
 DATA_CUT = None
 
@@ -74,30 +95,35 @@ def score_dataframe(df):
 output_dir = ensure_dir(selected_dir(train_tag))
 print(f"Writing scored events to: {output_dir}")
 
-print(f"\nProcessing MC: {MC_INPUT}")
-df_mc = uproot.concatenate(MC_INPUT, library="pd")
-print(f"  Loaded {len(df_mc)} events")
-if MC_CUT:
-    df_mc = df_mc.query(MC_CUT)
-    print(f"  After cut {MC_CUT}: {len(df_mc)} events")
+for mc_spec in MC_INPUTS:
+    mc_input_file = mc_spec["input_file"]
+    mc_input_tree = mc_spec["input_tree"]
+    mc_output_file = mc_spec["output_file"]
+    mc_output_path = f"{output_dir}/{mc_output_file}"
 
-df_mc_out = score_dataframe(df_mc)
-mc_path = mc_output_path(train_tag)
-with uproot.recreate(mc_path) as f:
-    f["ntmix"] = {col: df_mc_out[col].values for col in df_mc_out.columns}
-print(f"  Saved to: {mc_path}")
+    print(f"\nProcessing MC: {mc_input_file}:{mc_input_tree}")
+    df_mc = uproot.open(mc_input_file)[mc_input_tree].arrays(library="pd")
+    print(f"  Loaded {len(df_mc)} events")
+    if MC_CUT:
+        df_mc = df_mc.query(MC_CUT)
+        print(f"  After cut {MC_CUT}: {len(df_mc)} events")
 
-print(f"\nProcessing DATA: {DATA_INPUT}")
-df_data = uproot.concatenate(DATA_INPUT, library="pd")
+    df_mc_out = score_dataframe(df_mc)
+    with uproot.recreate(mc_output_path) as f:
+        f[mc_input_tree] = {col: df_mc_out[col].values for col in df_mc_out.columns}
+    print(f"  Saved to: {mc_output_path}")
+
+print(f"\nProcessing DATA: {DATA_INPUT_FILE}:{DATA_INPUT_TREE}")
+df_data = uproot.open(DATA_INPUT_FILE)[DATA_INPUT_TREE].arrays(library="pd")
 print(f"  Loaded {len(df_data)} events")
 if DATA_CUT:
     df_data = df_data.query(DATA_CUT)
     print(f"  After cut {DATA_CUT}: {len(df_data)} events")
 
 df_data_out = score_dataframe(df_data)
-data_path = data_output_path(train_tag)
-with uproot.recreate(data_path) as f:
-    f["ntmix"] = {col: df_data_out[col].values for col in df_data_out.columns}
-print(f"  Saved to: {data_path}")
+data_output_path = f"{output_dir}/{DATA_OUTPUT_FILE}"
+with uproot.recreate(data_output_path) as f:
+    f[DATA_INPUT_TREE] = {col: df_data_out[col].values for col in df_data_out.columns}
+print(f"  Saved to: {data_output_path}")
 
 print(f"\nAll done! Output in: {output_dir}")
