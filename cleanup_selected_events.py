@@ -43,8 +43,8 @@ def main() -> int:
     parser.add_argument(
         "--days",
         type=int,
-        default=7,
-        help="Move folders older than this many days (default: 7)",
+        default=5,
+        help="Move folders older than this many days (default: 5)",
     )
     parser.add_argument(
         "--root-threshold-mb",
@@ -89,7 +89,8 @@ def main() -> int:
         if not path.is_file():
             continue
         size = path.stat().st_size
-        if size > threshold_bytes:
+        mtime = path.stat().st_mtime
+        if size > threshold_bytes and mtime < cutoff_ts:
             path.unlink()
             deleted_files += 1
             deleted_bytes += size
@@ -104,7 +105,7 @@ def main() -> int:
                 print(f"  moved: {src_name}")
             else:
                 print(f"  moved: {src_name} -> {dst_name}")
-    print(f"deleted_large_root_files(>{args.root_threshold_mb}MB): {deleted_files}")
+    print(f"deleted_large_root_files_older_than_{args.days}d(>{args.root_threshold_mb}MB): {deleted_files}")
     print(f"freed_space_from_deleted_root_files: {deleted_bytes} bytes ({format_bytes(deleted_bytes)})")
 
     return 0
