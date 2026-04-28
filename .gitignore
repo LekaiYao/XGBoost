@@ -25,3 +25,5 @@ dags/
 *.pkl
 
 .DS_Store
+
+docs/

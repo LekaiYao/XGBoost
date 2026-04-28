@@ -1,4 +1,4 @@
-# Handoff (for new Codex session)
+# Handoff
 
 ## 0. 当前状态（2026-04-24）
 
