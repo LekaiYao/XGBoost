@@ -8,7 +8,14 @@ import pandas as pd
 import shap
 import uproot
 
-from configs.samples import infer_dataset_year, infer_sample_from_tag, infer_selection_profile, resolve_training_config, to_root_spec
+from configs.samples import (
+    infer_channel_from_tag,
+    infer_dataset_year,
+    infer_sample_from_tag,
+    infer_selection_profile,
+    resolve_training_config,
+    to_root_spec,
+)
 from utils.paths import (
     ensure_dir,
     resolve_model_config_path,
@@ -29,9 +36,10 @@ if len(sys.argv) not in (2, 3):
 train_tag = sys.argv[1]
 max_events = int(sys.argv[2]) if len(sys.argv) == 3 else 20000
 sample = infer_sample_from_tag(train_tag)
+channel = infer_channel_from_tag(train_tag)
 year = infer_dataset_year(train_tag, sample)
 sel = infer_selection_profile(train_tag, sample)
-train_cfg = resolve_training_config(sample, year, sel)
+train_cfg = resolve_training_config(sample, channel, year, sel)
 
 SIG_PATH = to_root_spec(train_cfg["signal"])
 BKG_PATH = to_root_spec(train_cfg["background"])
@@ -52,10 +60,10 @@ trans_columns = config["trans_columns"]
 df_sig = uproot.concatenate(SIG_PATH, library="pd")
 df_bkg = uproot.concatenate(BKG_PATH, library="pd")
 if "Bmass" in df_bkg.columns:
-    df_bkg = df_bkg[
-        ((df_bkg["Bmass"] < 3.83) & (df_bkg["Bmass"] > 3.75))
-        | ((df_bkg["Bmass"] > 3.91) & (df_bkg["Bmass"] < 4.0))
-    ].copy()
+    mass_mask = np.zeros(len(df_bkg), dtype=bool)
+    for low, high in train_cfg["mass_windows"]["sidebands"]:
+        mass_mask = mass_mask | ((df_bkg["Bmass"] > low) & (df_bkg["Bmass"] < high))
+    df_bkg = df_bkg[mass_mask].copy()
 
 df_raw = pd.concat([df_sig, df_bkg], axis=0, ignore_index=True)
 if max_events > 0 and len(df_raw) > max_events:

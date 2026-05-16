@@ -12,6 +12,7 @@ from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
 from configs.samples import (
+    infer_channel_from_tag,
     infer_dataset_year,
     infer_sample_from_tag as infer_sample_from_config,
     infer_selection_profile,
@@ -71,15 +72,16 @@ def main():
     train_tag = args.train_tag
 
     sample = infer_sample_from_config(train_tag)
+    channel = infer_channel_from_tag(train_tag)
     dataset_year = args.dataset_year or infer_dataset_year(train_tag, sample)
     selection_profile = args.selection_profile or infer_selection_profile(train_tag, sample)
-    train_cfg = resolve_training_config(sample, dataset_year, selection_profile)
+    train_cfg = resolve_training_config(sample, channel, dataset_year, selection_profile)
 
     sample_key = infer_sample_from_tag(train_tag)
     feature_set_tag = infer_varset_from_tag(train_tag, sample=sample_key)
     if feature_set_tag is None:
         raise ValueError(f"Unable to infer feature set from train_tag: {train_tag}")
-    input_columns = get_varset_columns(sample_key, feature_set_tag)
+    input_columns = get_varset_columns(sample_key, feature_set_tag, channel=channel)
     trans_columns = [f"{col}_trans" for col in input_columns]
 
     sig_path = to_root_spec(train_cfg["signal"])
@@ -106,10 +108,11 @@ def main():
         sig_mask &= ak_sig["BQvalue"] < cut["bqvalue_max"]
     ak_sig = ak_sig[sig_mask]
 
-    ak_bkg = ak_bkg[
-        ((ak_bkg["Bmass"] > 3.75) & (ak_bkg["Bmass"] < 3.83))
-        | ((ak_bkg["Bmass"] > 3.91) & (ak_bkg["Bmass"] < 4.00))
-    ]
+    sidebands = train_cfg["mass_windows"]["sidebands"]
+    bkg_mass_mask = np.zeros(len(ak_bkg), dtype=bool)
+    for low, high in sidebands:
+        bkg_mass_mask = bkg_mass_mask | ((ak_bkg["Bmass"] > low) & (ak_bkg["Bmass"] < high))
+    ak_bkg = ak_bkg[bkg_mass_mask]
     bkg_mask = np.ones(len(ak_bkg), dtype=bool)
     if cut.get("by_max") is not None:
         bkg_mask &= np.abs(ak_bkg["By"]) < cut["by_max"]
@@ -142,7 +145,7 @@ def main():
         "eval_metric": "logloss",
         "random_state": 42,
         "n_jobs": 4,
-        **DIRECT_XGB_PARAMS[sample_key],
+        **DIRECT_XGB_PARAMS[sample_key][channel],
     }
     xgbc = XGBClassifier(**params)
     xgbc.fit(X_train, y_train["is_sig"].to_numpy())
@@ -185,6 +188,7 @@ def main():
             "dataset_year": dataset_year,
             "selection_profile": selection_profile,
             "sample": sample,
+            "channel": channel,
             "auc": float(roc_auc),
         },
     )

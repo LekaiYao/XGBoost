@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import argparse
-import re
 from pathlib import Path
 
 from configs.samples import infer_dataset_year, infer_selection_profile
+from utils.tagging import parse_optuna_trials_from_group_body, split_channel_tag
 from utils.varsets import VARSETS, infer_sample_from_tag, infer_varset_from_tag
 
 
@@ -12,13 +12,8 @@ def train_tag(group_tag: str, version: int) -> str:
 
 
 def parse_optuna_n_trials_from_group_tag(group_tag: str) -> int:
-    matches = re.findall(r"(?:^|_)(?:\d+o|o)(\d+)(?:_|$)", group_tag)
-    if not matches:
-        raise ValueError(
-            f"Cannot infer optuna_n_trials from group_tag '{group_tag}'. "
-            "Expected token like '_o200' or '_4o200'."
-        )
-    return int(matches[-1])
+    _, body = split_channel_tag(group_tag)
+    return parse_optuna_trials_from_group_body(body)
 
 
 def validate_group_varset(group_tag: str) -> str:

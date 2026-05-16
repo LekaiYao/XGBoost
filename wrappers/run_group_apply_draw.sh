@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-if [[ $# -lt 10 ]]; then
-  echo "Usage: $0 <group_tag> <version_start> <version_end> <skip_version> <draw_only> <version_token> <dataset_year> <data_input_override> <output_prefix> <fid_profile>"
+if [[ $# -lt 9 ]]; then
+  echo "Usage: $0 <group_tag> <version_start> <version_end> <skip_version> <draw_only> <dataset_year> <data_input_override> <output_prefix> <fid_profile>"
   exit 1
 fi
 

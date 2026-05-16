@@ -7,6 +7,7 @@ import pandas as pd
 import uproot
 
 from configs.samples import (
+    infer_channel_from_tag,
     infer_dataset_year,
     infer_fid_profile,
     infer_sample_from_tag,
@@ -59,8 +60,9 @@ while i < len(args):
 group_tag = train_group_tag(train_tags)
 output_tag = output_tag or group_tag
 sample_key = infer_sample_from_tag(output_tag)
+channel = infer_channel_from_tag(output_tag)
 dataset_year = dataset_year_override or infer_dataset_year(output_tag, sample_key)
-apply_cfg = resolve_apply_config(sample_key, dataset_year)
+apply_cfg = resolve_apply_config(sample_key, channel, dataset_year)
 
 MC_INPUT = to_root_spec(apply_cfg["mc"][0])
 DATA_INPUT = data_input_override or to_root_spec(apply_cfg["data"][0])
@@ -186,9 +188,9 @@ with uproot.recreate(data_path) as f:
 
 summary_path = os.path.join(output_dir, f"{output_prefix}batch_apply_summary.json")
 selection_profile = infer_selection_profile(output_tag, sample_key)
-training_cfg = resolve_training_config(sample_key, dataset_year, selection_profile)
+training_cfg = resolve_training_config(sample_key, channel, dataset_year, selection_profile)
 fid_profile = infer_fid_profile(output_tag, sample_key)
-fid_cfg = resolve_fiducial_config(sample_key, fid_profile)
+fid_cfg = resolve_fiducial_config(sample_key, channel, fid_profile)
 
 varset_tag = None
 varset_columns = []
@@ -196,7 +198,7 @@ for tag in [m["train_tag"] for m in models] + train_tags:
     candidate = infer_varset_from_tag(tag, sample=sample_key)
     if candidate is not None:
         varset_tag = candidate
-        varset_columns = get_varset_columns(sample_key, candidate)
+        varset_columns = get_varset_columns(sample_key, candidate, channel=channel)
         break
 
 with open(summary_path, "w") as f:
@@ -204,6 +206,7 @@ with open(summary_path, "w") as f:
         {
             "input_datasets": {
                 "sample": sample_key,
+                "channel": channel,
                 "dataset_year": dataset_year,
                 "mc_input": MC_INPUT,
                 "data_input": DATA_INPUT,

@@ -2,6 +2,8 @@
 import argparse
 from pathlib import Path
 
+from utils.tagging import split_channel_tag
+
 
 def make_dag(out_dir: Path, train_tag: str, with_shap: bool) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -42,6 +44,7 @@ def main():
     parser.add_argument("--with-shap", type=int, choices=[0, 1], default=0)
     parser.add_argument("--out-dir", default="dag/generated")
     args = parser.parse_args()
+    split_channel_tag(args.train_tag)
 
     dag = make_dag(Path(args.out_dir), args.train_tag, bool(args.with_shap))
     print(dag)

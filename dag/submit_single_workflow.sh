@@ -3,7 +3,7 @@ set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <train_tag> [with_shap]"
-  echo "Example: $0 pp_5v2_o200_v1 1"
+  echo "Example: $0 X_pb24v2_8v_xgb_v1 0"
   exit 1
 fi
 
@@ -17,7 +17,7 @@ cd "${repo_dir}"
 source "${repo_dir}/.venv/bin/activate"
 export PYTHONNOUSERSITE=1
 
-dag_path=$(python3 dag/make_single_workflow.py --train-tag "${train_tag}" --with-shap "${with_shap}" --out-dir "dag/generated")
+dag_path=$(python3 -m dag.make_single_workflow --train-tag "${train_tag}" --with-shap "${with_shap}" --out-dir "dag/generated")
 
 cp dag/submit_templates/submit_train_job.sub "${afs_dir}/submit_train_job.sub"
 cp dag/submit_templates/submit_apply_job.sub "${afs_dir}/submit_apply_job.sub"

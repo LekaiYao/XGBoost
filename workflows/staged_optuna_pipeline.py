@@ -17,6 +17,7 @@ from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
 from configs.samples import (
+    infer_channel_from_tag,
     infer_dataset_year,
     infer_sample_from_tag as infer_sample_from_config,
     infer_selection_profile,
@@ -263,17 +264,20 @@ def normalize_stage_group(stage_group):
 
 def get_selection_config(train_tag, dataset_year_override=None, selection_profile_override=None):
     sample = infer_sample_from_config(train_tag)
+    channel = infer_channel_from_tag(train_tag)
     dataset_year = dataset_year_override or infer_dataset_year(train_tag, sample)
     selection_profile = selection_profile_override or infer_selection_profile(train_tag, sample)
-    cfg = resolve_training_config(sample, dataset_year, selection_profile)
+    cfg = resolve_training_config(sample, channel, dataset_year, selection_profile)
     cut = cfg["train_cut"]
     return {
         "sample": sample,
         "dataset_year": dataset_year,
         "selection_profile": selection_profile,
         "dataset_source": cfg["dataset_source"],
+        "channel": channel,
         "signal_path": to_root_spec(cfg["signal"]),
         "background_path": to_root_spec(cfg["background"]),
+        "sidebands": cfg["mass_windows"]["sidebands"],
         "signal_selection": cfg["signal_selection"],
         "background_selection": cfg["background_selection"],
         "by_max": cut.get("by_max"),
@@ -420,7 +424,8 @@ def main():
 
     n_trials = int(os.environ.get("OPTUNA_N_TRIALS", "200"))
     sample_key, feature_set_tag = infer_feature_set(train_tag)
-    input_columns = get_varset_columns(sample_key, feature_set_tag)
+    channel = infer_channel_from_tag(train_tag)
+    input_columns = get_varset_columns(sample_key, feature_set_tag, channel=channel)
     trans_columns = [f"{col}_trans" for col in input_columns]
 
     robust_ensure_dir(condor_model_dir(train_tag))
@@ -471,10 +476,10 @@ def main():
     if centbin_use_upper and centbin_max is not None:
         sig_mask = sig_mask & (ak_sig["CentBin"] < centbin_max)
     ak_sig = ak_sig[sig_mask]
-    ak_bkg = ak_bkg[
-        ((ak_bkg["Bmass"] > 3.75) & (ak_bkg["Bmass"] < 3.83))
-        | ((ak_bkg["Bmass"] > 3.91) & (ak_bkg["Bmass"] < 4.00))
-    ]
+    bkg_mass_mask = np.zeros(len(ak_bkg), dtype=bool)
+    for low, high in selection_cfg["sidebands"]:
+        bkg_mass_mask = bkg_mass_mask | ((ak_bkg["Bmass"] > low) & (ak_bkg["Bmass"] < high))
+    ak_bkg = ak_bkg[bkg_mass_mask]
     bkg_mask = np.ones(len(ak_bkg), dtype=bool)
     if by_max is not None:
         bkg_mask = bkg_mask & (np.abs(ak_bkg["By"]) < by_max)

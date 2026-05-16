@@ -16,6 +16,7 @@ from xgboost import XGBClassifier
 
 from configs.search_spaces import OPTUNA_SPACES
 from configs.samples import (
+    infer_channel_from_tag,
     infer_dataset_year,
     infer_sample_from_tag as infer_sample_from_config,
     infer_selection_profile,
@@ -69,15 +70,18 @@ number_trials = int(os.environ.get("OPTUNA_N_TRIALS", "100"))
 
 def resolve_training_inputs():
     sample = infer_sample_from_config(train_tag)
+    channel = infer_channel_from_tag(train_tag)
     dataset_year = args.dataset_year or infer_dataset_year(train_tag, sample)
     profile_key = args.selection_profile or infer_selection_profile(train_tag, sample)
-    training_cfg = resolve_training_config(sample, dataset_year, profile_key)
+    training_cfg = resolve_training_config(sample, channel, dataset_year, profile_key)
     return (
         sample,
+        channel,
         dataset_year,
         training_cfg["dataset_source"],
         profile_key,
         training_cfg["train_cut"],
+        training_cfg["mass_windows"],
         to_root_spec(training_cfg["signal"]),
         to_root_spec(training_cfg["background"]),
         training_cfg["signal_selection"],
@@ -85,16 +89,19 @@ def resolve_training_inputs():
     )
 
 
-SAMPLE_KEY, DATASET_YEAR, DATASET_SOURCE, SELECTION_PROFILE, SELECTION_CONFIG, SIG_PATH, BKG_PATH, SIGNAL_SELECTION, BACKGROUND_SELECTION = resolve_training_inputs()
+SAMPLE_KEY, CHANNEL, DATASET_YEAR, DATASET_SOURCE, SELECTION_PROFILE, SELECTION_CONFIG, MASS_WINDOWS, SIG_PATH, BKG_PATH, SIGNAL_SELECTION, BACKGROUND_SELECTION = resolve_training_inputs()
 
 sample_key = infer_sample_from_tag(train_tag)
 feature_set_tag = infer_varset_from_tag(train_tag, sample=sample_key)
 if feature_set_tag is None:
     raise ValueError(f"Unable to infer feature set from train_tag: {train_tag}")
-input_columns = get_varset_columns(sample_key, feature_set_tag)
+input_columns = get_varset_columns(sample_key, feature_set_tag, channel=CHANNEL)
 SIGNAL_SCALE_FACTOR = 3491.0 / 70439.0
-SIGNAL_WINDOW_WIDTH = 3.91 - 3.83
-SIDEBAND_WINDOW_WIDTH = (3.83 - 3.75) + (4.00 - 3.91)
+if MASS_WINDOWS.get("signal") is not None:
+    SIGNAL_WINDOW_WIDTH = float(MASS_WINDOWS["signal"][1] - MASS_WINDOWS["signal"][0])
+else:
+    SIGNAL_WINDOW_WIDTH = 3.91 - 3.83
+SIDEBAND_WINDOW_WIDTH = float(sum(high - low for low, high in MASS_WINDOWS["sidebands"]))
 FULL_TO_PARTIAL_DATA_SCALE = 31762286.0 / 994663.0
 BACKGROUND_SCALE_FACTOR = (SIGNAL_WINDOW_WIDTH / SIDEBAND_WINDOW_WIDTH) * FULL_TO_PARTIAL_DATA_SCALE
 FIXED_MODEL_PARAMS = {
@@ -342,7 +349,7 @@ for idx, (md_lo, md_hi, mcw_lo, mcw_hi, lr_lo, lr_hi, ne_lo, ne_hi, ss_lo, ss_hi
 
 if legacy_search_space_tag:
     print(f"Warning: legacy search space tag '{legacy_search_space_tag}' is ignored in single-space mode.")
-OPTUNA_SEARCH_SPACE = OPTUNA_SPACES[sample_key]
+OPTUNA_SEARCH_SPACE = OPTUNA_SPACES[sample_key][CHANNEL]
 
 
 def suggest_param(trial, name, config):
@@ -498,10 +505,11 @@ if SELECTION_CONFIG["centbin_min"] is not None:
     sig_mask = sig_mask & (ak_sig["CentBin"] > SELECTION_CONFIG["centbin_min"])
 ak_sig = ak_sig[sig_mask]
 
-ak_bkg = ak_bkg[
-    ((ak_bkg["Bmass"] > 3.75) & (ak_bkg["Bmass"] < 3.83))
-    | ((ak_bkg["Bmass"] > 3.91) & (ak_bkg["Bmass"] < 4.00))
-]
+sidebands = MASS_WINDOWS["sidebands"]
+bkg_mass_mask = np.zeros(len(ak_bkg), dtype=bool)
+for low, high in sidebands:
+    bkg_mass_mask = bkg_mass_mask | ((ak_bkg["Bmass"] > low) & (ak_bkg["Bmass"] < high))
+ak_bkg = ak_bkg[bkg_mass_mask]
 bkg_mask = (np.abs(ak_bkg["By"]) < SELECTION_CONFIG["by_max"]) & (ak_bkg["Bpt"] > SELECTION_CONFIG["bpt_min"])
 if SELECTION_CONFIG["bpt_max"] is not None:
     bkg_mask = bkg_mask & (ak_bkg["Bpt"] < SELECTION_CONFIG["bpt_max"])

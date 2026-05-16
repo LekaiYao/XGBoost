@@ -26,14 +26,14 @@ def main():
             cmd += ["--dataset-year", dataset_year]
         if selection_profile:
             cmd += ["--selection-profile", selection_profile]
-    elif args.stage_group.startswith("v") or args.stage_group.startswith("3v"):
-        cmd = [sys.executable, "workflows/condor_optuna_XGBoost.py", args.train_tag]
+    elif args.stage_group.startswith("v"):
+        cmd = [sys.executable, "-m", "workflows.condor_optuna_XGBoost", args.train_tag]
         if dataset_year:
             cmd += ["--dataset-year", dataset_year]
         if selection_profile:
             cmd += ["--selection-profile", selection_profile]
     else:
-        cmd = [sys.executable, "workflows/staged_optuna_pipeline.py", args.train_tag]
+        cmd = [sys.executable, "-m", "workflows.staged_optuna_pipeline", args.train_tag]
         if args.stage_group:
             cmd += ["--stage-group", args.stage_group]
         if args.resume_flag == "1":

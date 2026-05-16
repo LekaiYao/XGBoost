@@ -1,4 +1,6 @@
-VARSETS = {
+from utils.tagging import split_channel_tag
+
+_BASE_VARSETS = {
     "pbpb": {
         "4v": ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bchi2Prob"],
         "4v2": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk2Pt"],
@@ -24,29 +26,48 @@ VARSETS = {
     },
 }
 
+VARSETS = {
+    sample: {
+        "default": dict(varsets),
+        "X": dict(varsets),
+        "Bu": dict(varsets),
+        "Bd": dict(varsets),
+        "Bs": dict(varsets),
+    }
+    for sample, varsets in _BASE_VARSETS.items()
+}
+
 DEFAULT_SAMPLE = "pbpb"
 SUPPORTED_SAMPLES = tuple(VARSETS.keys())
-SUPPORTED_VARSETS = tuple(VARSETS[DEFAULT_SAMPLE].keys())
-VARSET_COLUMNS = VARSETS[DEFAULT_SAMPLE]
+SUPPORTED_VARSETS = tuple(VARSETS[DEFAULT_SAMPLE]["default"].keys())
+VARSET_COLUMNS = VARSETS[DEFAULT_SAMPLE]["default"]
 
 
 def infer_sample_from_tag(tag):
-    if tag.startswith("pp"):
+    _, body = split_channel_tag(tag)
+    if body.startswith("pp"):
         return "pp"
     return "pbpb"
 
 
-def get_varset_columns(sample, varset):
+def infer_channel_from_tag(tag):
+    channel, _ = split_channel_tag(tag)
+    return channel
+
+
+def get_varset_columns(sample, varset, channel="default"):
     if sample not in VARSETS:
         raise ValueError(f"Unsupported sample '{sample}'. Expected one of {SUPPORTED_SAMPLES}.")
-    if varset not in VARSETS[sample]:
-        raise ValueError(f"Unsupported varset '{varset}' for sample '{sample}'.")
-    return list(VARSETS[sample][varset])
+    by_channel = VARSETS[sample]
+    channel_key = channel if channel in by_channel else "default"
+    if varset not in by_channel[channel_key]:
+        raise ValueError(f"Unsupported varset '{varset}' for sample '{sample}' channel '{channel_key}'.")
+    return list(by_channel[channel_key][varset])
 
 
 def infer_varset_from_tag(tag, sample=None):
     sample_key = sample or infer_sample_from_tag(tag)
-    candidates = tuple(VARSETS.get(sample_key, {}).keys())
+    candidates = tuple(VARSETS.get(sample_key, {}).get("default", {}).keys())
     for key in sorted(candidates, key=len, reverse=True):
         if f"_{key}_" in tag:
             return key

@@ -9,6 +9,6 @@ log    = logs/job_$(job_tag).log
 request_cpus = 4
 request_memory = 12000
 
-arguments = $(group_tag) $(version_start) $(version_end) $(skip_version) $(draw_only) $(version_token) $(dataset_year) $(data_input_override) $(output_prefix) $(fid_profile)
+arguments = $(group_tag) $(version_start) $(version_end) $(skip_version) $(draw_only) $(dataset_year) $(data_input_override) $(output_prefix) $(fid_profile)
 
 queue 1

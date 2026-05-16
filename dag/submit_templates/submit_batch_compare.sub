@@ -15,6 +15,6 @@ log    = logs/job_$(job_tag).log
 request_cpus = 4
 request_memory = 12000
 
-arguments = 1399 1399 1106495882group_tag) 1399 1399 1106495882version_start) 1399 1399 1106495882version_end) 1399 1399 1106495882skip_version) 1399 1399 1106495882draw_only) 1399 1399 1106495882version_token) 1399 1399 1106495882dataset_year) 1399 1399 1106495882data_input_override) 1399 1399 1106495882output_prefix) 1399 1399 1106495882fid_profile)
+arguments = $(group_tag) $(version_start) $(version_end) $(skip_version) $(draw_only) $(dataset_year) $(data_input_override) $(output_prefix) $(fid_profile)
 
-queue group_tag, version_start, version_end, skip_version, draw_only, version_token, job_tag from $(groups_file)
+queue group_tag, version_start, version_end, skip_version, draw_only, job_tag from $(groups_file)

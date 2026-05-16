@@ -10,7 +10,6 @@ def main():
     parser.add_argument("version_end", type=int)
     parser.add_argument("skip_version", type=int, nargs="?", default=0)
     parser.add_argument("draw_only", type=int, nargs="?", default=0)
-    parser.add_argument("version_token", nargs="?", default="v")
     parser.add_argument("dataset_year", nargs="?", default="")
     parser.add_argument("data_input_override", nargs="?", default="")
     parser.add_argument("output_prefix", nargs="?", default="")
@@ -26,9 +25,9 @@ def main():
     for version in range(args.version_start, args.version_end + 1):
         if version == args.skip_version:
             continue
-        tags.append(f"{args.group_tag}_{args.version_token}{version}")
+        tags.append(f"{args.group_tag}_v{version}")
 
-    output_tag = f"{args.group_tag}_{args.version_token}{args.version_start}_{args.version_token}{args.version_end}"
+    output_tag = f"{args.group_tag}_v{args.version_start}_v{args.version_end}"
 
     if not args.draw_only:
         apply_cmd = [sys.executable, "workflows/batch_apply_scores.py", "--output-tag", output_tag]

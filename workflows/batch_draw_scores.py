@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import uproot
 
-from configs.samples import infer_fid_profile, infer_sample_from_tag, resolve_fiducial_config
+from configs.samples import infer_channel_from_tag, infer_fid_profile, infer_sample_from_tag, resolve_fiducial_config
 from utils.paths import ensure_dir, selected_dir, train_group_tag
 
 if len(sys.argv) < 2:
@@ -46,8 +46,9 @@ if fid_profile not in {"auto", "fid", "fid3"}:
 group_tag = train_group_tag(train_tags)
 output_tag = output_tag or group_tag
 sample_key = infer_sample_from_tag(output_tag)
+channel = infer_channel_from_tag(output_tag)
 active_fid = infer_fid_profile(output_tag, sample_key) if fid_profile == "auto" else fid_profile
-fid_cfg = resolve_fiducial_config(sample_key, active_fid)
+fid_cfg = resolve_fiducial_config(sample_key, channel, active_fid)
 
 TREE = "ntmix"
 MASS_RANGE = (3.62, 4.0)
@@ -115,14 +116,11 @@ def x3872_sigma_from_masses(masses):
 sigma_summary = {}
 for train_tag in valid_train_tags:
     score_column = f"xgb_score_{train_tag}"
-    if sample_key == "pbpb":
-        cut_scan_root = ensure_dir(os.path.join(selected_dir(output_tag), "cut_scan"))
-        if len(valid_train_tags) == 1:
-            output_dir = cut_scan_root
-        else:
-            output_dir = ensure_dir(os.path.join(cut_scan_root, f"{output_prefix}{train_tag}"))
+    cut_scan_root = ensure_dir(os.path.join(selected_dir(output_tag), "cut_scan"))
+    if len(valid_train_tags) == 1:
+        output_dir = cut_scan_root
     else:
-        output_dir = ensure_dir(os.path.join(selected_dir(output_tag), f"{output_prefix}{train_tag}"))
+        output_dir = ensure_dir(os.path.join(cut_scan_root, f"{output_prefix}{train_tag}"))
     sigma_summary[train_tag] = []
     for cut in score_cuts:
         cut_tag = int(round(cut * 1000)) if cut >= 0.99 else int(round(cut * 100))
