@@ -34,7 +34,7 @@ case "${step}" in
     cmd=(python3 "${legacy_dir}/draw.py" "${train_tag}")
     ;;
   shap)
-    cmd=(python3 "${repo_dir}/shap_importance.py" "${train_tag}")
+    cmd=(python3 "${repo_dir}/workflows/shap_importance.py" "${train_tag}")
     ;;
   *)
     echo "Unknown step: ${step}. Expected one of: train, apply, draw, shap" >&2

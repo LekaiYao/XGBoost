@@ -31,7 +31,7 @@ cd "${repo_dir}"
 source "${repo_dir}/.venv/bin/activate"
 export PYTHONNOUSERSITE=1
 
-dag_path=$(python3 make_dagman_workflow.py \
+dag_path=$(python3 dag/make_dagman_workflow.py \
   --group-tag "${group_tag}" \
   --version-start "${version_start}" \
   --version-end "${version_end}" \
@@ -43,14 +43,14 @@ dag_path=$(python3 make_dagman_workflow.py \
   --dataset-year "${dataset_year_arg}" \
   --selection-profile "${selection_profile_arg}" \
   --fid-profile "${fid_profile}" \
-  --out-dir "dags" | tail -n 1)
+  --out-dir "dag/generated" | tail -n 1)
 
-cp submit_staged_single.sub "${afs_dir}/submit_staged_single.sub"
-cp submit_batch_compare_single.sub "${afs_dir}/submit_batch_compare_single.sub"
-cp run_staged.sh "${afs_dir}/run_staged.sh"
-cp run_batch_compare.sh "${afs_dir}/run_batch_compare.sh"
+cp dag/submit_templates/submit_staged_single.sub "${afs_dir}/submit_staged_single.sub"
+cp dag/submit_templates/submit_batch_compare_single.sub "${afs_dir}/submit_batch_compare_single.sub"
+cp pipelines/run_staged.sh "${afs_dir}/run_staged.sh"
+cp pipelines/run_batch_compare.sh "${afs_dir}/run_batch_compare.sh"
 chmod +x "${afs_dir}/run_staged.sh" "${afs_dir}/run_batch_compare.sh"
-mkdir -p "${afs_dir}/dags"
+mkdir -p "${afs_dir}/$(dirname "${dag_path}")"
 cp "${dag_path}" "${afs_dir}/${dag_path}"
 
 echo "DAG generated: ${dag_path}"

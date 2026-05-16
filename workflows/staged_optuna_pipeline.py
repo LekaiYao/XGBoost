@@ -28,7 +28,7 @@ from utils.paths import (
     ensure_dir,
 )
 from utils.run_metadata import save_run_metadata
-from utils.varsets import VARSET_COLUMNS, infer_varset_from_tag
+from utils.varsets import VARSETS, get_varset_columns, infer_sample_from_tag, infer_varset_from_tag
 
 DATASET_OPTIONS = {
     "2023": {
@@ -40,8 +40,6 @@ DATASET_OPTIONS = {
         "background_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA_SMALL.root:ntmix",
     },
 }
-
-FEATURE_SETS = VARSET_COLUMNS
 
 DEFAULT_SIGNAL_SELECTION = "isX3872 == 1 and abs(By) < 1.6 and 15 < Bpt < 50"
 DEFAULT_BACKGROUND_SELECTION = "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50"
@@ -247,9 +245,10 @@ def suggest_param(trial, name, config):
 
 
 def infer_feature_set(train_tag):
-    candidate = infer_varset_from_tag(train_tag)
+    sample_key = infer_sample_from_tag(train_tag)
+    candidate = infer_varset_from_tag(train_tag, sample=sample_key)
     if candidate is not None:
-        return candidate
+        return sample_key, candidate
     raise ValueError(f"Unable to infer feature set from train_tag: {train_tag}")
 
 
@@ -432,8 +431,8 @@ def main():
         raise ValueError(f"Unknown stage group: {stage_group}. Available: {sorted(STAGE_CONFIGS)}")
 
     n_trials = int(os.environ.get("OPTUNA_N_TRIALS", "200"))
-    feature_set_tag = infer_feature_set(train_tag)
-    input_columns = FEATURE_SETS[feature_set_tag]
+    sample_key, feature_set_tag = infer_feature_set(train_tag)
+    input_columns = get_varset_columns(sample_key, feature_set_tag)
     trans_columns = [f"{col}_trans" for col in input_columns]
 
     robust_ensure_dir(condor_model_dir(train_tag))
@@ -444,6 +443,7 @@ def main():
     print(f"Train tag: {train_tag}")
     print(f"Stage group requested: {stage_group_requested}")
     print(f"Stage group resolved: {stage_group}")
+    print(f"Sample: {sample_key}")
     print(f"Feature set: {feature_set_tag}")
     print(f"OPTUNA_N_TRIALS per step: {n_trials}")
     print(f"Dataset source: {dataset_source}")

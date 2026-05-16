@@ -1,0 +1,14 @@
+executable = run_shap_job.sh
+
+output = logs/job_$(job_tag).out
+error  = logs/job_$(job_tag).err
+log    = logs/job_$(job_tag).log
+
++JobFlavour = "tomorrow"
+
+request_cpus = 4
+request_memory = 12000
+
+arguments = $(train_tag)
+
+queue 1

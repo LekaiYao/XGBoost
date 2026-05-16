@@ -2,7 +2,7 @@
 import argparse
 from pathlib import Path
 
-from utils.varsets import VARSET_COLUMNS, infer_varset_from_tag
+from utils.varsets import VARSETS, infer_sample_from_tag, infer_varset_from_tag
 
 
 def stage_group_for(version: int, version_token: str) -> str:
@@ -16,13 +16,14 @@ def train_tag(group_tag: str, version: int, version_token: str) -> str:
 
 
 def validate_group_varset(group_tag: str) -> str:
-    varset = infer_varset_from_tag(group_tag)
+    sample = infer_sample_from_tag(group_tag)
+    varset = infer_varset_from_tag(group_tag, sample=sample)
     if varset is None:
         raise ValueError(
             f"Unable to infer <varset> from group_tag '{group_tag}'. "
-            f"Expected one of: {sorted(VARSET_COLUMNS.keys())}"
+            f"Expected one of: {sorted(VARSETS.get(sample, {}).keys())}"
         )
-    return varset
+    return sample, varset
 
 
 def make_dag(
@@ -89,15 +90,16 @@ def main():
     parser.add_argument("--dataset-year", default="")
     parser.add_argument("--selection-profile", default="")
     parser.add_argument("--fid-profile", default="auto")
-    parser.add_argument("--out-dir", default="dags")
+    parser.add_argument("--out-dir", default="dag/generated")
     args = parser.parse_args()
 
     if args.version_start > args.version_end:
         raise ValueError("version-start must be <= version-end")
 
-    varset = validate_group_varset(args.group_tag)
+    sample, varset = validate_group_varset(args.group_tag)
     print(f"Detected varset: {varset}")
-    print(f"Varset columns: {VARSET_COLUMNS[varset]}")
+    print(f"Detected sample: {sample}")
+    print(f"Varset columns: {VARSETS[sample][varset]}")
 
     dag = make_dag(
         out_dir=Path(args.out_dir),

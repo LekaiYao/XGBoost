@@ -10,6 +10,8 @@ myenv/
 logs/
 xgb_output/
 selected_events/
+output/
+dag/generated/
 dags/
 *.dag.condor.sub
 *.dag.dagman.log

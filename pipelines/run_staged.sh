@@ -34,11 +34,9 @@ export PYTHONNOUSERSITE=1
 export TRAINING_MODE=condor
 export OPTUNA_N_TRIALS=${optuna_n_trials}
 
-cmd=(python3 staged_optuna_pipeline.py "${train_tag}")
+cmd=(python3 workflows/staged_optuna_pipeline.py "${train_tag}")
 if [[ "${stage_group}" =~ ^v[0-9]+$ || "${stage_group}" =~ ^3v[0-9]+$ ]]; then
-  # Use the historical v1-v100 and new 3v1-v100 search-space definitions
-  # from condor_optuna_XGBoost.py.
-  cmd=(python3 condor_optuna_XGBoost.py "${train_tag}" "${stage_group}")
+  cmd=(python3 workflows/condor_optuna_XGBoost.py "${train_tag}" "${stage_group}")
   if [[ -n "${dataset_year}" ]]; then
     cmd+=(--dataset-year "${dataset_year}")
   fi

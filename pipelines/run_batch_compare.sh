@@ -71,7 +71,7 @@ if [[ "${draw_only}" == "1" ]]; then
   echo "Skipping grouped apply (draw_only=1)"
 else
   echo "Running grouped apply"
-  apply_cmd=(python3 batch_apply_scores.py --output-tag "${output_tag}")
+  apply_cmd=(python3 workflows/batch_apply_scores.py --output-tag "${output_tag}")
   if [[ -n "${dataset_year}" ]]; then
     apply_cmd+=(--dataset-year "${dataset_year}")
   fi
@@ -86,7 +86,7 @@ else
 fi
 
 echo "Running grouped draw"
-draw_cmd=(python3 batch_draw_scores.py --output-tag "${output_tag}")
+draw_cmd=(python3 workflows/batch_draw_scores.py --output-tag "${output_tag}")
 if [[ -n "${output_prefix}" ]]; then
   draw_cmd+=(--output-prefix "${output_prefix}")
 fi

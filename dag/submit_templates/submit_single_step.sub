@@ -1,4 +1,4 @@
-executable = run_single_legacy_step.sh
+executable = run_single_step.sh
 
 output = logs/job_$(job_tag).out
 error  = logs/job_$(job_tag).err

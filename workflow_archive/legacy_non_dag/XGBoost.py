@@ -24,7 +24,7 @@ from utils.paths import (
     training_score_path,
 )
 from utils.run_metadata import save_run_metadata
-from utils.varsets import VARSET_COLUMNS, infer_varset_from_tag
+from utils.varsets import get_varset_columns, infer_sample_from_tag, infer_varset_from_tag
 
 if len(sys.argv) != 2:
     print("Usage: python3 XGBoost.py <train_tag>")
@@ -35,14 +35,15 @@ train_tag = sys.argv[1]
 SIG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872.root:ntmix_X3872"
 BKG_PATH = "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root:ntmix"
 
-varset_key = infer_varset_from_tag(train_tag)
-if not varset_key or varset_key not in VARSET_COLUMNS:
-    supported = ", ".join(sorted(VARSET_COLUMNS.keys()))
+sample_key = infer_sample_from_tag(train_tag)
+varset_key = infer_varset_from_tag(train_tag, sample=sample_key)
+if not varset_key:
+    supported = "sample-specific varsets"
     raise ValueError(
         f"Cannot infer varset from train_tag='{train_tag}'. "
         f"Expected one of: {supported}."
     )
-input_columns = list(VARSET_COLUMNS[varset_key])
+input_columns = get_varset_columns(sample_key, varset_key)
 SIGNAL_SELECTION = "Bchi2Prob > 0.02 and Btrk1dR < 0.5"
 BACKGROUND_SELECTION = (
     "Bchi2Prob > 0.02 and Btrk1dR < 0.5 and "

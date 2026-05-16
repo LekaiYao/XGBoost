@@ -1,8 +1,11 @@
 import os
 import re
 
-XGB_OUTPUT_DIR = "xgb_output"
-SELECTED_EVENTS_DIR = "selected_events"
+OUTPUT_ROOT_DIR = "output"
+MODELS_DIR = os.path.join(OUTPUT_ROOT_DIR, "models")
+TRAINING_DIR = os.path.join(OUTPUT_ROOT_DIR, "training")
+SHAP_DIR = os.path.join(OUTPUT_ROOT_DIR, "shap")
+SELECTED_DIR = os.path.join(OUTPUT_ROOT_DIR, "selected")
 
 
 def ensure_dir(path):
@@ -57,27 +60,27 @@ def train_batch_tag(train_tag):
 
 
 def model_dir(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, "models", train_tag)
+    return os.path.join(MODELS_DIR, train_tag)
 
 
 def training_dir(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, "training", train_tag)
+    return os.path.join(TRAINING_DIR, train_tag)
 
 
 def condor_model_dir(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, "models", train_batch_tag(train_tag), train_tag)
+    return os.path.join(MODELS_DIR, train_batch_tag(train_tag), train_tag)
 
 
 def condor_training_dir(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, "training", train_batch_tag(train_tag), train_tag)
+    return os.path.join(TRAINING_DIR, train_batch_tag(train_tag), train_tag)
 
 
 def shap_dir(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, "shap", train_tag)
+    return os.path.join(SHAP_DIR, train_tag)
 
 
 def selected_dir(train_tag):
-    return os.path.join(SELECTED_EVENTS_DIR, train_tag)
+    return os.path.join(SELECTED_DIR, train_tag)
 
 
 def cut_scan_dir(train_tag):
@@ -161,76 +164,76 @@ def data_output_path(train_tag):
 
 
 def legacy_model_path(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, f"xgb_model_{train_tag}.pkl")
+    return model_path(train_tag)
 
 
 def legacy_scaler_path(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, f"scaler_{train_tag}.pkl")
+    return scaler_path(train_tag)
 
 
 def legacy_model_config_path(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, f"model_config_{train_tag}.json")
+    return model_config_path(train_tag)
 
 
 def legacy_training_score_path(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, f"xgb_score_{train_tag}.pdf")
+    return training_score_path(train_tag)
 
 
 def legacy_feature_importance_path(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, f"feature_importance_{train_tag}.json")
+    return feature_importance_path(train_tag)
 
 
 def legacy_feature_importance_cumulative_path(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, f"feature_importance_cumulative_{train_tag}.pdf")
+    return feature_importance_cumulative_path(train_tag)
 
 
 def legacy_shap_importance_path(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, f"shap_importance_{train_tag}.json")
+    return shap_importance_path(train_tag)
 
 
 def legacy_shap_importance_fraction_path(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, f"shap_importance_fraction_{train_tag}.json")
+    return shap_importance_fraction_path(train_tag)
 
 
 def legacy_shap_summary_path(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, f"shap_summary_{train_tag}.pdf")
+    return shap_summary_path(train_tag)
 
 
 def legacy_shap_bar_path(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, f"shap_bar_{train_tag}.pdf")
+    return shap_bar_path(train_tag)
 
 
 def legacy_shap_cumulative_path(train_tag):
-    return os.path.join(XGB_OUTPUT_DIR, f"shap_cumulative_{train_tag}.pdf")
+    return shap_cumulative_path(train_tag)
 
 
 def legacy_mc_output_path(train_tag):
-    return os.path.join(SELECTED_EVENTS_DIR, f"MC_with_score_{train_tag}.root")
+    return mc_output_path(train_tag)
 
 
 def legacy_data_output_path(train_tag):
-    return os.path.join(SELECTED_EVENTS_DIR, f"DATA_with_score_{train_tag}.root")
+    return data_output_path(train_tag)
 
 
 def legacy_cut_scan_dir(train_tag):
-    return os.path.join(SELECTED_EVENTS_DIR, f"{train_tag}_pdf")
+    return cut_scan_dir(train_tag)
 
 
 def resolve_model_path(train_tag):
-    return resolve_existing(condor_model_path(train_tag), model_path(train_tag), legacy_model_path(train_tag))
+    return resolve_existing(condor_model_path(train_tag), model_path(train_tag))
 
 
 def resolve_scaler_path(train_tag):
-    return resolve_existing(condor_scaler_path(train_tag), scaler_path(train_tag), legacy_scaler_path(train_tag))
+    return resolve_existing(condor_scaler_path(train_tag), scaler_path(train_tag))
 
 
 def resolve_model_config_path(train_tag):
-    return resolve_existing(condor_model_config_path(train_tag), model_config_path(train_tag), legacy_model_config_path(train_tag))
+    return resolve_existing(condor_model_config_path(train_tag), model_config_path(train_tag))
 
 
 def resolve_data_output_path(train_tag):
-    return resolve_existing(data_output_path(train_tag), legacy_data_output_path(train_tag))
+    return data_output_path(train_tag)
 
 
 def resolve_mc_output_path(train_tag):
-    return resolve_existing(mc_output_path(train_tag), legacy_mc_output_path(train_tag))
+    return mc_output_path(train_tag)

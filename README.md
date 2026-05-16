@@ -1,101 +1,71 @@
 # XGBoost Analysis Workflow
 
 ## 项目目标
-本项目用于 `PbPb/ppRef` 质量谱分析中的 XGBoost 训练、打分、cut-scan 画图和 SHAP 解释。
-当前目标是：稳定主线 PbPb 批量流程，并支持 pp 单模型流程快速迭代。
+本项目用于 `PbPb/ppRef` 分析中的 XGBoost 训练、打分、出图与 SHAP。
+当前架构统一为可迁移工作流：`pp` 与 `pbpb` 共用脚本框架、独立配置与变量集。
 
-## 环境与路径
-- EOS 代码目录：`/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost`
-- AFS 提交目录：`/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost`
-- Condor 从 AFS 提交，运行脚本在 EOS。
+## 目录结构
+- `workflows/`：核心训练/应用/出图/SHAP 脚本
+- `pipelines/`：Condor 节点执行器
+- `dag/`：DAG 生成与提交脚本、Condor 模板
+- `utils/`：varset / paths / metadata 公共模块
+- `configs/`：样本与超参数空间配置
+- `output/`：统一输出根目录
 
-## 当前工作流
-### 1) 主线 PbPb DAG（训练 + 批量 apply/draw）
-- 入口：`submit_dagman_workflow.sh`
-- DAG 生成：`make_dagman_workflow.py`
-- 训练节点：`run_staged.sh`
-- 批处理节点：`run_batch_compare.sh`
-- 批处理脚本：`batch_apply_scores.py` + `batch_draw_scores.py`
+## 工作流
+### 1) 主线 PbPb 批量 DAG
+- 提交：`bash dag/submit_dagman_workflow.sh <group_tag> <version_start> <version_end> <version_token> [optuna_n_trials] [dataset_year] [selection_profile] [fid_profile]`
+- 执行链：
+  - `dag/make_dagman_workflow.py`
+  - `pipelines/run_staged.sh`
+  - `workflows/condor_optuna_XGBoost.py` 或 `workflows/staged_optuna_pipeline.py`
+  - `pipelines/run_batch_compare.sh`
+  - `workflows/batch_apply_scores.py` + `workflows/batch_draw_scores.py`
 
-### 2) 单模型 DAG（train -> apply -> draw -> shap）
-- 入口：`submit_single_legacy_dag.sh`
-- DAG 生成：`make_single_legacy_dag.py`
-- 节点执行器：`run_single_legacy_step.sh`
-- 单模型脚本：`workflow_archive/legacy_non_dag/XGBoost.py`, `apply.py`, `draw.py`
-- SHAP 脚本：`shap_importance.py`
+### 2) 单模型 DAG（pp/pbpb 通用）
+- 提交：`bash dag/submit_single_workflow.sh <train_tag> [with_shap]`
+- 执行链：
+  - `dag/make_single_workflow.py`
+  - `pipelines/run_train_job.sh`
+  - `pipelines/run_apply_job.sh`
+  - `pipelines/run_draw_job.sh`
+  - `pipelines/run_shap_job.sh`（仅当 `with_shap=1`）
+  - 其中 pp 当前调用 `workflow_archive/legacy_non_dag/*`，pbpb 调用 `workflows/*`
 
-## 输入与输出
-### 主线 PbPb 输入（当前）
-- 支持按年份选择 2023/2024 输入（训练与 batch apply/draw 共用该逻辑）。
-- 主要脚本：
-  - `condor_optuna_XGBoost.py`
-  - `staged_optuna_pipeline.py`
-  - `batch_apply_scores.py`
+## 命名规范
+- 普通训练：`<sample>_<varset>_v<version>`
+- Optuna 训练：`<sample>_<varset>_o<optunaTrials>_v<version>`
 
-### pp24v2（单模型线）训练输入与筛选（当前）
-- 训练脚本：`workflow_archive/legacy_non_dag/XGBoost.py`（`optuna_XGBoost.py` 同步）
-- 训练输入：
-  - signal(MC)：`/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872.root:ntmix_X3872`
-  - background(DATA)：`/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root:ntmix`
-- 训练筛选：
-  - signal：`Bchi2Prob > 0.02 && Btrk1dR < 0.5`
-  - background：`Bchi2Prob > 0.02 && Btrk1dR < 0.5 && ((Bmass > 3.95 && Bmass < 4.00) || (Bmass > 3.75 && Bmass < 3.80))`
+## varset 规则
+- `utils/varsets.py` 采用 sample-aware 定义：
+  - `VARSETS["pbpb"]`
+  - `VARSETS["pp"]`
+- 同名 varset 在不同 sample 下可对应不同变量列表。
 
-### pp24v2（单模型线）apply/draw（当前）
-- apply 脚本：`workflow_archive/legacy_non_dag/apply.py`
-- draw 脚本：`workflow_archive/legacy_non_dag/draw.py`
-- apply 输入：
-  - DATA：`.../flat_ntmix_ppRef_DATA.root:ntmix`
-  - MC：
-    - `flat_ntmix_ppRef_MC_PSI2S_nonPrompt.root:ntmix_PSI2S`
-    - `flat_ntmix_ppRef_MC_PSI2S.root:ntmix_PSI2S`
-    - `flat_ntmix_ppRef_MC_X3872_nonPrompt.root:ntmix_X3872`
-    - `flat_ntmix_ppRef_MC_X3872.root:ntmix_X3872`
-- apply 输出（`selected_events/<train_tag>/`）：
-  - `DATA_wScore.root`
-  - `MC_PSI2S_nonPrompt_wScore.root`
-  - `MC_PSI2S_wScore.root`
-  - `MC_X3872_nonPrompt_wScore.root`
-  - `MC_X3872_wScore.root`
-- draw 在 `pp*` tag 下默认读取 `DATA_wScore.root`。
-
-### 输出目录
-- 模型与训练图：`xgb_output/models/...`, `xgb_output/training/...`
-- SHAP：`xgb_output/shap/...`
-- 打分与 cut-scan：`selected_events/...`
-
-## 当前 `<varset>`（`utils/varsets.py`）
-- `4v`, `4v2`, `5v`, `5v2`, `5v3`
-- `6v`, `6v2`, `6v3`, `6v4`
-- `7v2`, `7v3`, `7v4`
-- `8v`, `8v2`, `8v3`, `8v4`
-- `9v`
+## 输出目录（新）
+- `output/models/...`
+- `output/training/...`
+- `output/shap/...`
+- `output/selected/...`
 
 ## 常用命令
 语法检查：
 ```bash
-.venv/bin/python -m py_compile condor_optuna_XGBoost.py staged_optuna_pipeline.py batch_apply_scores.py batch_draw_scores.py workflow_archive/legacy_non_dag/XGBoost.py workflow_archive/legacy_non_dag/apply.py workflow_archive/legacy_non_dag/draw.py
+.venv/bin/python -m py_compile workflows/condor_optuna_XGBoost.py workflows/staged_optuna_pipeline.py workflows/batch_apply_scores.py workflows/batch_draw_scores.py workflows/shap_importance.py dag/make_dagman_workflow.py dag/make_single_workflow.py utils/varsets.py utils/paths.py
 ```
 
-主线 DAG 提交（例）：
+主线示例：
 ```bash
-bash submit_dagman_workflow.sh pb24v2_8v_4o200 1 10 v 200
+bash dag/submit_dagman_workflow.sh pb24v2_8v_4o200 1 10 v 20 2024 pb24v2 fid3
 ```
 
-单模型 DAG 提交（例）：
+单模型示例：
 ```bash
-bash submit_single_legacy_dag.sh pp24v2_6v4_xgb_v1
+bash dag/submit_single_workflow.sh pp24v2_6v4_xgb_v1 0
+bash dag/submit_single_workflow.sh pp24v2_6v4_xgb_v1 1
 ```
-
-## 近期更新
-- 主线 PbPb 流程统一为按年份（2023/2024）成组切换输入，并移除历史混配 fallback。
-- 修复主线批处理 DAG 参数链，确保 apply/draw 的 dataset year 与 fid profile 透传正确。
-- 单模型 `xgb_score` 图：train 点带统计误差和 x 方向 bin 宽误差。
-- 新增 `6v4` 变量组合。
-- pp24v2 apply/draw 输入输出命名已更新（`DATA_wScore.root` + 四个 MC wScore ROOT）。
 
 ## 清理脚本
-清理历史 selected events（可配置按天数移动目录并删除大 ROOT）：
 ```bash
 python3 cleanup_selected_events.py --days 5 --root-threshold-mb 500
 ```

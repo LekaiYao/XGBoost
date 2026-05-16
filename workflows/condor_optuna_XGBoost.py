@@ -26,15 +26,20 @@ from utils.paths import (
     ensure_dir,
 )
 from utils.run_metadata import save_run_metadata
-from utils.varsets import VARSET_COLUMNS, infer_varset_from_tag
+from utils.varsets import get_varset_columns, infer_sample_from_tag, infer_varset_from_tag
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Mainline Condor Optuna training for v1-v100 / 3v1-v100.",
+        description="Mainline Condor Optuna training with a single search space.",
     )
     parser.add_argument("train_tag", help="Full training tag")
-    parser.add_argument("search_space_tag", help="Search-space preset tag, e.g. v17 or 3v42")
+    parser.add_argument(
+        "legacy_search_space_tag",
+        nargs="?",
+        default="",
+        help="Deprecated legacy argument; ignored in single-space mode.",
+    )
     parser.add_argument(
         "--dataset-year",
         choices=["2023", "2024"],
@@ -52,7 +57,7 @@ def parse_args():
 
 args = parse_args()
 train_tag = args.train_tag
-search_space_tag = args.search_space_tag
+legacy_search_space_tag = args.legacy_search_space_tag
 number_trials = int(os.environ.get("OPTUNA_N_TRIALS", "100"))
 
 DATASET_OPTIONS = {
@@ -118,16 +123,11 @@ def resolve_training_inputs():
 
 DATASET_YEAR, DATASET_SOURCE, SELECTION_PROFILE, SELECTION_CONFIG, SIG_PATH, BKG_PATH = resolve_training_inputs()
 
-FEATURE_SETS = VARSET_COLUMNS
-
-feature_set_tag = infer_varset_from_tag(train_tag)
-
+sample_key = infer_sample_from_tag(train_tag)
+feature_set_tag = infer_varset_from_tag(train_tag, sample=sample_key)
 if feature_set_tag is None:
-    print(f"Unable to infer feature set from train_tag: {train_tag}")
-    print(f"Supported feature sets: {sorted(FEATURE_SETS)}")
-    sys.exit(1)
-
-input_columns = FEATURE_SETS[feature_set_tag]
+    raise ValueError(f"Unable to infer feature set from train_tag: {train_tag}")
+input_columns = get_varset_columns(sample_key, feature_set_tag)
 SIGNAL_SELECTION = SELECTION_CONFIG["signal_selection"]
 BACKGROUND_SELECTION = SELECTION_CONFIG["background_selection"]
 SIGNAL_SCALE_FACTOR = 3491.0 / 70439.0
@@ -378,12 +378,22 @@ for idx, (md_lo, md_hi, mcw_lo, mcw_hi, lr_lo, lr_hi, ne_lo, ne_hi, ss_lo, ss_hi
         "colsample_bytree": float_range(cs_lo, cs_hi),
     }
 
-if search_space_tag not in SEARCH_SPACE_PRESETS:
-    print(f"Unknown search_space_tag: {search_space_tag}")
-    print(f"Available presets: {sorted(SEARCH_SPACE_PRESETS)}")
-    sys.exit(1)
+SINGLE_OPTUNA_SEARCH_SPACE = {
+    "n_estimators": int_range(500, 1800),
+    "learning_rate": float_range(0.01, 0.08, log=True),
+    "max_depth": int_range(2, 6),
+    "min_child_weight": int_range(2, 20),
+    "subsample": float_range(0.65, 0.95),
+    "colsample_bytree": float_range(0.65, 0.95),
+    "gamma": float_range(0.0, 4.0),
+    "reg_alpha": float_range(0.0, 3.0),
+    "reg_lambda": float_range(1.0, 12.0),
+    "max_delta_step": float_range(0.0, 4.0),
+}
 
-OPTUNA_SEARCH_SPACE = SEARCH_SPACE_PRESETS[search_space_tag]
+if legacy_search_space_tag:
+    print(f"Warning: legacy search space tag '{legacy_search_space_tag}' is ignored in single-space mode.")
+OPTUNA_SEARCH_SPACE = SINGLE_OPTUNA_SEARCH_SPACE
 
 
 def suggest_param(trial, name, config):
@@ -524,7 +534,7 @@ ensure_dir(condor_training_dir(train_tag))
 
 print(f"Using feature set: {feature_set_tag}")
 print(f"Input columns: {input_columns}")
-print(f"Using search space preset: {search_space_tag}")
+print("Using single optuna search space.")
 print(f"Dataset source: {DATASET_SOURCE}")
 print(f"Selection profile: {SELECTION_PROFILE}")
 print(json.dumps(OPTUNA_SEARCH_SPACE, indent=2))
@@ -618,7 +628,7 @@ print("Best params:", study.best_params)
 print(f"Best validation AUC: {study.best_value:.6f}")
 top20_ranges_json_path = save_top20_range_json(
     train_tag=train_tag,
-    search_space_tag=search_space_tag,
+    search_space_tag="single",
     search_space=OPTUNA_SEARCH_SPACE,
     study=study,
     top_n=20,
@@ -736,7 +746,7 @@ save_run_metadata(
     optimization_metric="max validation AUC",
     best_objective_value=study.best_value,
     notes={
-        "search_space_tag": search_space_tag,
+        "search_space_tag": "single",
         "best_validation_auc": float(study.best_trial.user_attrs.get("validation_auc", study.best_value)),
         "signal_scale_factor": float(SIGNAL_SCALE_FACTOR),
         "background_scale_factor": float(BACKGROUND_SCALE_FACTOR),
