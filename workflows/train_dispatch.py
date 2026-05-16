@@ -20,7 +20,13 @@ def main():
     env = os.environ.copy()
     env["OPTUNA_N_TRIALS"] = str(args.optuna_n_trials)
 
-    if args.stage_group.startswith("v") or args.stage_group.startswith("3v"):
+    if "_xgb_" in args.train_tag:
+        cmd = [sys.executable, "-m", "workflows.xgboost_train_direct", args.train_tag]
+        if dataset_year:
+            cmd += ["--dataset-year", dataset_year]
+        if selection_profile:
+            cmd += ["--selection-profile", selection_profile]
+    elif args.stage_group.startswith("v") or args.stage_group.startswith("3v"):
         cmd = [sys.executable, "workflows/condor_optuna_XGBoost.py", args.train_tag]
         if dataset_year:
             cmd += ["--dataset-year", dataset_year]

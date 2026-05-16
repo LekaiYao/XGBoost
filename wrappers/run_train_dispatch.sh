@@ -11,4 +11,4 @@ cd "${repo_dir}"
 source .venv/bin/activate
 export PYTHONNOUSERSITE=1
 
-exec python3 workflows/train_dispatch.py "$@"
+exec python3 -m workflows.train_dispatch "$@"

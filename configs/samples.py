@@ -53,7 +53,7 @@ SAMPLES = {
         },
         "selection_profiles": {
             "legacy": {
-                "signal_selection": "isX3872 == 1 and abs(By) < 1.6 and 15 < Bpt < 50",
+                "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
                 "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50",
                 "train_cut": {
                     "by_max": 1.6,
@@ -64,7 +64,7 @@ SAMPLES = {
                 },
             },
             "pb24v2": {
-                "signal_selection": "isX3872 == 1 and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
                 "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
                 "train_cut": {
                     "by_max": 1.2,

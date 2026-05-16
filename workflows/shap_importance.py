@@ -51,8 +51,6 @@ trans_columns = config["trans_columns"]
 
 df_sig = uproot.concatenate(SIG_PATH, library="pd")
 df_bkg = uproot.concatenate(BKG_PATH, library="pd")
-if "isX3872" in df_sig.columns:
-    df_sig = df_sig[df_sig["isX3872"] == 1].copy()
 if "Bmass" in df_bkg.columns:
     df_bkg = df_bkg[
         ((df_bkg["Bmass"] < 3.83) & (df_bkg["Bmass"] > 3.75))

@@ -93,7 +93,7 @@ def main():
     ak_sig = uproot.concatenate(sig_path, library="pd")
     ak_bkg = uproot.concatenate(bkg_path, library="pd")
 
-    sig_mask = ak_sig["isX3872"] == 1
+    sig_mask = pd.Series(True, index=ak_sig.index)
     if cut.get("by_max") is not None:
         sig_mask &= np.abs(ak_sig["By"]) < cut["by_max"]
     if cut.get("bpt_min") is not None:
@@ -166,15 +166,19 @@ def main():
 
     save_run_metadata(
         train_tag=train_tag,
+        training_script="workflows/xgboost_train_direct.py",
         signal_path=sig_path,
         background_path=bkg_path,
         signal_selection=train_cfg["signal_selection"],
         background_selection=train_cfg["background_selection"],
         input_columns=input_columns,
+        trans_columns=trans_columns,
         pos_weight=1.0,
         fixed_model_params=params,
         best_model_params=params,
         is_optuna=False,
+        optimization_metric="direct training test AUC",
+        best_objective_value=float(roc_auc),
         notes={
             "training_mode": "direct_xgboost",
             "dataset_source": train_cfg["dataset_source"],

@@ -19,18 +19,17 @@ cd "${repo_dir}"
 source "${repo_dir}/.venv/bin/activate"
 export PYTHONNOUSERSITE=1
 
-dag_path=$(python3 dag/make_dagman_workflow.py \
+dag_path=$(python3 -m dag.make_dagman_workflow \
   --group-tag "${group_tag}" \
   --version-start "${version_start}" \
   --version-end "${version_end}" \
   --resume-flag 0 \
-  --skip-version 0 \
-  --draw-only 0 \
   --fid-profile "${fid_profile}" \
   --out-dir "dag/generated" | tail -n 1)
 
 cp dag/submit_templates/submit_staged_single.sub "${afs_dir}/submit_staged_single.sub"
-cp dag/submit_templates/submit_batch_compare_single.sub "${afs_dir}/submit_batch_compare_single.sub"
+cp dag/submit_templates/submit_apply_job.sub "${afs_dir}/submit_apply_job.sub"
+cp dag/submit_templates/submit_draw_job.sub "${afs_dir}/submit_draw_job.sub"
 cp wrappers/*.sh "${afs_dir}/"
 chmod +x "${afs_dir}"/run_*.sh
 mkdir -p "${afs_dir}/$(dirname "${dag_path}")"

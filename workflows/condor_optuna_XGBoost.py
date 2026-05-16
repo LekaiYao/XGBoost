@@ -491,7 +491,7 @@ print(json.dumps(OPTUNA_SEARCH_SPACE, indent=2))
 ak_sig = uproot.concatenate(SIG_PATH, library="pd")
 ak_bkg = uproot.concatenate(BKG_PATH, library="pd")
 
-sig_mask = (ak_sig["isX3872"] == 1) & (np.abs(ak_sig["By"]) < SELECTION_CONFIG["by_max"]) & (ak_sig["Bpt"] > SELECTION_CONFIG["bpt_min"])
+sig_mask = (np.abs(ak_sig["By"]) < SELECTION_CONFIG["by_max"]) & (ak_sig["Bpt"] > SELECTION_CONFIG["bpt_min"])
 if SELECTION_CONFIG["bpt_max"] is not None:
     sig_mask = sig_mask & (ak_sig["Bpt"] < SELECTION_CONFIG["bpt_max"])
 if SELECTION_CONFIG["centbin_min"] is not None:

@@ -39,8 +39,6 @@ def make_dag(
     version_end: int,
     optuna_n_trials: int,
     resume_flag: int,
-    skip_version: int,
-    draw_only: int,
     dataset_year: str,
     selection_profile: str,
     fid_profile: str,
@@ -52,31 +50,36 @@ def make_dag(
 
     lines = []
     for version in range(version_start, version_end + 1):
-        node = f"TR_v{version}"
+        train_node = f"TR_v{version}"
+        apply_node = f"AP_v{version}"
+        draw_node = f"DR_v{version}"
         tag = train_tag(group_tag, version)
         stage_group = f"v{version}"
-        job_tag = f"{tag}_staged"
-        lines.append(f"JOB {node} submit_staged_single.sub")
+        train_job_tag = f"{tag}_train"
+        apply_job_tag = f"{tag}_apply"
+        draw_job_tag = f"{tag}_draw"
+
+        lines.append(f"JOB {train_node} submit_staged_single.sub")
         lines.append(
-            f'VARS {node} train_tag="{tag}" stage_group="{stage_group}" '
-            f'optuna_n_trials="{optuna_n_trials}" resume_flag="{resume_flag}" job_tag="{job_tag}" '
+            f'VARS {train_node} train_tag="{tag}" stage_group="{stage_group}" '
+            f'optuna_n_trials="{optuna_n_trials}" resume_flag="{resume_flag}" job_tag="{train_job_tag}" '
             f'dataset_year="{dataset_year_var}" selection_profile="{selection_profile_var}"'
         )
         lines.append("")
 
-    post_node = "POST_BATCH"
-    post_job_tag = f"{group_tag}_v{version_start}_v{version_end}_batchcmp"
-    data_input_override_var = "__EMPTY__"
-    output_prefix_var = "__EMPTY__"
-    lines.append(f"FINAL {post_node} submit_batch_compare_single.sub")
-    lines.append(
-        f'VARS {post_node} group_tag="{group_tag}" version_start="{version_start}" '
-        f'version_end="{version_end}" skip_version="{skip_version}" draw_only="{draw_only}" '
-        f'version_token="v" dataset_year="{dataset_year_var}" '
-        f'data_input_override="{data_input_override_var}" output_prefix="{output_prefix_var}" '
-        f'fid_profile="{fid_profile}" job_tag="{post_job_tag}"'
-    )
-    lines.append("")
+        lines.append(f"JOB {apply_node} submit_apply_job.sub")
+        lines.append(f'VARS {apply_node} train_tag="{tag}" job_tag="{apply_job_tag}"')
+        lines.append("")
+
+        lines.append(f"JOB {draw_node} submit_draw_job.sub")
+        lines.append(
+            f'VARS {draw_node} train_tag="{tag}" fid_profile="{fid_profile}" job_tag="{draw_job_tag}"'
+        )
+        lines.append("")
+
+        lines.append(f"PARENT {train_node} CHILD {apply_node}")
+        lines.append(f"PARENT {apply_node} CHILD {draw_node}")
+        lines.append("")
 
     dag_path.write_text("\n".join(lines))
     return dag_path
@@ -88,8 +91,6 @@ def main():
     parser.add_argument("--version-start", type=int, required=True)
     parser.add_argument("--version-end", type=int, required=True)
     parser.add_argument("--resume-flag", type=int, default=0)
-    parser.add_argument("--skip-version", type=int, default=0)
-    parser.add_argument("--draw-only", type=int, default=0)
     parser.add_argument("--fid-profile", default="auto")
     parser.add_argument("--out-dir", default="dag/generated")
     args = parser.parse_args()
@@ -115,8 +116,6 @@ def main():
         version_end=args.version_end,
         optuna_n_trials=optuna_n_trials,
         resume_flag=args.resume_flag,
-        skip_version=args.skip_version,
-        draw_only=args.draw_only,
         dataset_year=dataset_year,
         selection_profile=selection_profile,
         fid_profile=args.fid_profile,

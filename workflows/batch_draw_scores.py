@@ -115,7 +115,14 @@ def x3872_sigma_from_masses(masses):
 sigma_summary = {}
 for train_tag in valid_train_tags:
     score_column = f"xgb_score_{train_tag}"
-    output_dir = ensure_dir(os.path.join(selected_dir(output_tag), f"{output_prefix}{train_tag}"))
+    if sample_key == "pbpb":
+        cut_scan_root = ensure_dir(os.path.join(selected_dir(output_tag), "cut_scan"))
+        if len(valid_train_tags) == 1:
+            output_dir = cut_scan_root
+        else:
+            output_dir = ensure_dir(os.path.join(cut_scan_root, f"{output_prefix}{train_tag}"))
+    else:
+        output_dir = ensure_dir(os.path.join(selected_dir(output_tag), f"{output_prefix}{train_tag}"))
     sigma_summary[train_tag] = []
     for cut in score_cuts:
         cut_tag = int(round(cut * 1000)) if cut >= 0.99 else int(round(cut * 100))

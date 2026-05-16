@@ -75,3 +75,16 @@ bash dag/submit_single_workflow.sh <train_tag> [with_shap]
 - ROOT/TTree/fid/train cuts 只在 `configs/samples.py` 配置。
 - `workflows/*` 只读配置，不再硬编码路径和 cut。
 - 历史脚本仅在 `workflow_archive/` 存档，不参与主流程。
+
+## 输出与排障
+- PbPb draw 输出目录：`output/selected/<train_tag>/cut_scan/`
+- `batch_apply_summary.json` 字段：
+  - `input_datasets`（输入数据集）
+  - `input_selection`（输入时筛选条件）
+  - `draw_selection`（画图时筛选条件）
+  - `training_varset`（训练 varset）
+
+手动检查失败任务时优先看：
+- `/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost/logs/job_<train_tag>_{train,apply,draw}.err`
+- `/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost/logs/job_<train_tag>_{train,apply,draw}.log`
+- `/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost/logs/job_<train_tag>_{train,apply,draw}.out`

@@ -164,6 +164,7 @@ def save_run_metadata(
     }
 
     output_path = metadata_path(train_tag)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(metadata, f, indent=2)
     print(f"Run metadata saved to: {output_path}")

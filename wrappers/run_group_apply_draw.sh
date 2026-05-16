@@ -11,4 +11,4 @@ cd "${repo_dir}"
 source .venv/bin/activate
 export PYTHONNOUSERSITE=1
 
-exec python3 workflows/group_apply_draw.py "$@"
+exec python3 -m workflows.group_apply_draw "$@"

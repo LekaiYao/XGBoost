@@ -13,7 +13,7 @@ source .venv/bin/activate
 export PYTHONNOUSERSITE=1
 
 if [[ "${train_tag}" == *_xgb_* ]]; then
-  exec python3 workflows/xgboost_train_direct.py "${train_tag}"
+  exec python3 -m workflows.xgboost_train_direct "${train_tag}"
 else
-  exec python3 workflows/condor_optuna_XGBoost.py "${train_tag}"
+  exec python3 -m workflows.condor_optuna_XGBoost "${train_tag}"
 fi

@@ -457,7 +457,7 @@ def main():
 
     ak_sig = uproot.concatenate(sig_path, library="pd")
     ak_bkg = uproot.concatenate(bkg_path, library="pd")
-    sig_mask = (ak_sig["isX3872"] == 1)
+    sig_mask = np.ones(len(ak_sig), dtype=bool)
     if by_max is not None:
         sig_mask = sig_mask & (np.abs(ak_sig["By"]) < by_max)
     if bpt_min is not None:

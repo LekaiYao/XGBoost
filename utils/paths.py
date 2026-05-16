@@ -68,11 +68,11 @@ def training_dir(train_tag):
 
 
 def condor_model_dir(train_tag):
-    return os.path.join(MODELS_DIR, train_batch_tag(train_tag), train_tag)
+    return os.path.join(MODELS_DIR, train_tag)
 
 
 def condor_training_dir(train_tag):
-    return os.path.join(TRAINING_DIR, train_batch_tag(train_tag), train_tag)
+    return os.path.join(TRAINING_DIR, train_tag)
 
 
 def shap_dir(train_tag):

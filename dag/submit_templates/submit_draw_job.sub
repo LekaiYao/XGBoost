@@ -1,4 +1,5 @@
 executable = run_draw_job.sh
+fid_profile = auto
 
 output = logs/job_$(job_tag).out
 error  = logs/job_$(job_tag).err
@@ -9,6 +10,6 @@ log    = logs/job_$(job_tag).log
 request_cpus = 4
 request_memory = 12000
 
-arguments = $(train_tag)
+arguments = $(train_tag) $(fid_profile)
 
 queue 1

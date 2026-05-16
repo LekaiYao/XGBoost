@@ -11,4 +11,4 @@ cd "${repo_dir}"
 source .venv/bin/activate
 export PYTHONNOUSERSITE=1
 
-exec python3 workflows/batch_apply_scores.py "$1"
+exec python3 -m workflows.batch_apply_scores "$1"

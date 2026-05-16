@@ -6,8 +6,18 @@ import joblib
 import pandas as pd
 import uproot
 
-from configs.samples import infer_dataset_year, infer_sample_from_tag, resolve_apply_config, to_root_spec
+from configs.samples import (
+    infer_dataset_year,
+    infer_fid_profile,
+    infer_sample_from_tag,
+    infer_selection_profile,
+    resolve_apply_config,
+    resolve_fiducial_config,
+    resolve_training_config,
+    to_root_spec,
+)
 from utils.paths import ensure_dir, resolve_model_config_path, resolve_model_path, resolve_scaler_path, selected_dir, train_group_tag
+from utils.varsets import get_varset_columns, infer_varset_from_tag
 
 if len(sys.argv) < 2:
     print(
@@ -60,7 +70,6 @@ print(f"Apply MC input: {MC_INPUT}")
 print(f"Apply DATA input: {DATA_INPUT}")
 
 extra_output_columns = ["BQvalue", "nSelectedChargedTracks", "CentBin", "Bpt", "By"]
-keep_mc_isx3872 = True
 
 
 def ordered_unique(columns):
@@ -128,7 +137,7 @@ if not models:
 input_columns = reference_input_columns
 trans_columns = reference_trans_columns
 base_output_columns = ordered_unique(["Bmass"] + input_columns + extra_output_columns)
-mc_branches = ordered_unique(base_output_columns + (["isX3872"] if keep_mc_isx3872 else []))
+mc_branches = base_output_columns
 data_branches = base_output_columns
 
 
@@ -148,7 +157,7 @@ output_dir = ensure_dir(selected_dir(output_tag))
 
 print(f"Processing MC: {MC_INPUT}")
 df_mc = uproot.concatenate(MC_INPUT, filter_name=mc_branches, library="pd")
-mc_output_columns = ordered_unique(base_output_columns + (["isX3872"] if keep_mc_isx3872 else []))
+mc_output_columns = base_output_columns
 df_mc_out = None
 for model_bundle in models:
     df_scored = score_dataframe(df_mc, model_bundle, mc_output_columns)
@@ -176,21 +185,44 @@ with uproot.recreate(data_path) as f:
     f["ntmix"] = {col: df_data_out[col].values for col in df_data_out.columns}
 
 summary_path = os.path.join(output_dir, f"{output_prefix}batch_apply_summary.json")
+selection_profile = infer_selection_profile(output_tag, sample_key)
+training_cfg = resolve_training_config(sample_key, dataset_year, selection_profile)
+fid_profile = infer_fid_profile(output_tag, sample_key)
+fid_cfg = resolve_fiducial_config(sample_key, fid_profile)
+
+varset_tag = None
+varset_columns = []
+for tag in [m["train_tag"] for m in models] + train_tags:
+    candidate = infer_varset_from_tag(tag, sample=sample_key)
+    if candidate is not None:
+        varset_tag = candidate
+        varset_columns = get_varset_columns(sample_key, candidate)
+        break
+
 with open(summary_path, "w") as f:
     json.dump(
         {
-            "group_tag": group_tag,
-            "output_tag": output_tag,
-            "output_prefix": output_prefix,
-            "requested_train_tags": train_tags,
-            "applied_train_tags": [m["train_tag"] for m in models],
-            "skipped_models": skipped_models,
-            "data_input": DATA_INPUT,
-            "mc_input": MC_INPUT,
-            "mc_output": mc_path,
-            "data_output": data_path,
-            "sample": sample_key,
-            "dataset_year": dataset_year,
+            "input_datasets": {
+                "sample": sample_key,
+                "dataset_year": dataset_year,
+                "mc_input": MC_INPUT,
+                "data_input": DATA_INPUT,
+            },
+            "input_selection": {
+                "selection_profile": selection_profile,
+                "signal_selection": training_cfg["signal_selection"],
+                "background_selection": training_cfg["background_selection"],
+                "train_cut": training_cfg["train_cut"],
+            },
+            "draw_selection": {
+                "fid_profile": fid_profile,
+                "fiducial_cut": fid_cfg,
+            },
+            "training_varset": {
+                "varset_tag": varset_tag,
+                "columns": varset_columns,
+                "train_tags": [m["train_tag"] for m in models],
+            },
         },
         f,
         indent=2,
