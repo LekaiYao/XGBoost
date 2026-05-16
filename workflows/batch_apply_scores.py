@@ -6,19 +6,13 @@ import joblib
 import pandas as pd
 import uproot
 
-from utils.paths import (
-    ensure_dir,
-    resolve_model_config_path,
-    resolve_model_path,
-    resolve_scaler_path,
-    selected_dir,
-    train_group_tag,
-)
+from configs.samples import infer_dataset_year, infer_sample_from_tag, resolve_apply_config, to_root_spec
+from utils.paths import ensure_dir, resolve_model_config_path, resolve_model_path, resolve_scaler_path, selected_dir, train_group_tag
 
 if len(sys.argv) < 2:
     print(
-        "Usage: python3 batch_apply_scores.py "
-        "[--output-tag <output_tag>] [--data-input <root:tree>] [--output-prefix <prefix>] [--dataset-year <2023|2024>] "
+        "Usage: python3 workflows/batch_apply_scores.py "
+        "[--output-tag <output_tag>] [--data-input <root:tree>] [--output-prefix <prefix>] [--dataset-year <year>] "
         "<train_tag> [<train_tag> ...]"
     )
     sys.exit(1)
@@ -54,39 +48,14 @@ while i < len(args):
 
 group_tag = train_group_tag(train_tags)
 output_tag = output_tag or group_tag
+sample_key = infer_sample_from_tag(output_tag)
+dataset_year = dataset_year_override or infer_dataset_year(output_tag, sample_key)
+apply_cfg = resolve_apply_config(sample_key, dataset_year)
 
-APPLY_DATASET_OPTIONS = {
-    "2023": {
-        "mc_input": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix",
-        "data_input": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root:ntmix",
-    },
-    "2024": {
-        "mc_input": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC.root:ntmix",
-        "data_input": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA.root:ntmix",
-    },
-}
+MC_INPUT = to_root_spec(apply_cfg["mc"][0])
+DATA_INPUT = data_input_override or to_root_spec(apply_cfg["data"][0])
 
-def infer_default_dataset_year(tag):
-    if tag.startswith("pb23"):
-        return "2023"
-    if tag.startswith("pb24"):
-        return "2024"
-    return None
-
-
-dataset_year = dataset_year_override or infer_default_dataset_year(output_tag) or infer_default_dataset_year(group_tag)
-if dataset_year is None or dataset_year not in APPLY_DATASET_OPTIONS:
-    raise ValueError(
-        f"Unable to resolve dataset year for output_tag='{output_tag}' group_tag='{group_tag}'. "
-        f"Please pass --dataset-year with one of: {sorted(APPLY_DATASET_OPTIONS)}"
-    )
-inputs = APPLY_DATASET_OPTIONS[dataset_year]
-dataset_source = f"PbPb{dataset_year}"
-
-MC_INPUT = inputs["mc_input"]
-DATA_INPUT = data_input_override or inputs["data_input"]
-
-print(f"Apply dataset source: {dataset_source}")
+print(f"Apply dataset source: {apply_cfg['dataset_source']}")
 print(f"Apply MC input: {MC_INPUT}")
 print(f"Apply DATA input: {DATA_INPUT}")
 
@@ -108,8 +77,6 @@ def score_branch_name(train_tag):
     return f"xgb_score_{train_tag}"
 
 
-print(f"Loading model artifacts for group: {group_tag}")
-print(f"Writing grouped outputs under: {output_tag}")
 models = []
 skipped_models = []
 reference_input_columns = None
@@ -143,9 +110,6 @@ for train_tag in train_tags:
         if trans_columns != reference_trans_columns:
             raise ValueError(f"Transformed columns do not match within group: {train_tags}")
 
-    print(f"  [{train_tag}] Model: {resolved_model_path}")
-    print(f"  [{train_tag}] Scaler: {resolved_scaler_path}")
-
     models.append(
         {
             "train_tag": train_tag,
@@ -159,15 +123,10 @@ for train_tag in train_tags:
 
 if not models:
     print("No valid models found in this group; nothing to apply.")
-    if skipped_models:
-        print("Skipped models:")
-        for item in skipped_models:
-            print(f"  - {item['train_tag']}: {item['reason']}")
     sys.exit(1)
 
 input_columns = reference_input_columns
 trans_columns = reference_trans_columns
-
 base_output_columns = ordered_unique(["Bmass"] + input_columns + extra_output_columns)
 mc_branches = ordered_unique(base_output_columns + (["isX3872"] if keep_mc_isx3872 else []))
 data_branches = base_output_columns
@@ -180,23 +139,15 @@ def score_dataframe(df, model_bundle, output_columns):
         index=df.index,
     )
     scores = model_bundle["model"].predict_proba(df_trans[model_bundle["trans_columns"]])[:, 1]
-    print(
-        f"  [{model_bundle['train_tag']}] Score range for {model_bundle['score_column']}: "
-        f"[{scores.min():.4f}, {scores.max():.4f}]"
-    )
     df_out = df[output_columns].copy()
     df_out[model_bundle["score_column"]] = scores
     return df_out
 
 
 output_dir = ensure_dir(selected_dir(output_tag))
-print(f"Writing grouped scored events to: {output_dir}")
-print(f"Output prefix: '{output_prefix}'")
 
-print(f"\nProcessing MC once: {MC_INPUT}")
+print(f"Processing MC: {MC_INPUT}")
 df_mc = uproot.concatenate(MC_INPUT, filter_name=mc_branches, library="pd")
-print(f"  Loaded {len(df_mc)} events with branches: {mc_branches}")
-
 mc_output_columns = ordered_unique(base_output_columns + (["isX3872"] if keep_mc_isx3872 else []))
 df_mc_out = None
 for model_bundle in models:
@@ -209,12 +160,9 @@ for model_bundle in models:
 mc_path = os.path.join(output_dir, f"{output_prefix}MC_with_score.root")
 with uproot.recreate(mc_path) as f:
     f["ntmix"] = {col: df_mc_out[col].values for col in df_mc_out.columns}
-print(f"  Saved grouped MC to: {mc_path}")
 
-print(f"\nProcessing DATA once: {DATA_INPUT}")
+print(f"Processing DATA: {DATA_INPUT}")
 df_data = uproot.concatenate(DATA_INPUT, filter_name=data_branches, library="pd")
-print(f"  Loaded {len(df_data)} events with branches: {data_branches}")
-
 df_data_out = None
 for model_bundle in models:
     df_scored = score_dataframe(df_data, model_bundle, base_output_columns)
@@ -226,7 +174,6 @@ for model_bundle in models:
 data_path = os.path.join(output_dir, f"{output_prefix}DATA_with_score.root")
 with uproot.recreate(data_path) as f:
     f["ntmix"] = {col: df_data_out[col].values for col in df_data_out.columns}
-print(f"  Saved grouped DATA to: {data_path}")
 
 summary_path = os.path.join(output_dir, f"{output_prefix}batch_apply_summary.json")
 with open(summary_path, "w") as f:
@@ -242,15 +189,10 @@ with open(summary_path, "w") as f:
             "mc_input": MC_INPUT,
             "mc_output": mc_path,
             "data_output": data_path,
+            "sample": sample_key,
+            "dataset_year": dataset_year,
         },
         f,
         indent=2,
     )
 print(f"Saved apply summary: {summary_path}")
-
-if skipped_models:
-    print("Skipped models:")
-    for item in skipped_models:
-        print(f"  - {item['train_tag']}: {item['reason']}")
-
-print(f"\nAll grouped outputs saved in: {output_dir}")

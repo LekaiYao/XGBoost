@@ -1,4 +1,4 @@
-executable = run_single_step.sh
+executable = /bin/bash
 
 output = logs/job_$(job_tag).out
 error  = logs/job_$(job_tag).err
@@ -9,6 +9,6 @@ log    = logs/job_$(job_tag).log
 request_cpus = 4
 request_memory = 12000
 
-arguments = $(step) $(train_tag)
+arguments = -lc "cd /afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost && source .venv/bin/activate && if [ \"$(step)\" = train ]; then python3 workflows/condor_optuna_XGBoost.py $(train_tag); elif [ \"$(step)\" = apply ]; then python3 workflows/batch_apply_scores.py $(train_tag); elif [ \"$(step)\" = draw ]; then python3 workflows/batch_draw_scores.py $(train_tag); else python3 workflows/shap_importance.py $(train_tag); fi"
 
 queue 1

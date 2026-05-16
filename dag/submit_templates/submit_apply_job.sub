@@ -1,4 +1,4 @@
-executable = run_apply_job.sh
+executable = /bin/bash
 
 output = logs/job_$(job_tag).out
 error  = logs/job_$(job_tag).err
@@ -9,6 +9,6 @@ log    = logs/job_$(job_tag).log
 request_cpus = 4
 request_memory = 12000
 
-arguments = $(train_tag)
+arguments = -lc "cd /afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost && source .venv/bin/activate && python3 workflows/batch_apply_scores.py $(train_tag)"
 
 queue 1

@@ -47,9 +47,6 @@ dag_path=$(python3 dag/make_dagman_workflow.py \
 
 cp dag/submit_templates/submit_staged_single.sub "${afs_dir}/submit_staged_single.sub"
 cp dag/submit_templates/submit_batch_compare_single.sub "${afs_dir}/submit_batch_compare_single.sub"
-cp pipelines/run_staged.sh "${afs_dir}/run_staged.sh"
-cp pipelines/run_batch_compare.sh "${afs_dir}/run_batch_compare.sh"
-chmod +x "${afs_dir}/run_staged.sh" "${afs_dir}/run_batch_compare.sh"
 mkdir -p "${afs_dir}/$(dirname "${dag_path}")"
 cp "${dag_path}" "${afs_dir}/${dag_path}"
 

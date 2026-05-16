@@ -16,6 +16,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
+from configs.samples import (
+    infer_dataset_year,
+    infer_sample_from_tag as infer_sample_from_config,
+    infer_selection_profile,
+    resolve_training_config,
+    to_root_spec,
+)
 from utils.paths import (
     condor_feature_importance_cumulative_path,
     condor_feature_importance_path,
@@ -29,24 +36,6 @@ from utils.paths import (
 )
 from utils.run_metadata import save_run_metadata
 from utils.varsets import VARSETS, get_varset_columns, infer_sample_from_tag, infer_varset_from_tag
-
-DATASET_OPTIONS = {
-    "2023": {
-        "signal_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix",
-        "background_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root:ntmix",
-    },
-    "2024": {
-        "signal_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC.root:ntmix",
-        "background_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA_SMALL.root:ntmix",
-    },
-}
-
-DEFAULT_SIGNAL_SELECTION = "isX3872 == 1 and abs(By) < 1.6 and 15 < Bpt < 50"
-DEFAULT_BACKGROUND_SELECTION = "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50"
-PB23V6_SIGNAL_SELECTION = "isX3872 == 1 and abs(By) < 1.2 and 10 < Bpt < 50 and BQvalue < 0.2 and CentBin > 20.0"
-PB23V6_BACKGROUND_SELECTION = (
-    "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.2 and 10 < Bpt < 50 and BQvalue < 0.2 and CentBin > 20.0"
-)
 
 CORE_PARAMS = {
     "booster": "gbtree",
@@ -272,27 +261,26 @@ def normalize_stage_group(stage_group):
     return f"2v{canonical}"
 
 
-def get_selection_config(train_tag):
-    if train_tag.startswith("pb23v6_"):
-        return {
-            "signal_selection": PB23V6_SIGNAL_SELECTION,
-            "background_selection": PB23V6_BACKGROUND_SELECTION,
-            "by_max": 1.2,
-            "bpt_min": 10.0,
-            "bpt_max": 50.0,
-            "bqvalue_max": 0.2,
-            "centbin_min": 20.0,
-            "centbin_use_upper": False,
-            "centbin_max": None,
-        }
+def get_selection_config(train_tag, dataset_year_override=None, selection_profile_override=None):
+    sample = infer_sample_from_config(train_tag)
+    dataset_year = dataset_year_override or infer_dataset_year(train_tag, sample)
+    selection_profile = selection_profile_override or infer_selection_profile(train_tag, sample)
+    cfg = resolve_training_config(sample, dataset_year, selection_profile)
+    cut = cfg["train_cut"]
     return {
-        "signal_selection": DEFAULT_SIGNAL_SELECTION,
-        "background_selection": DEFAULT_BACKGROUND_SELECTION,
-        "by_max": 1.6,
-        "bpt_min": 15.0,
-        "bpt_max": 50.0,
-        "bqvalue_max": None,
-        "centbin_min": None,
+        "sample": sample,
+        "dataset_year": dataset_year,
+        "selection_profile": selection_profile,
+        "dataset_source": cfg["dataset_source"],
+        "signal_path": to_root_spec(cfg["signal"]),
+        "background_path": to_root_spec(cfg["background"]),
+        "signal_selection": cfg["signal_selection"],
+        "background_selection": cfg["background_selection"],
+        "by_max": cut.get("by_max"),
+        "bpt_min": cut.get("bpt_min"),
+        "bpt_max": cut.get("bpt_max"),
+        "bqvalue_max": cut.get("bqvalue_max"),
+        "centbin_min": cut.get("centbin_min"),
         "centbin_use_upper": False,
         "centbin_max": None,
     }
@@ -446,11 +434,14 @@ def main():
     print(f"Sample: {sample_key}")
     print(f"Feature set: {feature_set_tag}")
     print(f"OPTUNA_N_TRIALS per step: {n_trials}")
+    selection_cfg = get_selection_config(train_tag, dataset_year_override=args.dataset_year)
+    dataset_source = selection_cfg["dataset_source"]
+    sig_path = selection_cfg["signal_path"]
+    bkg_path = selection_cfg["background_path"]
+
     print(f"Dataset source: {dataset_source}")
     print(f"Signal path: {sig_path}")
     print(f"Background path: {bkg_path}")
-
-    selection_cfg = get_selection_config(train_tag)
     signal_selection = selection_cfg["signal_selection"]
     background_selection = selection_cfg["background_selection"]
     by_max = selection_cfg["by_max"]
@@ -466,12 +457,13 @@ def main():
 
     ak_sig = uproot.concatenate(sig_path, library="pd")
     ak_bkg = uproot.concatenate(bkg_path, library="pd")
-    sig_mask = (
-        (ak_sig["isX3872"] == 1)
-        & (np.abs(ak_sig["By"]) < by_max)
-        & (ak_sig["Bpt"] > bpt_min)
-        & (ak_sig["Bpt"] < bpt_max)
-    )
+    sig_mask = (ak_sig["isX3872"] == 1)
+    if by_max is not None:
+        sig_mask = sig_mask & (np.abs(ak_sig["By"]) < by_max)
+    if bpt_min is not None:
+        sig_mask = sig_mask & (ak_sig["Bpt"] > bpt_min)
+    if bpt_max is not None:
+        sig_mask = sig_mask & (ak_sig["Bpt"] < bpt_max)
     if bqvalue_max is not None:
         sig_mask = sig_mask & (ak_sig["BQvalue"] < bqvalue_max)
     if centbin_min is not None:
@@ -483,11 +475,13 @@ def main():
         ((ak_bkg["Bmass"] > 3.75) & (ak_bkg["Bmass"] < 3.83))
         | ((ak_bkg["Bmass"] > 3.91) & (ak_bkg["Bmass"] < 4.00))
     ]
-    bkg_mask = (
-        (np.abs(ak_bkg["By"]) < by_max)
-        & (ak_bkg["Bpt"] > bpt_min)
-        & (ak_bkg["Bpt"] < bpt_max)
-    )
+    bkg_mask = np.ones(len(ak_bkg), dtype=bool)
+    if by_max is not None:
+        bkg_mask = bkg_mask & (np.abs(ak_bkg["By"]) < by_max)
+    if bpt_min is not None:
+        bkg_mask = bkg_mask & (ak_bkg["Bpt"] > bpt_min)
+    if bpt_max is not None:
+        bkg_mask = bkg_mask & (ak_bkg["Bpt"] < bpt_max)
     if bqvalue_max is not None:
         bkg_mask = bkg_mask & (ak_bkg["BQvalue"] < bqvalue_max)
     if centbin_min is not None:
@@ -705,20 +699,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    if args.dataset_year is not None:
-        dataset_year = args.dataset_year
-    elif train_tag.startswith("pb23"):
-        dataset_year = "2023"
-    elif train_tag.startswith("pb24"):
-        dataset_year = "2024"
-    else:
-        dataset_year = None
-    if dataset_year is None or dataset_year not in DATASET_OPTIONS:
-        raise ValueError(
-            f"Unable to resolve dataset year for train_tag='{train_tag}'. "
-            "Please pass --dataset-year {2023,2024} or use a tag prefix like pb23*/pb24*."
-        )
-    dataset_paths = DATASET_OPTIONS[dataset_year]
-    dataset_source = f"PbPb{dataset_year}"
-    sig_path = dataset_paths["signal_path"]
-    bkg_path = dataset_paths["background_path"]

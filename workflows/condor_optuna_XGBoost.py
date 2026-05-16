@@ -14,6 +14,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
+from configs.samples import (
+    infer_dataset_year,
+    infer_sample_from_tag as infer_sample_from_config,
+    infer_selection_profile,
+    resolve_training_config,
+    to_root_spec,
+)
 from utils.paths import (
     condor_feature_importance_cumulative_path,
     condor_feature_importance_path,
@@ -48,7 +55,6 @@ def parse_args():
     )
     parser.add_argument(
         "--selection-profile",
-        choices=["legacy", "pb24v2"],
         default=None,
         help="Optional override for training selection profile",
     )
@@ -60,76 +66,31 @@ train_tag = args.train_tag
 legacy_search_space_tag = args.legacy_search_space_tag
 number_trials = int(os.environ.get("OPTUNA_N_TRIALS", "100"))
 
-DATASET_OPTIONS = {
-    "2023": {
-        "signal_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC.root:ntmix",
-        "background_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root:ntmix",
-    },
-    "2024": {
-        "signal_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC.root:ntmix",
-        "background_path": "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA_SMALL.root:ntmix",
-    },
-}
-
-SELECTION_PROFILES = {
-    "legacy": {
-        "signal_selection": "isX3872 == 1 and abs(By) < 1.6 and 15 < Bpt < 50",
-        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50",
-        "by_max": 1.6,
-        "bpt_min": 15.0,
-        "bpt_max": 50.0,
-        "centbin_min": None,
-    },
-    "pb24v2": {
-        "signal_selection": "isX3872 == 1 and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-        "by_max": 1.2,
-        "bpt_min": 10.0,
-        "bpt_max": None,
-        "centbin_min": 20.0,
-    },
-}
-
-
-def infer_default_selection_profile(tag):
-    if tag.startswith("pb24v2_"):
-        return "pb24v2"
-    return "legacy"
-
-
-def infer_default_dataset_year(tag):
-    if tag.startswith("pb23"):
-        return "2023"
-    if tag.startswith("pb24"):
-        return "2024"
-    if tag.startswith("pb24v2_"):
-        return "2024"
-    return None
-
-
 def resolve_training_inputs():
-    profile_key = args.selection_profile or infer_default_selection_profile(train_tag)
-    profile = SELECTION_PROFILES[profile_key]
-    dataset_year = args.dataset_year or infer_default_dataset_year(train_tag)
-    if dataset_year is None or dataset_year not in DATASET_OPTIONS:
-        raise ValueError(
-            f"Unable to resolve dataset year for train_tag='{train_tag}'. "
-            "Please pass --dataset-year {2023,2024} or use a tag prefix like pb23*/pb24*."
-        )
-    paths = DATASET_OPTIONS[dataset_year]
-    dataset_source = f"PbPb{dataset_year}"
-    return dataset_year, dataset_source, profile_key, profile, paths["signal_path"], paths["background_path"]
+    sample = infer_sample_from_config(train_tag)
+    dataset_year = args.dataset_year or infer_dataset_year(train_tag, sample)
+    profile_key = args.selection_profile or infer_selection_profile(train_tag, sample)
+    training_cfg = resolve_training_config(sample, dataset_year, profile_key)
+    return (
+        sample,
+        dataset_year,
+        training_cfg["dataset_source"],
+        profile_key,
+        training_cfg["train_cut"],
+        to_root_spec(training_cfg["signal"]),
+        to_root_spec(training_cfg["background"]),
+        training_cfg["signal_selection"],
+        training_cfg["background_selection"],
+    )
 
 
-DATASET_YEAR, DATASET_SOURCE, SELECTION_PROFILE, SELECTION_CONFIG, SIG_PATH, BKG_PATH = resolve_training_inputs()
+SAMPLE_KEY, DATASET_YEAR, DATASET_SOURCE, SELECTION_PROFILE, SELECTION_CONFIG, SIG_PATH, BKG_PATH, SIGNAL_SELECTION, BACKGROUND_SELECTION = resolve_training_inputs()
 
 sample_key = infer_sample_from_tag(train_tag)
 feature_set_tag = infer_varset_from_tag(train_tag, sample=sample_key)
 if feature_set_tag is None:
     raise ValueError(f"Unable to infer feature set from train_tag: {train_tag}")
 input_columns = get_varset_columns(sample_key, feature_set_tag)
-SIGNAL_SELECTION = SELECTION_CONFIG["signal_selection"]
-BACKGROUND_SELECTION = SELECTION_CONFIG["background_selection"]
 SIGNAL_SCALE_FACTOR = 3491.0 / 70439.0
 SIGNAL_WINDOW_WIDTH = 3.91 - 3.83
 SIDEBAND_WINDOW_WIDTH = (3.83 - 3.75) + (4.00 - 3.91)
