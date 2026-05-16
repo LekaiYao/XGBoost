@@ -4,7 +4,7 @@ from pathlib import Path
 
 from configs.samples import infer_dataset_year, infer_selection_profile
 from utils.tagging import parse_optuna_trials_from_group_body, split_channel_tag
-from utils.varsets import VARSETS, infer_sample_from_tag, infer_varset_from_tag
+from utils.varsets import get_varset_columns, infer_channel_from_tag, infer_sample_from_tag, infer_varset_from_tag
 
 
 def train_tag(group_tag: str, version: int) -> str:
@@ -99,7 +99,7 @@ def main():
     optuna_n_trials = parse_optuna_n_trials_from_group_tag(args.group_tag)
     print(f"Detected varset: {varset}")
     print(f"Detected sample: {sample}")
-    print(f"Varset columns: {VARSETS[sample][varset]}")
+    print(f"Varset columns: {get_varset_columns(sample, varset, channel=infer_channel_from_tag(args.group_tag))}")
     print(f"Detected dataset_year: {dataset_year}")
     print(f"Detected selection_profile: {selection_profile}")
     print(f"Detected optuna_n_trials: {optuna_n_trials}")

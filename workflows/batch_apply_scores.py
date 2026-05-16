@@ -13,6 +13,7 @@ from configs.samples import (
     infer_sample_from_tag,
     infer_selection_profile,
     resolve_apply_config,
+    resolve_draw_config,
     resolve_fiducial_config,
     resolve_training_config,
     to_root_spec,
@@ -63,6 +64,8 @@ sample_key = infer_sample_from_tag(output_tag)
 channel = infer_channel_from_tag(output_tag)
 dataset_year = dataset_year_override or infer_dataset_year(output_tag, sample_key)
 apply_cfg = resolve_apply_config(sample_key, channel, dataset_year)
+draw_cfg = resolve_draw_config(sample_key, channel, dataset_year)
+draw_tree_name = draw_cfg["data"]["tree"]
 
 MC_INPUT = to_root_spec(apply_cfg["mc"][0])
 DATA_INPUT = data_input_override or to_root_spec(apply_cfg["data"][0])
@@ -184,7 +187,7 @@ for model_bundle in models:
 
 data_path = os.path.join(output_dir, f"{output_prefix}DATA_with_score.root")
 with uproot.recreate(data_path) as f:
-    f["ntmix"] = {col: df_data_out[col].values for col in df_data_out.columns}
+    f[draw_tree_name] = {col: df_data_out[col].values for col in df_data_out.columns}
 
 summary_path = os.path.join(output_dir, f"{output_prefix}batch_apply_summary.json")
 selection_profile = infer_selection_profile(output_tag, sample_key)

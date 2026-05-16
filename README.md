@@ -56,6 +56,13 @@ bash dag/submit_single_workflow.sh Bs_pp24v2_6v4_xgb_v1 0
   - 同文件的 `DIRECT_XGB_PARAMS["pbpb"/"pp"]`
 - 样本路径、TTree、训练筛选、fid cut：
   - 文件：[configs/samples.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/configs/samples.py)
+- `samples.py` 核心结构：
+  - `SAMPLES[sample]["channels"][channel]["datasets"][year]["train/apply/draw"]`
+  - `selection_profiles`：训练筛选
+  - `fiducial_profiles`：apply/draw fid cut
+- draw 输入约定：
+  - draw 读取的是 apply 产物 `output/selected/<train_tag>/DATA_with_score.root`
+  - 读取树名来自 `datasets[year].draw.data.tree`（按 channel 独立）
 - `selection_profiles` 控制 train cut
 - `fiducial_profiles` 控制 apply/draw cut（由 `fid_profile` 选择）
   - 以上均按 `sample + channel` 独立配置
@@ -63,7 +70,9 @@ bash dag/submit_single_workflow.sh Bs_pp24v2_6v4_xgb_v1 0
   - 文件：[utils/varsets.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/utils/varsets.py)
 
 ## 如何修改关键配置
-- 修改 varset：编辑 [utils/varsets.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/utils/varsets.py)（按 `sample + channel`）
+- 修改 varset：编辑 [utils/varsets.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/utils/varsets.py)
+  - 结构：`VARSETS[sample][channel][varset]`
+  - 示例：`VARSETS["pbpb"]["X"]["4v2"]`、`VARSETS["pbpb"]["Bu"]["4v2"]`、`VARSETS["pp"]["X"]["4v2"]`
 - 修改输入 ROOT/TTree：编辑 [configs/samples.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/configs/samples.py) 的 `datasets`（`train/apply/draw`）
 - 修改训练筛选条件：编辑 `configs/samples.py` 的 `selection_profiles`
 - 修改 apply/draw fiducial region：编辑 `configs/samples.py` 的 `fiducial_profiles`
@@ -88,6 +97,7 @@ bash dag/submit_single_workflow.sh <train_tag> [with_shap]
 
 ## 输出与排障
 - draw 输出目录（pp/pbpb 一致）：`output/selected/<train_tag>/cut_scan/`
+- draw 输入文件：`output/selected/<train_tag>/DATA_with_score.root`（来自 apply）
 - `batch_apply_summary.json` 字段：
   - `input_datasets`（输入数据集）
   - `input_selection`（输入时筛选条件）

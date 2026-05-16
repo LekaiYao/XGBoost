@@ -5,7 +5,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import uproot
 
-from configs.samples import infer_channel_from_tag, infer_fid_profile, infer_sample_from_tag, resolve_fiducial_config
+from configs.samples import (
+    infer_channel_from_tag,
+    infer_dataset_year,
+    infer_fid_profile,
+    infer_sample_from_tag,
+    resolve_draw_config,
+    resolve_fiducial_config,
+)
 from utils.paths import ensure_dir, selected_dir, train_group_tag
 
 if len(sys.argv) < 2:
@@ -47,10 +54,12 @@ group_tag = train_group_tag(train_tags)
 output_tag = output_tag or group_tag
 sample_key = infer_sample_from_tag(output_tag)
 channel = infer_channel_from_tag(output_tag)
+dataset_year = infer_dataset_year(output_tag, sample_key)
 active_fid = infer_fid_profile(output_tag, sample_key) if fid_profile == "auto" else fid_profile
 fid_cfg = resolve_fiducial_config(sample_key, channel, active_fid)
+draw_cfg = resolve_draw_config(sample_key, channel, dataset_year)
 
-TREE = "ntmix"
+TREE = draw_cfg["data"]["tree"]
 MASS_RANGE = (3.62, 4.0)
 BINS = np.arange(MASS_RANGE[0], MASS_RANGE[1] + 0.01, 0.01)
 REFERENCE_MASSES = [3.686, 3.872]

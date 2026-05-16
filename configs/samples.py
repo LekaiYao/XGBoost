@@ -9,6 +9,11 @@ def _spec(path: str, tree: str) -> dict:
     return {"path": path, "tree": tree}
 
 
+def _draw_from_apply_spec(tree: str) -> dict:
+    # Draw consumes apply output DATA_with_score.root in selected/<tag>/.
+    return _spec("__APPLY_OUTPUT__/DATA_with_score.root", tree)
+
+
 def to_root_spec(entry: dict) -> str:
     return f"{entry['path']}:{entry['tree']}"
 
@@ -20,7 +25,18 @@ def split_root_spec(spec: str) -> tuple[str, str]:
     return path, tree
 
 
-def _pbpb_channel_cfg(signal23, signal24):
+def _pbpb_channel_cfg(
+    signal23,
+    train_background23,
+    apply_background23,
+    signal24,
+    train_background24,
+    apply_background24,
+    draw_tree,
+    selection_profiles,
+    fiducial_profiles,
+    mass_windows,
+):
     return {
         "default_dataset_year": "2024",
         "default_selection_profile": "pb24v2",
@@ -29,87 +45,48 @@ def _pbpb_channel_cfg(signal23, signal24):
             "2023": {
                 "train": {
                     "signal": signal23,
-                    "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root", "ntmix"),
+                    "background": train_background23,
                 },
                 "apply": {
                     "mc": [signal23],
-                    "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root", "ntmix")],
+                    "data": [apply_background23],
                 },
                 "draw": {
-                    "data": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root", "ntmix"),
+                    "data": _draw_from_apply_spec(draw_tree),
                 },
             },
             "2024": {
                 "train": {
                     "signal": signal24,
-                    "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA_SMALL.root", "ntmix"),
+                    "background": train_background24,
                 },
                 "apply": {
                     "mc": [signal24],
-                    "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA.root", "ntmix")],
+                    "data": [apply_background24],
                 },
                 "draw": {
-                    "data": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA.root", "ntmix"),
+                    "data": _draw_from_apply_spec(draw_tree),
                 },
             },
         },
-        "selection_profiles": {
-            "legacy": {
-                "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
-                "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50",
-                "train_cut": {"by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": None, "bqvalue_max": None},
-            },
-            "pb24v2": {
-                "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-                "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-                "train_cut": {"by_max": 1.2, "bpt_min": 10.0, "bpt_max": None, "centbin_min": 20.0, "bqvalue_max": None},
-            },
-        },
-        "fiducial_profiles": {
-            "fid": {"bqvalue_max": 0.13, "by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": 0.0, "centbin_max": 90.0},
-            "fid3": {"bqvalue_max": 0.2, "by_max": 1.2, "bpt_min": 10.0, "bpt_max": 50.0, "centbin_min": 20.0, "centbin_max": None},
-        },
-        "mass_windows": {
-            "signal": None,
-            "sidebands": [(3.75, 3.83), (3.91, 4.00)],
-        },
+        "selection_profiles": selection_profiles,
+        "fiducial_profiles": fiducial_profiles,
+        "mass_windows": mass_windows,
     }
 
 
-def _pp_channel_cfg(signal_train, signal_apply_list):
+def _pp_channel_cfg(datasets_by_year, draw_tree, selection_profiles, fiducial_profiles, mass_windows):
+    cfg = deepcopy(datasets_by_year)
+    for year_cfg in cfg.values():
+        year_cfg["draw"] = {"data": _draw_from_apply_spec(draw_tree)}
     return {
         "default_dataset_year": "2024",
         "default_selection_profile": "pp24v2",
         "default_fid_profile": "fid",
-        "datasets": {
-            "2024": {
-                "train": {
-                    "signal": signal_train,
-                    "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix"),
-                },
-                "apply": {
-                    "mc": signal_apply_list,
-                    "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix")],
-                },
-                "draw": {
-                    "data": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix"),
-                },
-            }
-        },
-        "selection_profiles": {
-            "pp24v2": {
-                "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
-                "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
-                "train_cut": {"by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "bqvalue_max": None},
-            }
-        },
-        "fiducial_profiles": {
-            "fid": {"bqvalue_max": None, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None}
-        },
-        "mass_windows": {
-            "signal": None,
-            "sidebands": [(3.75, 3.80), (3.95, 4.00)],
-        },
+        "datasets": cfg,
+        "selection_profiles": selection_profiles,
+        "fiducial_profiles": fiducial_profiles,
+        "mass_windows": mass_windows,
     }
 
 
@@ -118,44 +95,212 @@ SAMPLES = {
         "channels": {
             "X": _pbpb_channel_cfg(
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC_X3872.root", "ntmix_X3872"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root", "ntmix"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root", "ntmix"),
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC_X3872.root", "ntmix_X3872"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA_SMALL.root", "ntmix"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA.root", "ntmix"),
+                "ntmix_X3872",
+                {
+                    "legacy": {
+                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
+                        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50",
+                        "train_cut": {"by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": None, "bqvalue_max": None},
+                    },
+                    "pb24v2": {
+                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "train_cut": {"by_max": 1.2, "bpt_min": 10.0, "bpt_max": None, "centbin_min": 20.0, "bqvalue_max": None},
+                    },
+                },
+                {
+                    "fid": {"bqvalue_max": 0.13, "by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": 0.0, "centbin_max": 90.0},
+                    "fid3": {"bqvalue_max": 0.2, "by_max": 1.2, "bpt_min": 10.0, "bpt_max": 50.0, "centbin_min": 20.0, "centbin_max": None},
+                },
+                {"signal": None, "sidebands": [(3.75, 3.83), (3.91, 4.00)]},
             ),
             "Bu": _pbpb_channel_cfg(
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC_BU.root", "ntmix_BU"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root", "ntmix"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root", "ntmix"),
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC_BU.root", "ntmix_BU"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA_SMALL.root", "ntmix"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA.root", "ntmix"),
+                "ntmix_BU",
+                {
+                    "legacy": {
+                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
+                        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50",
+                        "train_cut": {"by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": None, "bqvalue_max": None},
+                    },
+                    "pb24v2": {
+                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "train_cut": {"by_max": 1.2, "bpt_min": 10.0, "bpt_max": None, "centbin_min": 20.0, "bqvalue_max": None},
+                    },
+                },
+                {
+                    "fid": {"bqvalue_max": 0.13, "by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": 0.0, "centbin_max": 90.0},
+                    "fid3": {"bqvalue_max": 0.2, "by_max": 1.2, "bpt_min": 10.0, "bpt_max": 50.0, "centbin_min": 20.0, "centbin_max": None},
+                },
+                {"signal": None, "sidebands": [(3.75, 3.83), (3.91, 4.00)]},
             ),
             "Bd": _pbpb_channel_cfg(
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC_BD.root", "ntmix_BD"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root", "ntmix"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root", "ntmix"),
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC_BD.root", "ntmix_BD"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA_SMALL.root", "ntmix"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA.root", "ntmix"),
+                "ntmix_BD",
+                {
+                    "legacy": {
+                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
+                        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50",
+                        "train_cut": {"by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": None, "bqvalue_max": None},
+                    },
+                    "pb24v2": {
+                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "train_cut": {"by_max": 1.2, "bpt_min": 10.0, "bpt_max": None, "centbin_min": 20.0, "bqvalue_max": None},
+                    },
+                },
+                {
+                    "fid": {"bqvalue_max": 0.13, "by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": 0.0, "centbin_max": 90.0},
+                    "fid3": {"bqvalue_max": 0.2, "by_max": 1.2, "bpt_min": 10.0, "bpt_max": 50.0, "centbin_min": 20.0, "centbin_max": None},
+                },
+                {"signal": None, "sidebands": [(3.75, 3.83), (3.91, 4.00)]},
             ),
             "Bs": _pbpb_channel_cfg(
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC_BS.root", "ntmix_BS"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root", "ntmix"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root", "ntmix"),
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC_BS.root", "ntmix_BS"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA_SMALL.root", "ntmix"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA.root", "ntmix"),
+                "ntmix_BS",
+                {
+                    "legacy": {
+                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
+                        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50",
+                        "train_cut": {"by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": None, "bqvalue_max": None},
+                    },
+                    "pb24v2": {
+                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "train_cut": {"by_max": 1.2, "bpt_min": 10.0, "bpt_max": None, "centbin_min": 20.0, "bqvalue_max": None},
+                    },
+                },
+                {
+                    "fid": {"bqvalue_max": 0.13, "by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": 0.0, "centbin_max": 90.0},
+                    "fid3": {"bqvalue_max": 0.2, "by_max": 1.2, "bpt_min": 10.0, "bpt_max": 50.0, "centbin_min": 20.0, "centbin_max": None},
+                },
+                {"signal": None, "sidebands": [(3.75, 3.83), (3.91, 4.00)]},
             ),
         }
     },
     "pp": {
         "channels": {
             "X": _pp_channel_cfg(
-                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872.root", "ntmix_X3872"),
-                [
-                    _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_PSI2S_nonPrompt.root", "ntmix_PSI2S"),
-                    _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_PSI2S.root", "ntmix_PSI2S"),
-                    _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872_nonPrompt.root", "ntmix_X3872"),
-                    _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872.root", "ntmix_X3872"),
-                ],
+                {
+                    "2024": {
+                        "train": {
+                            "signal": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872.root", "ntmix_X3872"),
+                            "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix"),
+                        },
+                        "apply": {
+                            "mc": [
+                                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_PSI2S_nonPrompt.root", "ntmix_PSI2S"),
+                                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_PSI2S.root", "ntmix_PSI2S"),
+                                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872_nonPrompt.root", "ntmix_X3872"),
+                                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872.root", "ntmix_X3872"),
+                            ],
+                            "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix")],
+                        },
+                    },
+                },
+                "ntmix_X3872",
+                {
+                    "pp24v2": {
+                        "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
+                        "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
+                        "train_cut": {"by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "bqvalue_max": None},
+                    }
+                },
+                {"fid": {"bqvalue_max": None, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None}},
+                {"signal": None, "sidebands": [(3.75, 3.80), (3.95, 4.00)]},
             ),
             "Bu": _pp_channel_cfg(
-                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BU.root", "ntmix_BU"),
-                [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BU.root", "ntmix_BU")],
+                {
+                    "2024": {
+                        "train": {
+                            "signal": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BU.root", "ntmix_BU"),
+                            "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix"),
+                        },
+                        "apply": {
+                            "mc": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BU.root", "ntmix_BU")],
+                            "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix")],
+                        },
+                    },
+                },
+                "ntmix_BU",
+                {
+                    "pp24v2": {
+                        "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
+                        "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
+                        "train_cut": {"by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "bqvalue_max": None},
+                    }
+                },
+                {"fid": {"bqvalue_max": None, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None}},
+                {"signal": None, "sidebands": [(3.75, 3.80), (3.95, 4.00)]},
             ),
             "Bd": _pp_channel_cfg(
-                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BD.root", "ntmix_BD"),
-                [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BD.root", "ntmix_BD")],
+                {
+                    "2024": {
+                        "train": {
+                            "signal": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BD.root", "ntmix_BD"),
+                            "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix"),
+                        },
+                        "apply": {
+                            "mc": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BD.root", "ntmix_BD")],
+                            "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix")],
+                        },
+                    },
+                },
+                "ntmix_BD",
+                {
+                    "pp24v2": {
+                        "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
+                        "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
+                        "train_cut": {"by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "bqvalue_max": None},
+                    }
+                },
+                {"fid": {"bqvalue_max": None, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None}},
+                {"signal": None, "sidebands": [(3.75, 3.80), (3.95, 4.00)]},
             ),
             "Bs": _pp_channel_cfg(
-                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BS.root", "ntmix_BS"),
-                [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BS.root", "ntmix_BS")],
+                {
+                    "2024": {
+                        "train": {
+                            "signal": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BS.root", "ntmix_BS"),
+                            "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix"),
+                        },
+                        "apply": {
+                            "mc": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BS.root", "ntmix_BS")],
+                            "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix")],
+                        },
+                    },
+                },
+                "ntmix_BS",
+                {
+                    "pp24v2": {
+                        "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
+                        "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
+                        "train_cut": {"by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "bqvalue_max": None},
+                    }
+                },
+                {"fid": {"bqvalue_max": None, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None}},
+                {"signal": None, "sidebands": [(3.75, 3.80), (3.95, 4.00)]},
             ),
         }
     },
@@ -232,6 +377,17 @@ def resolve_apply_config(sample: str, channel: str, dataset_year: str) -> dict:
     return {
         "dataset_year": dataset_year,
         "mc": deepcopy(ds["mc"]),
+        "data": deepcopy(ds["data"]),
+        "dataset_source": f"{sample}_{channel}_{dataset_year}",
+        "channel": channel,
+    }
+
+
+def resolve_draw_config(sample: str, channel: str, dataset_year: str) -> dict:
+    cfg = _channel_cfg(sample, channel)
+    ds = cfg["datasets"][dataset_year]["draw"]
+    return {
+        "dataset_year": dataset_year,
         "data": deepcopy(ds["data"]),
         "dataset_source": f"{sample}_{channel}_{dataset_year}",
         "channel": channel,
