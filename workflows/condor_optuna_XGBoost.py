@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
+from configs.search_spaces import OPTUNA_SPACES
 from configs.samples import (
     infer_dataset_year,
     infer_sample_from_tag as infer_sample_from_config,
@@ -339,22 +340,9 @@ for idx, (md_lo, md_hi, mcw_lo, mcw_hi, lr_lo, lr_hi, ne_lo, ne_hi, ss_lo, ss_hi
         "colsample_bytree": float_range(cs_lo, cs_hi),
     }
 
-SINGLE_OPTUNA_SEARCH_SPACE = {
-    "n_estimators": int_range(500, 1800),
-    "learning_rate": float_range(0.01, 0.08, log=True),
-    "max_depth": int_range(2, 6),
-    "min_child_weight": int_range(2, 20),
-    "subsample": float_range(0.65, 0.95),
-    "colsample_bytree": float_range(0.65, 0.95),
-    "gamma": float_range(0.0, 4.0),
-    "reg_alpha": float_range(0.0, 3.0),
-    "reg_lambda": float_range(1.0, 12.0),
-    "max_delta_step": float_range(0.0, 4.0),
-}
-
 if legacy_search_space_tag:
     print(f"Warning: legacy search space tag '{legacy_search_space_tag}' is ignored in single-space mode.")
-OPTUNA_SEARCH_SPACE = SINGLE_OPTUNA_SEARCH_SPACE
+OPTUNA_SEARCH_SPACE = OPTUNA_SPACES[sample_key]
 
 
 def suggest_param(trial, name, config):

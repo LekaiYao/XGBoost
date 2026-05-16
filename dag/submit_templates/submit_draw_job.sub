@@ -1,4 +1,4 @@
-executable = /bin/bash
+executable = run_draw_job.sh
 
 output = logs/job_$(job_tag).out
 error  = logs/job_$(job_tag).err
@@ -9,6 +9,6 @@ log    = logs/job_$(job_tag).log
 request_cpus = 4
 request_memory = 12000
 
-arguments = -lc "cd /afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost && source .venv/bin/activate && python3 workflows/batch_draw_scores.py $(train_tag)"
+arguments = $(train_tag)
 
 queue 1

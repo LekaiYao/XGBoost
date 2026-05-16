@@ -1,4 +1,4 @@
-executable = /bin/bash
+executable = run_train_dispatch.sh
 
 optuna_n_trials = 200
 resume_flag = 0
@@ -12,7 +12,7 @@ log    = logs/job_$(train_tag).log
 request_cpus = 4
 request_memory = 12000
 
-arguments = -lc "cd /afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost && source .venv/bin/activate && python3 workflows/train_dispatch.py $(train_tag) $(optuna_n_trials) $(stage_group) $(resume_flag) __EMPTY__ __EMPTY__"
+arguments = 1399 1399 1106495882train_tag) 1399 1399 1106495882optuna_n_trials) 1399 1399 1106495882stage_group) 1399 1399 1106495882resume_flag) __EMPTY__ __EMPTY__
 
 queue train_tag, stage_group from (
   pb23v5_4v2_4o200_2v1 2v1

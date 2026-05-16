@@ -23,6 +23,8 @@ cp dag/submit_templates/submit_train_job.sub "${afs_dir}/submit_train_job.sub"
 cp dag/submit_templates/submit_apply_job.sub "${afs_dir}/submit_apply_job.sub"
 cp dag/submit_templates/submit_draw_job.sub "${afs_dir}/submit_draw_job.sub"
 cp dag/submit_templates/submit_shap_job.sub "${afs_dir}/submit_shap_job.sub"
+cp wrappers/*.sh "${afs_dir}/"
+chmod +x "${afs_dir}"/run_*.sh
 mkdir -p "${afs_dir}/dag/generated"
 cp "${dag_path}" "${afs_dir}/${dag_path}"
 

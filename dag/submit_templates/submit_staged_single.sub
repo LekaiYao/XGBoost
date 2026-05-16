@@ -1,4 +1,4 @@
-executable = /bin/bash
+executable = run_train_dispatch.sh
 
 optuna_n_trials = $(optuna_n_trials)
 resume_flag = $(resume_flag)
@@ -14,6 +14,6 @@ log    = logs/job_$(job_tag).log
 request_cpus = 4
 request_memory = 12000
 
-arguments = -lc "cd /afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost && source .venv/bin/activate && python3 workflows/train_dispatch.py $(train_tag) $(optuna_n_trials) $(stage_group) $(resume_flag) $(dataset_year) $(selection_profile)"
+arguments = $(train_tag) $(optuna_n_trials) $(stage_group) $(resume_flag) $(dataset_year) $(selection_profile)
 
 queue 1
