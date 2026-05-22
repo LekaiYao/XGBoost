@@ -26,6 +26,12 @@ bash dag/submit_dagman_workflow.sh <group_tag> <version_start> <version_end> [fi
 - `fid_profile`：apply/draw 使用的 fid 配置名（定义在 `configs/samples.py`），例如 `fid` 或 `fid3`
 - 自动解析：`group_tag` 内必须包含 Optuna trial 信息（例如 `_o200` 或 `_4o200`），并由前缀自动推断 `dataset_year` 和 `selection_profile`
 
+当前命名到筛选映射（实际行为）：
+- `pb24v1_*`：`selection_profile=pb24v1`，`fid_profile=fid`
+- `pb24v2_*`：`selection_profile=pb24v2`，`fid_profile=fid3`
+- `pb23v6_*`：`fid_profile=fid3`
+- 其它命名：回退到各 channel 的默认 profile
+
 示例（核心提交命令）：
 ```bash
 # PbPb：提交 v1-v10，共10个训练 + 1个最终apply/draw
@@ -78,6 +84,10 @@ bash dag/submit_single_workflow.sh Bs_pp24v2_6v4_xgb_v1 0
 - 修改 apply/draw fiducial region：编辑 `configs/samples.py` 的 `fiducial_profiles`
 - 修改 Optuna 搜索空间：编辑 [configs/search_spaces.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/configs/search_spaces.py) 的 `OPTUNA_SPACES`
 - 修改无 Optuna 训练参数：编辑 `configs/search_spaces.py` 的 `DIRECT_XGB_PARAMS`
+
+## 下一步改造（命名显式映射）
+- 当前仍存在“前缀推断 profile”的隐式行为。
+- 下一步计划：将命名规则扩展为可显式指定训练筛选与画图 fid 的字段，并在解析阶段强校验，确保“名称即配置”。
 
 ### 单模型 DAG
 ```bash

@@ -23,6 +23,7 @@ PBPB_VARSETS_X = {
 PBPB_VARSETS_BU = {
     "4v": ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bchi2Prob"],
     "4v2": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk2Pt"],
+    "5v2": ["Bchi2Prob", "Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D"],
 }
 
 PBPB_VARSETS_BD = {
@@ -41,7 +42,7 @@ PP_VARSETS_X = {
 }
 
 PP_VARSETS_BU = {
-    "5v2": ["Bchi2Prob", "Btrk1dR", "Btrk2dR", "Btrk1Pt", "Btrk2Pt"],
+    "5v2": ["Bchi2Prob", "Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D"],
 }
 
 PP_VARSETS_BD = {
