@@ -16,6 +16,7 @@ from configs.samples import (
     resolve_draw_config,
     resolve_fiducial_config,
     resolve_training_config,
+    split_root_spec,
     to_root_spec,
 )
 from utils.paths import ensure_dir, resolve_model_config_path, resolve_model_path, resolve_scaler_path, selected_dir, train_group_tag
@@ -69,6 +70,7 @@ draw_tree_name = draw_cfg["data"]["tree"]
 
 MC_INPUT = to_root_spec(apply_cfg["mc"][0])
 DATA_INPUT = data_input_override or to_root_spec(apply_cfg["data"][0])
+MC_TREE_INPUT = split_root_spec(MC_INPUT)[1]
 
 print(f"Apply dataset source: {apply_cfg['dataset_source']}")
 print(f"Apply MC input: {MC_INPUT}")
@@ -87,7 +89,12 @@ def ordered_unique(columns):
     return output
 
 
+single_model_mode = len(train_tags) == 1
+
+
 def score_branch_name(train_tag):
+    if single_model_mode:
+        return "xgb_score"
     return f"xgb_score_{train_tag}"
 
 
@@ -173,7 +180,7 @@ for model_bundle in models:
 
 mc_path = os.path.join(output_dir, f"{output_prefix}MC_with_score.root")
 with uproot.recreate(mc_path) as f:
-    f["ntmix"] = {col: df_mc_out[col].values for col in df_mc_out.columns}
+    f[MC_TREE_INPUT] = {col: df_mc_out[col].values for col in df_mc_out.columns}
 
 print(f"Processing DATA: {DATA_INPUT}")
 df_data = uproot.concatenate(DATA_INPUT, filter_name=data_branches, library="pd")

@@ -95,6 +95,28 @@ bash dag/submit_single_workflow.sh <train_tag> [with_shap]
 ```
 执行链：`TRAIN -> APPLY -> DRAW -> (optional SHAP)`，`.sub` 直接调用 `workflows/*.py`。
 
+## SHAP 运行命令
+### 1) 作为 single DAG 的一部分运行 SHAP
+将 `with_shap` 设为 `1`，DAG 会在 `DRAW` 后追加 `SHAP` 节点：
+```bash
+bash dag/submit_single_workflow.sh <train_tag> 1
+```
+示例：
+```bash
+bash dag/submit_single_workflow.sh X_pp24v2_6v4_xgb_v1 1
+```
+
+### 2) 对已完成训练单独运行 SHAP
+不重跑 train/apply/draw，直接针对已有模型做 SHAP：
+```bash
+.venv/bin/python -m workflows.shap_importance <train_tag> [max_events]
+```
+示例：
+```bash
+.venv/bin/python -m workflows.shap_importance X_pp24v2_6v4_xgb_v1
+.venv/bin/python -m workflows.shap_importance Bu_pb24v1_5v2_xgb_v1 30000
+```
+
 ## 命名规范
 - 普通训练：`<sample>_<varset>_v<version>`
 - Optuna 训练：`<sample>_<varset>_o<optunaTrials>_v<version>`

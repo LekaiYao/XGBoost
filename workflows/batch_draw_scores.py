@@ -74,16 +74,24 @@ if not os.path.exists(input_file):
 root_file = uproot.open(input_file)
 tree = root_file[TREE]
 available_branches = set(tree.keys())
-score_branches = [f"xgb_score_{train_tag}" for train_tag in train_tags]
+score_branch_map = {}
 valid_train_tags, missing_train_tags = [], []
-for train_tag, score_branch in zip(train_tags, score_branches):
-    (valid_train_tags if score_branch in available_branches else missing_train_tags).append(train_tag)
+for train_tag in train_tags:
+    tagged_branch = f"xgb_score_{train_tag}"
+    if tagged_branch in available_branches:
+        score_branch_map[train_tag] = tagged_branch
+        valid_train_tags.append(train_tag)
+    elif "xgb_score" in available_branches:
+        score_branch_map[train_tag] = "xgb_score"
+        valid_train_tags.append(train_tag)
+    else:
+        missing_train_tags.append(train_tag)
 
 if not valid_train_tags:
     print("No valid score branches found.")
     sys.exit(1)
 
-branches = ["Bmass", "BQvalue", "By", "Bpt", "CentBin"] + [f"xgb_score_{tag}" for tag in valid_train_tags]
+branches = ["Bmass", "BQvalue", "By", "Bpt", "CentBin"] + sorted({score_branch_map[tag] for tag in valid_train_tags})
 df = tree.arrays(branches, library="pd")
 
 df_base = df[(df["Bmass"] > MASS_RANGE[0]) & (df["Bmass"] < MASS_RANGE[1])]
@@ -105,7 +113,7 @@ df_fid = df_base[fid_mask]
 
 # Significance scan is intentionally disabled for now.
 for train_tag in valid_train_tags:
-    score_column = f"xgb_score_{train_tag}"
+    score_column = score_branch_map[train_tag]
     cut_scan_root = ensure_dir(os.path.join(selected_dir(output_tag), "cut_scan"))
     if len(valid_train_tags) == 1:
         output_dir = cut_scan_root
