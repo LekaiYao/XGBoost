@@ -60,12 +60,11 @@ fid_cfg = resolve_fiducial_config(sample_key, channel, active_fid)
 draw_cfg = resolve_draw_config(sample_key, channel, dataset_year)
 
 TREE = draw_cfg["data"]["tree"]
-MASS_RANGE = (3.62, 4.0)
-BINS = np.arange(MASS_RANGE[0], MASS_RANGE[1] + 0.01, 0.01)
-REFERENCE_MASSES = [3.686, 3.872]
+MASS_RANGE = tuple(draw_cfg["plot"]["mass_range"])
+BIN_WIDTH = float(draw_cfg["plot"]["bin_width"])
+BINS = np.arange(MASS_RANGE[0], MASS_RANGE[1] + BIN_WIDTH, BIN_WIDTH)
+REFERENCE_MASSES = list(draw_cfg["plot"].get("reference_masses", []))
 score_cuts = [0.0, 0.5, 0.7, 0.8, 0.82, 0.84, 0.86, 0.88, 0.9, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99, 0.993, 0.996]
-X3872_MASS = 3.872
-SIGMA_SUMMARY_NAME = f"{output_prefix}X3872_sigma_summary_{active_fid}.md"
 
 input_file = os.path.join(selected_dir(output_tag), f"{output_prefix}DATA_with_score.root")
 if not os.path.exists(input_file):
@@ -104,25 +103,7 @@ if fid_cfg.get("centbin_max") is not None:
     fid_mask &= df_base["CentBin"] < fid_cfg["centbin_max"]
 df_fid = df_base[fid_mask]
 
-
-def format_cut(cut):
-    return f"{cut:.3f}" if cut >= 0.99 else f"{cut:.2f}"
-
-
-def x3872_sigma_from_masses(masses):
-    counts, edges = np.histogram(masses, bins=BINS)
-    signal_bin = np.searchsorted(edges, X3872_MASS, side="right") - 1
-    if signal_bin < 2 or signal_bin > len(counts) - 3:
-        return None
-    n_bin = float(counts[signal_bin])
-    sideband_bins = [signal_bin - 2, signal_bin - 1, signal_bin + 1, signal_bin + 2]
-    b_hat = float(np.mean([counts[idx] for idx in sideband_bins]))
-    if b_hat <= 0.0:
-        return None
-    return {"n_bin": n_bin, "b_hat": b_hat, "sigma": float((n_bin - b_hat) / np.sqrt(b_hat))}
-
-
-sigma_summary = {}
+# Significance scan is intentionally disabled for now.
 for train_tag in valid_train_tags:
     score_column = f"xgb_score_{train_tag}"
     cut_scan_root = ensure_dir(os.path.join(selected_dir(output_tag), "cut_scan"))
@@ -130,18 +111,15 @@ for train_tag in valid_train_tags:
         output_dir = cut_scan_root
     else:
         output_dir = ensure_dir(os.path.join(cut_scan_root, f"{output_prefix}{train_tag}"))
-    sigma_summary[train_tag] = []
     for cut in score_cuts:
         cut_tag = int(round(cut * 1000)) if cut >= 0.99 else int(round(cut * 100))
         df_cut = df_fid[df_fid[score_column] > cut]
-        sigma_result = x3872_sigma_from_masses(df_cut["Bmass"])
-        if sigma_result is not None:
-            sigma_summary[train_tag].append({"cut": float(cut), **sigma_result})
 
         plt.figure(figsize=(6, 6))
         plt.hist(df_cut["Bmass"], bins=BINS, histtype="step", linewidth=2)
-        for mass in REFERENCE_MASSES:
-            plt.axvline(mass, linestyle="--", linewidth=1.2, color="gray", alpha=0.8)
+        if channel == "X":
+            for mass in REFERENCE_MASSES:
+                plt.axvline(mass, linestyle="--", linewidth=1.2, color="gray", alpha=0.8)
         plt.xlabel("Bmass (GeV)")
         plt.ylabel("Entries")
         plt.title(f"{train_tag} | score > {cut}")
@@ -155,24 +133,3 @@ for train_tag in valid_train_tags:
             out_name = os.path.join(output_dir, f"DATA_{active_fid}_cut{cut_tag:03d}.pdf")
         plt.savefig(out_name)
         plt.close()
-
-summary_path = os.path.join(selected_dir(output_tag), SIGMA_SUMMARY_NAME)
-with open(summary_path, "w") as f:
-    f.write(f"# X(3872) Sigma Summary ({active_fid})\n\n")
-    if missing_train_tags:
-        f.write("## Skipped Train Tags (missing score branches)\n\n")
-        for train_tag in missing_train_tags:
-            f.write(f"- {train_tag}\n")
-        f.write("\n")
-    for train_tag in valid_train_tags:
-        results = sigma_summary.get(train_tag, [])
-        ge3 = sorted([r for r in results if r["sigma"] >= 3.0], key=lambda x: x["cut"])
-        ge5 = sorted([r for r in results if r["sigma"] >= 5.0], key=lambda x: x["cut"])
-        f.write(f"## {train_tag}\n\n")
-        f.write("### >= 3 sigma\n")
-        f.writelines([f"- cut>{format_cut(r['cut'])}: sigma={r['sigma']:.3f}, N_bin={r['n_bin']:.0f}, B_hat={r['b_hat']:.3f}\n" for r in ge3] or ["- none\n"])
-        f.write("\n### >= 5 sigma\n")
-        f.writelines([f"- cut>{format_cut(r['cut'])}: sigma={r['sigma']:.3f}, N_bin={r['n_bin']:.0f}, B_hat={r['b_hat']:.3f}\n" for r in ge5] or ["- none\n"])
-        f.write("\n")
-
-print(f"Saved sigma summary: {summary_path}")

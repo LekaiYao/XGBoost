@@ -36,6 +36,7 @@ def _pbpb_channel_cfg(
     selection_profiles,
     fiducial_profiles,
     mass_windows,
+    draw_plot,
 ):
     return {
         "default_dataset_year": "2024",
@@ -72,10 +73,11 @@ def _pbpb_channel_cfg(
         "selection_profiles": selection_profiles,
         "fiducial_profiles": fiducial_profiles,
         "mass_windows": mass_windows,
+        "draw_plot": draw_plot,
     }
 
 
-def _pp_channel_cfg(datasets_by_year, draw_tree, selection_profiles, fiducial_profiles, mass_windows):
+def _pp_channel_cfg(datasets_by_year, draw_tree, selection_profiles, fiducial_profiles, mass_windows, draw_plot):
     cfg = deepcopy(datasets_by_year)
     for year_cfg in cfg.values():
         year_cfg["draw"] = {"data": _draw_from_apply_spec(draw_tree)}
@@ -87,6 +89,7 @@ def _pp_channel_cfg(datasets_by_year, draw_tree, selection_profiles, fiducial_pr
         "selection_profiles": selection_profiles,
         "fiducial_profiles": fiducial_profiles,
         "mass_windows": mass_windows,
+        "draw_plot": draw_plot,
     }
 
 
@@ -118,6 +121,7 @@ SAMPLES = {
                     "fid3": {"bqvalue_max": 0.2, "by_max": 1.2, "bpt_min": 10.0, "bpt_max": 50.0, "centbin_min": 20.0, "centbin_max": None},
                 },
                 {"signal": None, "sidebands": [(3.75, 3.83), (3.91, 4.00)]},
+                {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
             ),
             "Bu": _pbpb_channel_cfg(
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/PbPb24/flat_ntKp_PbPb24_MC.root", "ntKp"),#no 2023 pbpb MC for Bu, using 2024 instead
@@ -144,6 +148,7 @@ SAMPLES = {
                     "fid3": {"bqvalue_max": 0.2, "by_max": 1.2, "bpt_min": 10.0, "bpt_max": 50.0, "centbin_min": 20.0, "centbin_max": None},
                 },
                 {"signal": None, "sidebands": [(5.0, 5.2), (5.36, 5.56)]},
+                {"mass_range": [5.0, 5.6], "bin_width": 0.01, "reference_masses": []},
             ),
             "Bd": _pbpb_channel_cfg(
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/PbPb23/flat_ntmix_PbPb23_MC_BD.root", "ntmix_BD"),
@@ -170,6 +175,7 @@ SAMPLES = {
                     "fid3": {"bqvalue_max": 0.2, "by_max": 1.2, "bpt_min": 10.0, "bpt_max": 50.0, "centbin_min": 20.0, "centbin_max": None},
                 },
                 {"signal": None, "sidebands": [(3.75, 3.83), (3.91, 4.00)]},
+                {"mass_range": [5.0, 5.6], "bin_width": 0.01, "reference_masses": []},
             ),
             "Bs": _pbpb_channel_cfg(
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/PbPb23/flat_ntmix_PbPb23_MC_BS.root", "ntmix_BS"),
@@ -196,6 +202,7 @@ SAMPLES = {
                     "fid3": {"bqvalue_max": 0.2, "by_max": 1.2, "bpt_min": 10.0, "bpt_max": 50.0, "centbin_min": 20.0, "centbin_max": None},
                 },
                 {"signal": None, "sidebands": [(3.75, 3.83), (3.91, 4.00)]},
+                {"mass_range": [5.0, 5.6], "bin_width": 0.01, "reference_masses": []},
             ),
         }
     },
@@ -229,6 +236,7 @@ SAMPLES = {
                 },
                 {"fid": {"bqvalue_max": None, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None}},
                 {"signal": None, "sidebands": [(3.75, 3.80), (3.95, 4.00)]},
+                {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
             ),
             "Bu": _pp_channel_cfg(
                 {
@@ -253,6 +261,7 @@ SAMPLES = {
                 },
                 {"fid": {"bqvalue_max": None, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None}},
                 {"signal": None, "sidebands": [(3.75, 3.80), (3.95, 4.00)]},
+                {"mass_range": [4.9, 5.7], "bin_width": 0.01, "reference_masses": []},
             ),
             "Bd": _pp_channel_cfg(
                 {
@@ -277,6 +286,7 @@ SAMPLES = {
                 },
                 {"fid": {"bqvalue_max": None, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None}},
                 {"signal": None, "sidebands": [(3.75, 3.80), (3.95, 4.00)]},
+                {"mass_range": [5.0, 5.7], "bin_width": 0.01, "reference_masses": []},
             ),
             "Bs": _pp_channel_cfg(
                 {
@@ -301,6 +311,7 @@ SAMPLES = {
                 },
                 {"fid": {"bqvalue_max": None, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None}},
                 {"signal": None, "sidebands": [(3.75, 3.80), (3.95, 4.00)]},
+                {"mass_range": [5.0, 5.7], "bin_width": 0.01, "reference_masses": []},
             ),
         }
     },
@@ -393,6 +404,7 @@ def resolve_draw_config(sample: str, channel: str, dataset_year: str) -> dict:
     return {
         "dataset_year": dataset_year,
         "data": deepcopy(ds["data"]),
+        "plot": deepcopy(cfg["draw_plot"]),
         "dataset_source": f"{sample}_{channel}_{dataset_year}",
         "channel": channel,
     }
