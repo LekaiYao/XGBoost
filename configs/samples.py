@@ -133,7 +133,7 @@ SAMPLES = {
                 "ntKp",
                 {
                     "pb24v1": {
-                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
+                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",#no By limit, pT>10 or 5
                         "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.6 and 15 < Bpt < 50",
                         "train_cut": {"by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": None, "bqvalue_max": None},
                     },
@@ -226,15 +226,23 @@ SAMPLES = {
                         },
                     },
                 },
-                "ntmix_X3872",
+                "ntmix",
                 {
-                    "pp24v2": {
-                        "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
-                        "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
+                    "pp24v1": {
+                        "signal_selection": None,
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
                         "train_cut": {"by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "bqvalue_max": None},
+                    },
+                    "pp24v2": {
+                        "signal_selection": None,
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
+                        "train_cut": {"by_max": 2.4, "bpt_min": 5.0, "bpt_max": 50.0, "centbin_min": None, "bqvalue_max": None},
                     }
                 },
-                {"fid": {"bqvalue_max": None, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None}},
+                {
+                    "fid": {"bqvalue_max": 0.2, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None},
+                    "fid2": {"bqvalue_max": 0.2, "by_max": 2.4, "bpt_min": 5.0, "bpt_max": 50.0, "centbin_min": None, "centbin_max": None},
+                },
                 {"signal": None, "sidebands": [(3.75, 3.80), (3.95, 4.00)]},
                 {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
             ),
@@ -350,6 +358,10 @@ def infer_selection_profile(tag: str, sample: str) -> str:
     _, body = split_channel_tag(tag)
     channel = infer_channel_from_tag(tag)
     cfg = _channel_cfg(sample, channel)
+    if sample == "pp" and body.startswith("pp24v1_"):
+        return "pp24v1"
+    if sample == "pp" and body.startswith("pp24v2_"):
+        return "pp24v2"
     if sample == "pbpb" and body.startswith("pb24v1_"):
         return "pb24v1"
     if sample == "pbpb" and body.startswith("pb24v2_"):
@@ -361,6 +373,8 @@ def infer_fid_profile(tag: str, sample: str) -> str:
     _, body = split_channel_tag(tag)
     channel = infer_channel_from_tag(tag)
     cfg = _channel_cfg(sample, channel)
+    if sample == "pp" and body.startswith("pp24v2_"):
+        return "fid2"
     if sample == "pbpb" and body.startswith("pb24v1_"):
         return "fid"
     if sample == "pbpb" and (body.startswith("pb23v6_") or body.startswith("pb24v2_")):

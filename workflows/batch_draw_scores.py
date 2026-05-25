@@ -18,7 +18,7 @@ from utils.paths import ensure_dir, selected_dir, train_group_tag
 if len(sys.argv) < 2:
     print(
         "Usage: python3 workflows/batch_draw_scores.py "
-        "[--output-tag <output_tag>] [--output-prefix <prefix>] [--fid-profile <auto|fid|fid3>] "
+        "[--output-tag <output_tag>] [--output-prefix <prefix>] [--fid-profile <auto|fid|fid2|fid3>] "
         "<train_tag> [<train_tag> ...]"
     )
     sys.exit(1)
@@ -47,8 +47,8 @@ while i < len(args):
     train_tags.append(token)
     i += 1
 
-if fid_profile not in {"auto", "fid", "fid3"}:
-    raise ValueError("--fid-profile must be one of: auto, fid, fid3")
+if fid_profile not in {"auto", "fid", "fid2", "fid3"}:
+    raise ValueError("--fid-profile must be one of: auto, fid, fid2, fid3")
 
 group_tag = train_group_tag(train_tags)
 output_tag = output_tag or group_tag
@@ -64,7 +64,7 @@ MASS_RANGE = tuple(draw_cfg["plot"]["mass_range"])
 BIN_WIDTH = float(draw_cfg["plot"]["bin_width"])
 BINS = np.arange(MASS_RANGE[0], MASS_RANGE[1] + BIN_WIDTH, BIN_WIDTH)
 REFERENCE_MASSES = list(draw_cfg["plot"].get("reference_masses", []))
-score_cuts = [0.0, 0.5, 0.7, 0.8, 0.82, 0.84, 0.86, 0.88, 0.9, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99, 0.993, 0.996]
+score_cuts = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.90, 0.95]
 
 input_file = os.path.join(selected_dir(output_tag), f"{output_prefix}DATA_with_score.root")
 if not os.path.exists(input_file):

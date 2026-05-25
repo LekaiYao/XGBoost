@@ -151,7 +151,11 @@ def main():
     xgbc.fit(X_train, y_train["is_sig"].to_numpy())
 
     test_score_xgb = xgbc.predict_proba(X_test)
-    fpr, tpr, _ = roc_curve(y_test["is_sig"], test_score_xgb[:, 1])
+    test_score_xgb_sig = test_score_xgb[y_test["is_sig"]][:, 1]
+    test_score_xgb_bkg = test_score_xgb[y_test["is_bkg"]][:, 1]
+    test_score_xgb_all = test_score_xgb[:, 1]
+    test_y_true = y_test["is_sig"].astype(int).to_numpy()
+    fpr, tpr, thresholds = roc_curve(test_y_true, test_score_xgb_all)
     roc_auc = auc(fpr, tpr)
 
     ensure_dir(condor_model_dir(train_tag))
@@ -162,8 +166,32 @@ def main():
     with open(condor_model_config_path(train_tag), "w") as f:
         json.dump({"input_columns": input_columns, "trans_columns": trans_columns, "model_params": params}, f, indent=2)
 
-    with open(condor_training_score_path(train_tag), "w") as f:
-        json.dump({"auc": float(roc_auc), "mode": "direct_xgboost"}, f, indent=2)
+    score_plot_path = condor_training_score_path(train_tag)
+    plt.figure(figsize=(6, 6))
+    plt.hist(test_score_xgb_sig, label="signal", histtype="step", bins=np.linspace(0, 1, 100), density=True)
+    plt.hist(test_score_xgb_bkg, label="background", histtype="step", bins=np.linspace(0, 1, 100), density=True)
+    plt.xlabel("Score (Prob. from XGBoost Prediction)")
+    plt.ylabel("(Bin Width)$^{-1}$")
+    plt.legend()
+    plt.xlim(0, 1)
+    plt.savefig(score_plot_path)
+    plt.close()
+
+    roc_json_path = f"{condor_training_dir(train_tag)}/test_roc.json"
+    with open(roc_json_path, "w") as f:
+        json.dump(
+            {
+                "auc": float(roc_auc),
+                "threshold": [float(x) for x in thresholds],
+                "tpr": [float(x) for x in tpr],
+                "fpr": [float(x) for x in fpr],
+                "background_rejection": [float(1.0 - x) for x in fpr],
+                "signal_efficiency": [float(x) for x in tpr],
+                "mode": "direct_xgboost",
+            },
+            f,
+            indent=2,
+        )
 
     save_feature_importance(xgbc, input_columns, train_tag)
 

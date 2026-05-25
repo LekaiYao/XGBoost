@@ -117,6 +117,19 @@ bash dag/submit_single_workflow.sh X_pp24v2_6v4_xgb_v1 1
 .venv/bin/python -m workflows.shap_importance Bu_pb24v1_5v2_xgb_v1 30000
 ```
 
+### SHAP 输入筛选说明（当前实现）
+- SHAP 输入样本与训练保持一致：
+  - signal/background 使用 `configs/samples.py` 对应 `train` 输入
+  - background 先做 sideband 质量窗，再应用同一套 `train_cut`
+  - signal 也应用同一套 `train_cut`
+- 即 SHAP 现在严格复用训练筛选逻辑，不再使用宽松/不一致筛选。
+
+## Score 图与 Cut Scan（当前实现）
+- direct XGBoost 训练（`workflows/xgboost_train_direct.py`）现在会输出真实的 `xgb_score.pdf`（分数分布图），不再把 JSON 写入 PDF 文件。
+- 对应 ROC/AUC 指标输出到 `output/training/<train_tag>/test_roc.json`。
+- draw 的 score cut 扫描点（`workflows/batch_draw_scores.py`）固定为：
+  - `0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.90, 0.95`
+
 ## 命名规范
 - 普通训练：`<sample>_<varset>_v<version>`
 - Optuna 训练：`<sample>_<varset>_o<optunaTrials>_v<version>`
@@ -140,3 +153,24 @@ bash dag/submit_single_workflow.sh X_pp24v2_6v4_xgb_v1 1
 - `/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost/logs/job_<train_tag>_{train,apply,draw}.err`
 - `/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost/logs/job_<train_tag>_{train,apply,draw}.log`
 - `/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost/logs/job_<train_tag>_{train,apply,draw}.out`
+
+## 清理与归档
+- 清理脚本统一放在 `scripts/cleanup/`。
+- 旧入口 `cleanup_selected_events.py` 仅做兼容转发。
+
+1) 清理 `output/selected` 下旧目录并删除大 ROOT：
+```bash
+python3 scripts/cleanup/cleanup_selected_events.py --days 5 --root-threshold-mb 500
+```
+
+2) 全量归档当前输出到 `output/backup_outdate/<timestamp>/`：
+- 归档前会删除每个 tag 的 `output/selected/<tag>/DATA_with_score.root`（可用 `--keep-selected-data-root` 关闭）。
+```bash
+python3 scripts/cleanup/archive_output_outdated.py
+python3 scripts/cleanup/archive_output_outdated.py --dry-run
+```
+
+3) single DAG 重提前仅清理锁文件：
+```bash
+bash scripts/cleanup/clear_dag_locks.sh <train_tag>
+```
