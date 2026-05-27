@@ -20,35 +20,29 @@ bash dag/submit_dagman_workflow.sh <group_tag> <version_start> <version_end> [fi
 （Condor 层通过 `wrappers/run_train_dispatch.sh`、`wrappers/run_group_apply_draw.sh` 调用）
 
 参数说明：
-- `group_tag`：同一批任务共享前缀，必须为 `{channel}_...`，例如 `X_pb24v2_8v_4o200`、`Bu_pp24v2_6v4_o200`
+- `group_tag`：同一批任务共享前缀，必须为 `{channel}_{dataset}_v{n}_fid{n}_{varset}_{optuna}`，例如 `X_pb24_v2_fid1_8v1_4o200`
 - `version_start`：起始版本号，整数，例如 `1`
 - `version_end`：结束版本号，整数且 `>= version_start`，例如 `10`
-- `fid_profile`：apply/draw 使用的 fid 配置名（定义在 `configs/samples.py`），例如 `fid` 或 `fid3`
-- 自动解析：`group_tag` 内必须包含 Optuna trial 信息（例如 `_o200` 或 `_4o200`），并由前缀自动推断 `dataset_year` 和 `selection_profile`
-
-当前命名到筛选映射（实际行为）：
-- `pb24v1_*`：`selection_profile=pb24v1`，`fid_profile=fid`
-- `pb24v2_*`：`selection_profile=pb24v2`，`fid_profile=fid3`
-- `pb23v6_*`：`fid_profile=fid3`
-- 其它命名：回退到各 channel 的默认 profile
+- `fid_profile`：可选覆盖值；默认从 `group_tag` 解析的 `dataset+fid{n}` 自动确定
+- 自动解析：`group_tag` 必须包含 Optuna trial 信息（`_oN` 或 `_MoN`），并从命名解析 `dataset_year`、`selection_profile`、`fid_profile`
 
 示例（核心提交命令）：
 ```bash
 # PbPb：提交 v1-v10，共10个训练 + 1个最终apply/draw
-bash dag/submit_dagman_workflow.sh X_pb24v2_8v_4o200 1 10 fid3
+bash dag/submit_dagman_workflow.sh X_pb24_v2_fid1_8v1_4o200 1 10
 
 # PbPb：提交 v1-v100
-bash dag/submit_dagman_workflow.sh Bu_pb24v2_8v_4o200 1 100 fid3
+bash dag/submit_dagman_workflow.sh Bu_pb24_v1_fid1_5v2_4o200 1 100
 
 # pp：提交 v1-v20
-bash dag/submit_dagman_workflow.sh Bd_pp24v2_6v4_o200 1 20 fid
+bash dag/submit_dagman_workflow.sh Bd_pp24_v2_fid2_6v4_o200 1 20
 ```
 
 ### 不用 Optuna 的 XGBoost 主线（单模型 DAG）
-命名约定：`train_tag` 包含 `_xgb_` 时，TRAIN 节点自动走 `workflows/xgboost_train_direct.py`。
+命名约定：`train_tag` 必须严格满足 `{channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}`，TRAIN 节点自动走 `workflows/xgboost_train_direct.py`。
 ```bash
-bash dag/submit_single_workflow.sh X_pb24v2_8v_xgb_v1 0
-bash dag/submit_single_workflow.sh Bs_pp24v2_6v4_xgb_v1 0
+bash dag/submit_single_workflow.sh X_pb24_v2_fid1_8v1_xgb_v1 0
+bash dag/submit_single_workflow.sh Bs_pp24_v1_fid1_6v1_xgb_v1 0
 ```
 执行链：`TRAIN(Direct XGBoost) -> APPLY -> DRAW`。
 （Condor 层通过 `wrappers/run_train_job.sh`、`wrappers/run_apply_job.sh`、`wrappers/run_draw_job.sh` 调用）
@@ -77,7 +71,7 @@ bash dag/submit_single_workflow.sh Bs_pp24v2_6v4_xgb_v1 0
 3) 训练变量
 - 训练变量组合定义在：
   - [varsets.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/utils/varsets.py) 的 `VARSETS[sample][channel][varset]`
-- single DAG 会从 `train_tag` 解析 `sample/channel/varset`，据此读取变量列表。
+- single DAG 会从 `train_tag` 解析 `sample/channel/selection_profile/fid_profile/varset`，据此读取配置。
 
 ## 如何输入 Optuna 超参数空间与训练配置
 - Optuna 空间：
@@ -111,9 +105,10 @@ bash dag/submit_single_workflow.sh Bs_pp24v2_6v4_xgb_v1 0
 - 修改 Optuna 搜索空间：编辑 [configs/search_spaces.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/configs/search_spaces.py) 的 `OPTUNA_SPACES`
 - 修改无 Optuna 训练参数：编辑 `configs/search_spaces.py` 的 `DIRECT_XGB_PARAMS`
 
-## 下一步改造（命名显式映射）
-- 当前仍存在“前缀推断 profile”的隐式行为。
-- 下一步计划：将命名规则扩展为可显式指定训练筛选与画图 fid 的字段，并在解析阶段强校验，确保“名称即配置”。
+## 命名强校验
+- single DAG 仅接受：`{channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}`
+- 任一字段缺失或格式不符会直接报错，不做默认值补全。
+- `selection_profile` 和 `fid_profile` 按 dataset 独立定义并解析（`pp24` / `pb23` / `pb24` 不混用）。
 
 ### 单模型 DAG
 ```bash
@@ -129,7 +124,7 @@ bash dag/submit_single_workflow.sh <train_tag> 1
 ```
 示例：
 ```bash
-bash dag/submit_single_workflow.sh X_pp24v2_6v4_xgb_v1 1
+bash dag/submit_single_workflow.sh X_pp24_v2_fid2_6v4_xgb_v1 1
 ```
 
 ### 2) 对已完成训练单独运行 SHAP
@@ -139,8 +134,8 @@ bash dag/submit_single_workflow.sh X_pp24v2_6v4_xgb_v1 1
 ```
 示例：
 ```bash
-.venv/bin/python -m workflows.shap_importance X_pp24v2_6v4_xgb_v1
-.venv/bin/python -m workflows.shap_importance Bu_pb24v1_5v2_xgb_v1 30000
+.venv/bin/python -m workflows.shap_importance X_pp24_v2_fid2_6v4_xgb_v1
+.venv/bin/python -m workflows.shap_importance Bu_pb24_v1_fid1_5v2_xgb_v1 30000
 ```
 
 ### SHAP 输入筛选说明
@@ -157,8 +152,8 @@ bash dag/submit_single_workflow.sh X_pp24v2_6v4_xgb_v1 1
   - `0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.90, 0.95`
 
 ## 命名规范
-- 普通训练：`<sample>_<varset>_v<version>`
-- Optuna 训练：`<sample>_<varset>_o<optunaTrials>_v<version>`
+- single DAG（direct XGB）：`{channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}`
+- DAGMan Optuna group：`{channel}_{dataset}_v{n}_fid{n}_{varset}_{oN|MoN}`
 
 ## 关键约束
 - ROOT/TTree/fid/train cuts 只在 `configs/samples.py` 配置。

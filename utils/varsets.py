@@ -1,7 +1,9 @@
+import re
+
 from utils.tagging import split_channel_tag
 
 PBPB_VARSETS_X = {
-    "8v": ["Bpt", "Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta"],
+    "8v1": ["Bpt", "Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta"],
     "11v1": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "BtktkvProb", "Bcos_dtheta", "Btktkpt", "BujvProb", "Btrk2Eta","Btrk2Phi","Bmu1y"],
     #"4v": ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bchi2Prob"],
     #"4v2": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk2Pt"],
@@ -22,19 +24,19 @@ PBPB_VARSETS_X = {
 }
 
 PBPB_VARSETS_BU = {
-    "4v": ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bchi2Prob"],
+    "4v1": ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bchi2Prob"],
     "4v2": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk2Pt"],
     "5v2": ["Bchi2Prob", "Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D"],
 }
 
 PBPB_VARSETS_BD = {
-    "4v": ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bchi2Prob"],
+    "4v1": ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bchi2Prob"],
     "4v2": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk2Pt"],
     "6v1": ["Bchi2Prob", "Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D","BtrkPtimb"],
 }
 
 PBPB_VARSETS_BS = {
-    "4v": ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bchi2Prob"],
+    "4v1": ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bchi2Prob"],
     "4v2": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk2Pt"],
     "6v1": ["Bchi2Prob", "Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D","BtrkPtimb"],
 }
@@ -114,6 +116,8 @@ def infer_varset_from_tag(tag, sample=None):
     channel = infer_channel_from_tag(tag)
     candidates = tuple(VARSETS.get(sample_key, {}).get(channel, {}).keys())
     for key in sorted(candidates, key=len, reverse=True):
+        if not re.fullmatch(r"\d+v\d+", key):
+            continue
         if f"_{key}_" in tag:
             return key
     return None

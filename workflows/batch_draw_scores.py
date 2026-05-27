@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 
 import matplotlib.pyplot as plt
@@ -19,7 +20,7 @@ from utils.selection import apply_selection
 if len(sys.argv) < 2:
     print(
         "Usage: python3 workflows/batch_draw_scores.py "
-        "[--output-tag <output_tag>] [--output-prefix <prefix>] [--fid-profile <auto|fid|fid2|fid3>] "
+        "[--output-tag <output_tag>] [--output-prefix <prefix>] [--fid-profile <auto|fid{n}>] "
         "<train_tag> [<train_tag> ...]"
     )
     sys.exit(1)
@@ -48,8 +49,8 @@ while i < len(args):
     train_tags.append(token)
     i += 1
 
-if fid_profile not in {"auto", "fid", "fid2", "fid3"}:
-    raise ValueError("--fid-profile must be one of: auto, fid, fid2, fid3")
+if not (fid_profile == "auto" or re.fullmatch(r"fid\d*", fid_profile)):
+    raise ValueError("--fid-profile must be 'auto' or match fid{n} (for example: fid, fid2, fid3)")
 
 group_tag = train_group_tag(train_tags)
 output_tag = output_tag or group_tag

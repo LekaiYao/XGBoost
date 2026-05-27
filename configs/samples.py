@@ -1,8 +1,24 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import re
 
 from utils.tagging import infer_sample_from_body, split_channel_tag
+
+SINGLE_DAG_BODY_RE = re.compile(r"^(pp24|pb23|pb24)_v(\d+)_fid(\d+)_([0-9]+v[0-9]*)_xgb_v(\d+)$")
+
+
+def _parse_single_dag_body_or_raise(tag: str):
+    _, body = split_channel_tag(tag)
+    m = SINGLE_DAG_BODY_RE.fullmatch(body)
+    if not m:
+        raise ValueError(
+            f"Invalid single DAG tag '{tag}'. "
+            "Expected format: {channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}, "
+            "for example: X_pb24_v2_fid1_8v_xgb_v1"
+        )
+    dataset_token, selection_idx, fid_idx, varset_token, model_version = m.groups()
+    return body, dataset_token, int(selection_idx), int(fid_idx), varset_token, int(model_version)
 
 
 def _spec(path: str, tree: str) -> dict:
@@ -38,9 +54,6 @@ def _pbpb_channel_cfg(
     draw_plot,
 ):
     return {
-        "default_dataset_year": "2024",
-        "default_selection_profile": "pb24v1",
-        "default_fid_profile": "fid",
         "datasets": {
             "2023": {
                 "train": {
@@ -80,9 +93,6 @@ def _pp_channel_cfg(datasets_by_year, draw_tree, selection_profiles, fiducial_pr
     for year_cfg in cfg.values():
         year_cfg["draw"] = {"data": _draw_from_apply_spec(draw_tree)}
     return {
-        "default_dataset_year": "2024",
-        "default_selection_profile": "pp24v2",
-        "default_fid_profile": "fid",
         "datasets": cfg,
         "selection_profiles": selection_profiles,
         "fiducial_profiles": fiducial_profiles,
@@ -102,18 +112,28 @@ SAMPLES = {
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA.root", "ntmix"),
                 "ntmix",
                 {
-                    "pb24v1": {
+                    "pb24_v1": {
                         "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
                         "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50",
                     },
-                    "pb24v2": {
+                    "pb24_v2": {
+                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                    },
+                    "pb23_v1": {
+                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
+                        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50",
+                    },
+                    "pb23_v2": {
                         "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
                         "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
                     },
                 },
                 {
-                    "fid": "BQvalue < 0.13 and abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0 and CentBin > 0.0 and CentBin < 90.0",
-                    "fid3": "BQvalue < 0.2 and abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
+                    "pb24_fid1": "BQvalue < 0.13 and abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0 and CentBin > 0.0 and CentBin < 90.0",
+                    "pb24_fid2": "BQvalue < 0.2 and abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
+                    "pb23_fid1": "BQvalue < 0.13 and abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0 and CentBin > 0.0 and CentBin < 90.0",
+                    "pb23_fid2": "BQvalue < 0.2 and abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
                 },
                 {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
             ),
@@ -126,18 +146,28 @@ SAMPLES = {
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/PbPb24/flat_ntKp_PbPb24_DATA.root", "ntKp"),
                 "ntKp",
                 {
-                    "pb24v1": {
+                    "pb24_v1": {
                         "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",#no By limit, pT>10 or 5
                         "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.6 and 15 < Bpt < 50",
                     },
-                    "pb24v2": {
+                    "pb24_v2": {
+                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                    },
+                    "pb23_v1": {
+                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
+                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.6 and 15 < Bpt < 50",
+                    },
+                    "pb23_v2": {
                         "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
                         "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
                     },
                 },
                 {
-                    "fid": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
-                    "fid3": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
+                    "pb24_fid1": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
+                    "pb24_fid2": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
+                    "pb23_fid1": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
+                    "pb23_fid2": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
                 },
                 {"mass_range": [5.0, 5.6], "bin_width": 0.01, "reference_masses": []},
             ),
@@ -150,18 +180,28 @@ SAMPLES = {
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/PbPb24/flat_ntKstar_PbPb24_DATA.root", "ntKstar"),
                 "ntKstar",
                 {
-                    "pb24v1": {
+                    "pb24_v1": {
                         "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
                         "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.6 and 15 < Bpt < 50",
                     },
-                    "pb24v2": {
+                    "pb24_v2": {
+                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                    },
+                    "pb23_v1": {
+                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
+                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.6 and 15 < Bpt < 50",
+                    },
+                    "pb23_v2": {
                         "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
                         "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
                     },
                 },
                 {
-                    "fid": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
-                    "fid3": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
+                    "pb24_fid1": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
+                    "pb24_fid2": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
+                    "pb23_fid1": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
+                    "pb23_fid2": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
                 },
                 {"mass_range": [5.0, 5.6], "bin_width": 0.01, "reference_masses": []},
             ),
@@ -174,18 +214,28 @@ SAMPLES = {
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/PbPb24/flat_ntphi_PbPb24_DATA.root", "ntphi"),
                 "ntphi",
                 {
-                    "pb24v1": {
+                    "pb24_v1": {
                         "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
                         "background_selection": "((5.1 < Bmass < 5.29) or (5.45 < Bmass < 5.64)) and abs(By) < 1.6 and 15 < Bpt < 50",
                     },
-                    "pb24v2": {
+                    "pb24_v2": {
+                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "background_selection": "((5.1 < Bmass < 5.29) or (5.45 < Bmass < 5.64)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                    },
+                    "pb23_v1": {
+                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
+                        "background_selection": "((5.1 < Bmass < 5.29) or (5.45 < Bmass < 5.64)) and abs(By) < 1.6 and 15 < Bpt < 50",
+                    },
+                    "pb23_v2": {
                         "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
                         "background_selection": "((5.1 < Bmass < 5.29) or (5.45 < Bmass < 5.64)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
                     },
                 },
                 {
-                    "fid": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
-                    "fid3": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
+                    "pb24_fid1": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
+                    "pb24_fid2": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
+                    "pb23_fid1": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
+                    "pb23_fid2": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
                 },
                 {"mass_range": [5.0, 5.7], "bin_width": 0.01, "reference_masses": []},
             ),
@@ -213,18 +263,18 @@ SAMPLES = {
                 },
                 "ntmix",
                 {
-                    "pp24v1": {
+                    "pp24_v1": {
                         "signal_selection": None,
                         "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
                     },
-                    "pp24v2": {
-                        "signal_selection": None,
-                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
+                    "pp24_v2": {
+                        "signal_selection": "BQvalue < 0.2",
+                        "background_selection": "((BQvalue < 0.2) and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)))",
                     }
                 },
                 {
-                    "fid": "BQvalue < 0.2",
-                    "fid2": "BQvalue < 0.2 and abs(By) < 2.4 and Bpt > 5.0 and Bpt < 50.0",
+                    "pp24_fid1": "BQvalue < 0.2",
+                    "pp24_fid2": "BQvalue < 0.2 and abs(By) < 2.4 and Bpt > 5.0 and Bpt < 50.0",
                 },
                 {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
             ),
@@ -243,12 +293,12 @@ SAMPLES = {
                 },
                 "ntmix_BU",
                 {
-                    "pp24v2": {
+                    "pp24_v2": {
                         "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
                         "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
                     }
                 },
-                {"fid": None},
+                {"pp24_fid1": None},
                 {"mass_range": [4.9, 5.7], "bin_width": 0.01, "reference_masses": []},
             ),
             "Bd": _pp_channel_cfg(
@@ -266,12 +316,12 @@ SAMPLES = {
                 },
                 "ntmix_BD",
                 {
-                    "pp24v2": {
+                    "pp24_v2": {
                         "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
                         "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
                     }
                 },
-                {"fid": None},
+                {"pp24_fid1": None},
                 {"mass_range": [5.0, 5.7], "bin_width": 0.01, "reference_masses": []},
             ),
             "Bs": _pp_channel_cfg(
@@ -289,12 +339,12 @@ SAMPLES = {
                 },
                 "ntmix_BS",
                 {
-                    "pp24v2": {
+                    "pp24_v2": {
                         "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
                         "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
                     }
                 },
-                {"fid": None},
+                {"pp24_fid1": None},
                 {"mass_range": [5.0, 5.7], "bin_width": 0.01, "reference_masses": []},
             ),
         }
@@ -321,41 +371,36 @@ def infer_sample_from_tag(tag: str) -> str:
 
 
 def infer_dataset_year(tag: str, sample: str) -> str:
-    _, body = split_channel_tag(tag)
-    if body.startswith("pb23"):
+    _, dataset_token, _, _, _, _ = _parse_single_dag_body_or_raise(tag)
+    if dataset_token.startswith("pb23"):
         return "2023"
-    if body.startswith("pb24") or body.startswith("pp24"):
+    if dataset_token.startswith("pb24") or dataset_token.startswith("pp24"):
         return "2024"
-    channel = infer_channel_from_tag(tag)
-    return _channel_cfg(sample, channel)["default_dataset_year"]
+    raise ValueError(f"Unsupported dataset token '{dataset_token}' in tag '{tag}'.")
 
 
 def infer_selection_profile(tag: str, sample: str) -> str:
-    _, body = split_channel_tag(tag)
     channel = infer_channel_from_tag(tag)
     cfg = _channel_cfg(sample, channel)
-    if sample == "pp" and body.startswith("pp24v1_"):
-        return "pp24v1"
-    if sample == "pp" and body.startswith("pp24v2_"):
-        return "pp24v2"
-    if sample == "pbpb" and body.startswith("pb24v1_"):
-        return "pb24v1"
-    if sample == "pbpb" and body.startswith("pb24v2_"):
-        return "pb24v2"
-    return cfg["default_selection_profile"]
+    _, dataset_token, selection_idx, _, _, _ = _parse_single_dag_body_or_raise(tag)
+    profile = f"{dataset_token}_v{selection_idx}"
+    if profile in cfg["selection_profiles"]:
+        return profile
+    raise ValueError(
+        f"Selection profile '{profile}' not configured for sample='{sample}', channel='{channel}'."
+    )
 
 
 def infer_fid_profile(tag: str, sample: str) -> str:
-    _, body = split_channel_tag(tag)
     channel = infer_channel_from_tag(tag)
     cfg = _channel_cfg(sample, channel)
-    if sample == "pp" and body.startswith("pp24v2_"):
-        return "fid2"
-    if sample == "pbpb" and body.startswith("pb24v1_"):
-        return "fid"
-    if sample == "pbpb" and (body.startswith("pb23v6_") or body.startswith("pb24v2_")):
-        return "fid3"
-    return cfg["default_fid_profile"]
+    _, dataset_token, _, fid_idx, _, _ = _parse_single_dag_body_or_raise(tag)
+    profile = f"{dataset_token}_fid{fid_idx}"
+    if profile in cfg["fiducial_profiles"]:
+        return profile
+    raise ValueError(
+        f"Fiducial profile '{profile}' not configured for sample='{sample}', channel='{channel}'."
+    )
 
 
 def resolve_training_config(sample: str, channel: str, dataset_year: str, selection_profile: str) -> dict:

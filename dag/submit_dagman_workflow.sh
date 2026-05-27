@@ -3,7 +3,7 @@ set -euo pipefail
 
 if [[ $# -lt 3 ]]; then
   echo "Usage: $0 <group_tag> <version_start> <version_end> [fid_profile]"
-  echo "Example: $0 X_pb24v2_8v_4o200 1 10 fid3"
+  echo "Example: $0 X_pb24_v2_fid3_8v_4o200 1 10 auto"
   exit 1
 fi
 

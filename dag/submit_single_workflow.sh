@@ -3,12 +3,19 @@ set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <train_tag> [with_shap]"
-  echo "Example: $0 X_pb24v2_8v_xgb_v1 0"
+  echo "Example: $0 X_pb24_v2_fid1_8v_xgb_v1 0"
   exit 1
 fi
 
 train_tag=$1
 with_shap=${2:-0}
+
+if [[ ! "${train_tag}" =~ ^(X|Bu|Bd|Bs)_(pp24|pb23|pb24)_v[0-9]+_fid[0-9]+_[0-9]+v[0-9]*_xgb_v[0-9]+$ ]]; then
+  echo "ERROR: invalid single DAG train_tag '${train_tag}'"
+  echo "Expected format: {channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}"
+  echo "Example: X_pb24_v2_fid1_8v_xgb_v1"
+  exit 1
+fi
 
 repo_dir="/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost"
 afs_dir="/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost"
