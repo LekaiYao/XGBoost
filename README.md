@@ -165,6 +165,7 @@ python3 scripts/cleanup/cleanup_selected_events.py --days 5 --root-threshold-mb 
 
 2) 全量归档当前输出到 `output/backup_outdate/<timestamp>/`：
 - 归档前会删除每个 tag 的 `output/selected/<tag>/DATA_with_score.root`（可用 `--keep-selected-data-root` 关闭）。
+- 归档过程中会自动调用 `scripts/cleanup/clear_dag_locks.sh` 清理 single DAG 重提冲突文件（含 `.dag.condor.sub/.dag.lib.out/.dag.lib.err/.dag.dagman.log` 等）。
 ```bash
 python3 scripts/cleanup/archive_output_outdated.py
 python3 scripts/cleanup/archive_output_outdated.py --dry-run

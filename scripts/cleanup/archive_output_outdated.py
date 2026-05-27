@@ -2,6 +2,7 @@
 import argparse
 import json
 import shutil
+import subprocess
 import time
 from pathlib import Path
 from typing import Set
@@ -34,9 +35,9 @@ def collect_train_tags(output_dir: Path) -> Set[str]:
 def move_dir(src: Path, dst: Path, dry_run: bool) -> bool:
     if not src.exists():
         return False
-    dst.parent.mkdir(parents=True, exist_ok=True)
     if dry_run:
         return True
+    dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(src), str(dst))
     return True
 
@@ -66,6 +67,11 @@ def main() -> int:
         help="Do not delete selected/<tag>/DATA_with_score.root before moving",
     )
     parser.add_argument("--dry-run", action="store_true", help="Print operations only")
+    parser.add_argument(
+        "--afs-dir",
+        default="/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost",
+        help="AFS submit root used by clear_dag_locks.sh",
+    )
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir).resolve()
@@ -80,10 +86,23 @@ def main() -> int:
     moved = []
     removed_data_roots = []
     removed_bytes = 0
+    lock_cleanup_results = {}
+    lock_cleanup_script = Path(__file__).resolve().parent / "clear_dag_locks.sh"
 
     delete_selected_data_root = args.delete_selected_data_root and not args.keep_selected_data_root
 
     for tag in train_tags:
+        lock_cmd = [str(lock_cleanup_script)]
+        if args.dry_run:
+            lock_cmd.append("--dry-run")
+        lock_cmd.extend([tag, args.afs_dir])
+        proc = subprocess.run(lock_cmd, check=False, capture_output=True, text=True)
+        lock_cleanup_results[tag] = {
+            "returncode": proc.returncode,
+            "stdout": proc.stdout.strip(),
+            "stderr": proc.stderr.strip(),
+        }
+
         selected_data_root = output_dir / "selected" / tag / "DATA_with_score.root"
         if delete_selected_data_root and selected_data_root.exists() and selected_data_root.is_file():
             size = selected_data_root.stat().st_size
@@ -103,11 +122,17 @@ def main() -> int:
         "backup_dir": str(backup_dir),
         "dry_run": args.dry_run,
         "train_tags_total": len(train_tags),
+        "train_tags_to_move": train_tags,
         "removed_data_with_score_count": len(removed_data_roots),
         "removed_data_with_score_bytes": removed_bytes,
         "removed_data_with_score_human": format_bytes(removed_bytes),
         "removed_data_with_score_files": removed_data_roots,
         "moved_entries": moved,
+        "dag_resubmit_cleanup": {
+            "script": str(lock_cleanup_script),
+            "afs_dir": args.afs_dir,
+            "results": lock_cleanup_results,
+        },
     }
 
     print("=== Archive Summary ===")
