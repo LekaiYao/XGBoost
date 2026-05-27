@@ -35,6 +35,7 @@ from utils.paths import (
     ensure_dir,
 )
 from utils.run_metadata import save_run_metadata
+from utils.selection import apply_selection
 from utils.varsets import get_varset_columns, infer_sample_from_tag, infer_varset_from_tag
 
 
@@ -80,8 +81,6 @@ def resolve_training_inputs():
         dataset_year,
         training_cfg["dataset_source"],
         profile_key,
-        training_cfg["train_cut"],
-        training_cfg["mass_windows"],
         to_root_spec(training_cfg["signal"]),
         to_root_spec(training_cfg["background"]),
         training_cfg["signal_selection"],
@@ -89,21 +88,13 @@ def resolve_training_inputs():
     )
 
 
-SAMPLE_KEY, CHANNEL, DATASET_YEAR, DATASET_SOURCE, SELECTION_PROFILE, SELECTION_CONFIG, MASS_WINDOWS, SIG_PATH, BKG_PATH, SIGNAL_SELECTION, BACKGROUND_SELECTION = resolve_training_inputs()
+SAMPLE_KEY, CHANNEL, DATASET_YEAR, DATASET_SOURCE, SELECTION_PROFILE, SIG_PATH, BKG_PATH, SIGNAL_SELECTION, BACKGROUND_SELECTION = resolve_training_inputs()
 
 sample_key = infer_sample_from_tag(train_tag)
 feature_set_tag = infer_varset_from_tag(train_tag, sample=sample_key)
 if feature_set_tag is None:
     raise ValueError(f"Unable to infer feature set from train_tag: {train_tag}")
 input_columns = get_varset_columns(sample_key, feature_set_tag, channel=CHANNEL)
-SIGNAL_SCALE_FACTOR = 3491.0 / 70439.0
-if MASS_WINDOWS.get("signal") is not None:
-    SIGNAL_WINDOW_WIDTH = float(MASS_WINDOWS["signal"][1] - MASS_WINDOWS["signal"][0])
-else:
-    SIGNAL_WINDOW_WIDTH = 3.91 - 3.83
-SIDEBAND_WINDOW_WIDTH = float(sum(high - low for low, high in MASS_WINDOWS["sidebands"]))
-FULL_TO_PARTIAL_DATA_SCALE = 31762286.0 / 994663.0
-BACKGROUND_SCALE_FACTOR = (SIGNAL_WINDOW_WIDTH / SIDEBAND_WINDOW_WIDTH) * FULL_TO_PARTIAL_DATA_SCALE
 FIXED_MODEL_PARAMS = {
     "booster": "gbtree",
     "objective": "binary:logistic",
@@ -498,24 +489,8 @@ print(json.dumps(OPTUNA_SEARCH_SPACE, indent=2))
 ak_sig = uproot.concatenate(SIG_PATH, library="pd")
 ak_bkg = uproot.concatenate(BKG_PATH, library="pd")
 
-sig_mask = (np.abs(ak_sig["By"]) < SELECTION_CONFIG["by_max"]) & (ak_sig["Bpt"] > SELECTION_CONFIG["bpt_min"])
-if SELECTION_CONFIG["bpt_max"] is not None:
-    sig_mask = sig_mask & (ak_sig["Bpt"] < SELECTION_CONFIG["bpt_max"])
-if SELECTION_CONFIG["centbin_min"] is not None:
-    sig_mask = sig_mask & (ak_sig["CentBin"] > SELECTION_CONFIG["centbin_min"])
-ak_sig = ak_sig[sig_mask]
-
-sidebands = MASS_WINDOWS["sidebands"]
-bkg_mass_mask = np.zeros(len(ak_bkg), dtype=bool)
-for low, high in sidebands:
-    bkg_mass_mask = bkg_mass_mask | ((ak_bkg["Bmass"] > low) & (ak_bkg["Bmass"] < high))
-ak_bkg = ak_bkg[bkg_mass_mask]
-bkg_mask = (np.abs(ak_bkg["By"]) < SELECTION_CONFIG["by_max"]) & (ak_bkg["Bpt"] > SELECTION_CONFIG["bpt_min"])
-if SELECTION_CONFIG["bpt_max"] is not None:
-    bkg_mask = bkg_mask & (ak_bkg["Bpt"] < SELECTION_CONFIG["bpt_max"])
-if SELECTION_CONFIG["centbin_min"] is not None:
-    bkg_mask = bkg_mask & (ak_bkg["CentBin"] > SELECTION_CONFIG["centbin_min"])
-ak_bkg = ak_bkg[bkg_mask]
+ak_sig = apply_selection(ak_sig, SIGNAL_SELECTION, "signal_selection")
+ak_bkg = apply_selection(ak_bkg, BACKGROUND_SELECTION, "background_selection")
 
 ak_sig["is_sig"] = True
 ak_bkg["is_sig"] = False
@@ -705,10 +680,6 @@ save_run_metadata(
     notes={
         "search_space_tag": "single",
         "best_validation_auc": float(study.best_trial.user_attrs.get("validation_auc", study.best_value)),
-        "signal_scale_factor": float(SIGNAL_SCALE_FACTOR),
-        "background_scale_factor": float(BACKGROUND_SCALE_FACTOR),
-        "signal_window_width": float(SIGNAL_WINDOW_WIDTH),
-        "sideband_window_width": float(SIDEBAND_WINDOW_WIDTH),
         "test_auc": float(roc_auc),
         "test_roc_json_path": roc_json_path,
         "test_roc_plot_path": roc_plot_path,

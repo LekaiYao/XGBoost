@@ -53,6 +53,32 @@ bash dag/submit_single_workflow.sh Bs_pp24v2_6v4_xgb_v1 0
 执行链：`TRAIN(Direct XGBoost) -> APPLY -> DRAW`。
 （Condor 层通过 `wrappers/run_train_job.sh`、`wrappers/run_apply_job.sh`、`wrappers/run_draw_job.sh` 调用）
 
+## Single DAG 工作内容（配置来源）
+1) 训练输入、训练前筛选、SHAP筛选
+- 训练输入数据（signal/background 的 ROOT 路径与 TTree）定义在：
+  - [samples.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/configs/samples.py) 的 `SAMPLES[sample]["channels"][channel]["datasets"][year]["train"]`
+- 训练前筛选条件定义在：
+  - 同文件的 `selection_profiles`（`signal_selection` / `background_selection` 表达式）
+  - 训练脚本读取：`workflows/xgboost_train_direct.py`（single DAG 直训）/ `workflows/condor_optuna_XGBoost.py`（optuna）
+- SHAP筛选条件：
+  - SHAP 复用训练同一套输入与同一组表达式（`signal_selection` / `background_selection`）
+  - 脚本：`workflows/shap_importance.py`
+
+2) apply输入、apply筛选、draw筛选
+- apply 输入数据（MC/data 的 ROOT 路径与 TTree）定义在：
+  - [samples.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/configs/samples.py) 的 `datasets[year]["apply"]`
+- apply 阶段在 summary 中记录训练筛选表达式（`signal_selection` / `background_selection`），来源：
+  - `resolve_training_config(...)`（`configs/samples.py`）
+  - 执行脚本：`workflows/batch_apply_scores.py`
+- draw 阶段筛选（fiducial region）定义在：
+  - `fiducial_profiles`（表达式格式，`configs/samples.py`）
+  - 执行脚本：`workflows/batch_draw_scores.py`
+
+3) 训练变量
+- 训练变量组合定义在：
+  - [varsets.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/utils/varsets.py) 的 `VARSETS[sample][channel][varset]`
+- single DAG 会从 `train_tag` 解析 `sample/channel/varset`，据此读取变量列表。
+
 ## 如何输入 Optuna 超参数空间与训练配置
 - Optuna 空间：
   - 文件：[configs/search_spaces.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/configs/search_spaces.py)
@@ -64,13 +90,13 @@ bash dag/submit_single_workflow.sh Bs_pp24v2_6v4_xgb_v1 0
   - 文件：[configs/samples.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/configs/samples.py)
 - `samples.py` 核心结构：
   - `SAMPLES[sample]["channels"][channel]["datasets"][year]["train/apply/draw"]`
-  - `selection_profiles`：训练筛选
-  - `fiducial_profiles`：apply/draw fid cut
+  - `selection_profiles`：训练筛选表达式（`signal_selection` / `background_selection`）
+  - `fiducial_profiles`：apply/draw fid 表达式
 - draw 输入约定：
   - draw 读取的是 apply 产物 `output/selected/<train_tag>/DATA_with_score.root`
   - 读取树名来自 `datasets[year].draw.data.tree`（按 channel 独立）
-- `selection_profiles` 控制 train cut
-- `fiducial_profiles` 控制 apply/draw cut（由 `fid_profile` 选择）
+- `selection_profiles` 控制训练筛选表达式
+- `fiducial_profiles` 控制 apply/draw 筛选表达式（由 `fid_profile` 选择）
   - 以上均按 `sample + channel` 独立配置
 - 变量组合：
   - 文件：[utils/varsets.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/utils/varsets.py)
@@ -117,14 +143,14 @@ bash dag/submit_single_workflow.sh X_pp24v2_6v4_xgb_v1 1
 .venv/bin/python -m workflows.shap_importance Bu_pb24v1_5v2_xgb_v1 30000
 ```
 
-### SHAP 输入筛选说明（当前实现）
+### SHAP 输入筛选说明
 - SHAP 输入样本与训练保持一致：
   - signal/background 使用 `configs/samples.py` 对应 `train` 输入
-  - background 先做 sideband 质量窗，再应用同一套 `train_cut`
-  - signal 也应用同一套 `train_cut`
+  - signal 应用 `signal_selection` 表达式
+  - background 应用 `background_selection` 表达式
 - 即 SHAP 现在严格复用训练筛选逻辑，不再使用宽松/不一致筛选。
 
-## Score 图与 Cut Scan（当前实现）
+## Score 图与 Cut Scan
 - direct XGBoost 训练（`workflows/xgboost_train_direct.py`）现在会输出真实的 `xgb_score.pdf`（分数分布图），不再把 JSON 写入 PDF 文件。
 - 对应 ROC/AUC 指标输出到 `output/training/<train_tag>/test_roc.json`。
 - draw 的 score cut 扫描点（`workflows/batch_draw_scores.py`）固定为：

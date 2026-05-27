@@ -225,7 +225,6 @@ with open(summary_path, "w") as f:
                 "selection_profile": selection_profile,
                 "signal_selection": training_cfg["signal_selection"],
                 "background_selection": training_cfg["background_selection"],
-                "train_cut": training_cfg["train_cut"],
             },
             "draw_selection": {
                 "fid_profile": fid_profile,

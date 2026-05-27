@@ -36,6 +36,7 @@ from utils.paths import (
     ensure_dir,
 )
 from utils.run_metadata import save_run_metadata
+from utils.selection import apply_selection
 from utils.varsets import VARSETS, get_varset_columns, infer_sample_from_tag, infer_varset_from_tag
 
 CORE_PARAMS = {
@@ -268,7 +269,6 @@ def get_selection_config(train_tag, dataset_year_override=None, selection_profil
     dataset_year = dataset_year_override or infer_dataset_year(train_tag, sample)
     selection_profile = selection_profile_override or infer_selection_profile(train_tag, sample)
     cfg = resolve_training_config(sample, channel, dataset_year, selection_profile)
-    cut = cfg["train_cut"]
     return {
         "sample": sample,
         "dataset_year": dataset_year,
@@ -277,16 +277,8 @@ def get_selection_config(train_tag, dataset_year_override=None, selection_profil
         "channel": channel,
         "signal_path": to_root_spec(cfg["signal"]),
         "background_path": to_root_spec(cfg["background"]),
-        "sidebands": cfg["mass_windows"]["sidebands"],
         "signal_selection": cfg["signal_selection"],
         "background_selection": cfg["background_selection"],
-        "by_max": cut.get("by_max"),
-        "bpt_min": cut.get("bpt_min"),
-        "bpt_max": cut.get("bpt_max"),
-        "bqvalue_max": cut.get("bqvalue_max"),
-        "centbin_min": cut.get("centbin_min"),
-        "centbin_use_upper": False,
-        "centbin_max": None,
     }
 
 
@@ -449,51 +441,14 @@ def main():
     print(f"Background path: {bkg_path}")
     signal_selection = selection_cfg["signal_selection"]
     background_selection = selection_cfg["background_selection"]
-    by_max = selection_cfg["by_max"]
-    bpt_min = selection_cfg["bpt_min"]
-    bpt_max = selection_cfg["bpt_max"]
-    bqvalue_max = selection_cfg["bqvalue_max"]
-    centbin_min = selection_cfg["centbin_min"]
-    centbin_use_upper = selection_cfg["centbin_use_upper"]
-    centbin_max = selection_cfg["centbin_max"]
 
     print(f"Signal selection: {signal_selection}")
     print(f"Background selection: {background_selection}")
 
     ak_sig = uproot.concatenate(sig_path, library="pd")
     ak_bkg = uproot.concatenate(bkg_path, library="pd")
-    sig_mask = np.ones(len(ak_sig), dtype=bool)
-    if by_max is not None:
-        sig_mask = sig_mask & (np.abs(ak_sig["By"]) < by_max)
-    if bpt_min is not None:
-        sig_mask = sig_mask & (ak_sig["Bpt"] > bpt_min)
-    if bpt_max is not None:
-        sig_mask = sig_mask & (ak_sig["Bpt"] < bpt_max)
-    if bqvalue_max is not None:
-        sig_mask = sig_mask & (ak_sig["BQvalue"] < bqvalue_max)
-    if centbin_min is not None:
-        sig_mask = sig_mask & (ak_sig["CentBin"] > centbin_min)
-    if centbin_use_upper and centbin_max is not None:
-        sig_mask = sig_mask & (ak_sig["CentBin"] < centbin_max)
-    ak_sig = ak_sig[sig_mask]
-    bkg_mass_mask = np.zeros(len(ak_bkg), dtype=bool)
-    for low, high in selection_cfg["sidebands"]:
-        bkg_mass_mask = bkg_mass_mask | ((ak_bkg["Bmass"] > low) & (ak_bkg["Bmass"] < high))
-    ak_bkg = ak_bkg[bkg_mass_mask]
-    bkg_mask = np.ones(len(ak_bkg), dtype=bool)
-    if by_max is not None:
-        bkg_mask = bkg_mask & (np.abs(ak_bkg["By"]) < by_max)
-    if bpt_min is not None:
-        bkg_mask = bkg_mask & (ak_bkg["Bpt"] > bpt_min)
-    if bpt_max is not None:
-        bkg_mask = bkg_mask & (ak_bkg["Bpt"] < bpt_max)
-    if bqvalue_max is not None:
-        bkg_mask = bkg_mask & (ak_bkg["BQvalue"] < bqvalue_max)
-    if centbin_min is not None:
-        bkg_mask = bkg_mask & (ak_bkg["CentBin"] > centbin_min)
-    if centbin_use_upper and centbin_max is not None:
-        bkg_mask = bkg_mask & (ak_bkg["CentBin"] < centbin_max)
-    ak_bkg = ak_bkg[bkg_mask]
+    ak_sig = apply_selection(ak_sig, signal_selection, "signal_selection")
+    ak_bkg = apply_selection(ak_bkg, background_selection, "background_selection")
 
     ak_sig["is_sig"] = True
     ak_bkg["is_sig"] = False

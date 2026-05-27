@@ -32,6 +32,7 @@ from utils.paths import (
     ensure_dir,
 )
 from utils.run_metadata import save_run_metadata
+from utils.selection import apply_selection
 from utils.varsets import get_varset_columns, infer_sample_from_tag, infer_varset_from_tag
 
 
@@ -86,7 +87,8 @@ def main():
 
     sig_path = to_root_spec(train_cfg["signal"])
     bkg_path = to_root_spec(train_cfg["background"])
-    cut = train_cfg["train_cut"]
+    signal_selection = train_cfg["signal_selection"]
+    background_selection = train_cfg["background_selection"]
 
     print(f"Train tag: {train_tag}")
     print(f"Dataset source: {train_cfg['dataset_source']}")
@@ -95,36 +97,8 @@ def main():
     ak_sig = uproot.concatenate(sig_path, library="pd")
     ak_bkg = uproot.concatenate(bkg_path, library="pd")
 
-    sig_mask = pd.Series(True, index=ak_sig.index)
-    if cut.get("by_max") is not None:
-        sig_mask &= np.abs(ak_sig["By"]) < cut["by_max"]
-    if cut.get("bpt_min") is not None:
-        sig_mask &= ak_sig["Bpt"] > cut["bpt_min"]
-    if cut.get("bpt_max") is not None:
-        sig_mask &= ak_sig["Bpt"] < cut["bpt_max"]
-    if cut.get("centbin_min") is not None:
-        sig_mask &= ak_sig["CentBin"] > cut["centbin_min"]
-    if cut.get("bqvalue_max") is not None:
-        sig_mask &= ak_sig["BQvalue"] < cut["bqvalue_max"]
-    ak_sig = ak_sig[sig_mask]
-
-    sidebands = train_cfg["mass_windows"]["sidebands"]
-    bkg_mass_mask = np.zeros(len(ak_bkg), dtype=bool)
-    for low, high in sidebands:
-        bkg_mass_mask = bkg_mass_mask | ((ak_bkg["Bmass"] > low) & (ak_bkg["Bmass"] < high))
-    ak_bkg = ak_bkg[bkg_mass_mask]
-    bkg_mask = np.ones(len(ak_bkg), dtype=bool)
-    if cut.get("by_max") is not None:
-        bkg_mask &= np.abs(ak_bkg["By"]) < cut["by_max"]
-    if cut.get("bpt_min") is not None:
-        bkg_mask &= ak_bkg["Bpt"] > cut["bpt_min"]
-    if cut.get("bpt_max") is not None:
-        bkg_mask &= ak_bkg["Bpt"] < cut["bpt_max"]
-    if cut.get("centbin_min") is not None:
-        bkg_mask &= ak_bkg["CentBin"] > cut["centbin_min"]
-    if cut.get("bqvalue_max") is not None:
-        bkg_mask &= ak_bkg["BQvalue"] < cut["bqvalue_max"]
-    ak_bkg = ak_bkg[bkg_mask]
+    ak_sig = apply_selection(ak_sig, signal_selection, "signal_selection")
+    ak_bkg = apply_selection(ak_bkg, background_selection, "background_selection")
 
     ak_sig["is_sig"] = True
     ak_bkg["is_sig"] = False

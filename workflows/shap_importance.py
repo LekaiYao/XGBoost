@@ -28,6 +28,7 @@ from utils.paths import (
     shap_importance_path,
     shap_summary_path,
 )
+from utils.selection import apply_selection
 
 if len(sys.argv) not in (2, 3):
     print("Usage: python3 workflows/shap_importance.py <train_tag> [max_events]")
@@ -59,39 +60,8 @@ trans_columns = config["trans_columns"]
 
 df_sig = uproot.concatenate(SIG_PATH, library="pd")
 df_bkg = uproot.concatenate(BKG_PATH, library="pd")
-cut = train_cfg["train_cut"]
-
-sig_mask = pd.Series(True, index=df_sig.index)
-if cut.get("by_max") is not None:
-    sig_mask &= np.abs(df_sig["By"]) < cut["by_max"]
-if cut.get("bpt_min") is not None:
-    sig_mask &= df_sig["Bpt"] > cut["bpt_min"]
-if cut.get("bpt_max") is not None:
-    sig_mask &= df_sig["Bpt"] < cut["bpt_max"]
-if cut.get("centbin_min") is not None:
-    sig_mask &= df_sig["CentBin"] > cut["centbin_min"]
-if cut.get("bqvalue_max") is not None:
-    sig_mask &= df_sig["BQvalue"] < cut["bqvalue_max"]
-df_sig = df_sig[sig_mask].copy()
-
-if "Bmass" in df_bkg.columns:
-    mass_mask = np.zeros(len(df_bkg), dtype=bool)
-    for low, high in train_cfg["mass_windows"]["sidebands"]:
-        mass_mask = mass_mask | ((df_bkg["Bmass"] > low) & (df_bkg["Bmass"] < high))
-    df_bkg = df_bkg[mass_mask].copy()
-
-bkg_mask = pd.Series(True, index=df_bkg.index)
-if cut.get("by_max") is not None:
-    bkg_mask &= np.abs(df_bkg["By"]) < cut["by_max"]
-if cut.get("bpt_min") is not None:
-    bkg_mask &= df_bkg["Bpt"] > cut["bpt_min"]
-if cut.get("bpt_max") is not None:
-    bkg_mask &= df_bkg["Bpt"] < cut["bpt_max"]
-if cut.get("centbin_min") is not None:
-    bkg_mask &= df_bkg["CentBin"] > cut["centbin_min"]
-if cut.get("bqvalue_max") is not None:
-    bkg_mask &= df_bkg["BQvalue"] < cut["bqvalue_max"]
-df_bkg = df_bkg[bkg_mask].copy()
+df_sig = apply_selection(df_sig, train_cfg["signal_selection"], "signal_selection")
+df_bkg = apply_selection(df_bkg, train_cfg["background_selection"], "background_selection")
 
 df_raw = pd.concat([df_sig, df_bkg], axis=0, ignore_index=True)
 if max_events > 0 and len(df_raw) > max_events:

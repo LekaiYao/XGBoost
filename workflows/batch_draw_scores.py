@@ -14,6 +14,7 @@ from configs.samples import (
     resolve_fiducial_config,
 )
 from utils.paths import ensure_dir, selected_dir, train_group_tag
+from utils.selection import apply_selection
 
 if len(sys.argv) < 2:
     print(
@@ -95,21 +96,7 @@ branches = ["Bmass", "BQvalue", "By", "Bpt", "CentBin"] + sorted({score_branch_m
 df = tree.arrays(branches, library="pd")
 
 df_base = df[(df["Bmass"] > MASS_RANGE[0]) & (df["Bmass"] < MASS_RANGE[1])]
-if fid_cfg.get("bqvalue_max") is not None:
-    df_base = df_base[df_base["BQvalue"] < fid_cfg["bqvalue_max"]]
-
-fid_mask = np.ones(len(df_base), dtype=bool)
-if fid_cfg.get("by_max") is not None:
-    fid_mask &= np.abs(df_base["By"]) < fid_cfg["by_max"]
-if fid_cfg.get("bpt_min") is not None:
-    fid_mask &= df_base["Bpt"] > fid_cfg["bpt_min"]
-if fid_cfg.get("bpt_max") is not None:
-    fid_mask &= df_base["Bpt"] < fid_cfg["bpt_max"]
-if fid_cfg.get("centbin_min") is not None:
-    fid_mask &= df_base["CentBin"] > fid_cfg["centbin_min"]
-if fid_cfg.get("centbin_max") is not None:
-    fid_mask &= df_base["CentBin"] < fid_cfg["centbin_max"]
-df_fid = df_base[fid_mask]
+df_fid = apply_selection(df_base, fid_cfg.get("expression"), f"fiducial_profiles[{active_fid}]")
 
 # Significance scan is intentionally disabled for now.
 for train_tag in valid_train_tags:

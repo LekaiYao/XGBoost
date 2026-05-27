@@ -35,7 +35,6 @@ def _pbpb_channel_cfg(
     draw_tree,
     selection_profiles,
     fiducial_profiles,
-    mass_windows,
     draw_plot,
 ):
     return {
@@ -72,12 +71,11 @@ def _pbpb_channel_cfg(
         },
         "selection_profiles": selection_profiles,
         "fiducial_profiles": fiducial_profiles,
-        "mass_windows": mass_windows,
         "draw_plot": draw_plot,
     }
 
 
-def _pp_channel_cfg(datasets_by_year, draw_tree, selection_profiles, fiducial_profiles, mass_windows, draw_plot):
+def _pp_channel_cfg(datasets_by_year, draw_tree, selection_profiles, fiducial_profiles, draw_plot):
     cfg = deepcopy(datasets_by_year)
     for year_cfg in cfg.values():
         year_cfg["draw"] = {"data": _draw_from_apply_spec(draw_tree)}
@@ -88,7 +86,6 @@ def _pp_channel_cfg(datasets_by_year, draw_tree, selection_profiles, fiducial_pr
         "datasets": cfg,
         "selection_profiles": selection_profiles,
         "fiducial_profiles": fiducial_profiles,
-        "mass_windows": mass_windows,
         "draw_plot": draw_plot,
     }
 
@@ -108,19 +105,16 @@ SAMPLES = {
                     "pb24v1": {
                         "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
                         "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50",
-                        "train_cut": {"by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": None, "bqvalue_max": None},
                     },
                     "pb24v2": {
                         "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
                         "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-                        "train_cut": {"by_max": 1.2, "bpt_min": 10.0, "bpt_max": None, "centbin_min": 20.0, "bqvalue_max": None},
                     },
                 },
                 {
-                    "fid": {"bqvalue_max": 0.13, "by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": 0.0, "centbin_max": 90.0},
-                    "fid3": {"bqvalue_max": 0.2, "by_max": 1.2, "bpt_min": 10.0, "bpt_max": 50.0, "centbin_min": 20.0, "centbin_max": None},
+                    "fid": "BQvalue < 0.13 and abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0 and CentBin > 0.0 and CentBin < 90.0",
+                    "fid3": "BQvalue < 0.2 and abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
                 },
-                {"signal": None, "sidebands": [(3.75, 3.83), (3.91, 4.00)]},
                 {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
             ),
             "Bu": _pbpb_channel_cfg(
@@ -135,19 +129,16 @@ SAMPLES = {
                     "pb24v1": {
                         "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",#no By limit, pT>10 or 5
                         "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.6 and 15 < Bpt < 50",
-                        "train_cut": {"by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": None, "bqvalue_max": None},
                     },
                     "pb24v2": {
                         "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
                         "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-                        "train_cut": {"by_max": 1.2, "bpt_min": 10.0, "bpt_max": None, "centbin_min": 20.0, "bqvalue_max": None},
                     },
                 },
                 {
-                    "fid": {"bqvalue_max": None, "by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0},
-                    "fid3": {"bqvalue_max": None, "by_max": 1.2, "bpt_min": 10.0, "bpt_max": 50.0, "centbin_min": 20.0, "centbin_max": None},
+                    "fid": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
+                    "fid3": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
                 },
-                {"signal": None, "sidebands": [(5.0, 5.2), (5.36, 5.56)]},
                 {"mass_range": [5.0, 5.6], "bin_width": 0.01, "reference_masses": []},
             ),
             "Bd": _pbpb_channel_cfg(
@@ -162,19 +153,16 @@ SAMPLES = {
                     "pb24v1": {
                         "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
                         "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.6 and 15 < Bpt < 50",
-                        "train_cut": {"by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": None, "bqvalue_max": None},
                     },
                     "pb24v2": {
                         "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
                         "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-                        "train_cut": {"by_max": 1.2, "bpt_min": 10.0, "bpt_max": None, "centbin_min": 20.0, "bqvalue_max": None},
                     },
                 },
                 {
-                    "fid": {"bqvalue_max": None, "by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0},
-                    "fid3": {"bqvalue_max": None, "by_max": 1.2, "bpt_min": 10.0, "bpt_max": 50.0, "centbin_min": 20.0, "centbin_max": None},
+                    "fid": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
+                    "fid3": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
                 },
-                {"signal": None, "sidebands": [(5.0, 5.2), (5.36, 5.56)]},
                 {"mass_range": [5.0, 5.6], "bin_width": 0.01, "reference_masses": []},
             ),
             "Bs": _pbpb_channel_cfg(
@@ -189,19 +177,16 @@ SAMPLES = {
                     "pb24v1": {
                         "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
                         "background_selection": "((5.1 < Bmass < 5.29) or (5.45 < Bmass < 5.64)) and abs(By) < 1.6 and 15 < Bpt < 50",
-                        "train_cut": {"by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0, "centbin_min": None, "bqvalue_max": None},
                     },
                     "pb24v2": {
                         "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
                         "background_selection": "((5.1 < Bmass < 5.29) or (5.45 < Bmass < 5.64)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-                        "train_cut": {"by_max": 1.2, "bpt_min": 10.0, "bpt_max": None, "centbin_min": 20.0, "bqvalue_max": None},
                     },
                 },
                 {
-                    "fid": {"bqvalue_max": None, "by_max": 1.6, "bpt_min": 15.0, "bpt_max": 50.0},
-                    "fid3": {"bqvalue_max": None, "by_max": 1.2, "bpt_min": 10.0, "bpt_max": 50.0, "centbin_min": 20.0, "centbin_max": None},
+                    "fid": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
+                    "fid3": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
                 },
-                {"signal": None, "sidebands": [(5.1, 5.29), (5.45, 5.64)]},
                 {"mass_range": [5.0, 5.7], "bin_width": 0.01, "reference_masses": []},
             ),
         }
@@ -231,19 +216,16 @@ SAMPLES = {
                     "pp24v1": {
                         "signal_selection": None,
                         "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
-                        "train_cut": {"by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "bqvalue_max": None},
                     },
                     "pp24v2": {
                         "signal_selection": None,
                         "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
-                        "train_cut": {"by_max": 2.4, "bpt_min": 5.0, "bpt_max": 50.0, "centbin_min": None, "bqvalue_max": None},
                     }
                 },
                 {
-                    "fid": {"bqvalue_max": 0.2, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None},
-                    "fid2": {"bqvalue_max": 0.2, "by_max": 2.4, "bpt_min": 5.0, "bpt_max": 50.0, "centbin_min": None, "centbin_max": None},
+                    "fid": "BQvalue < 0.2",
+                    "fid2": "BQvalue < 0.2 and abs(By) < 2.4 and Bpt > 5.0 and Bpt < 50.0",
                 },
-                {"signal": None, "sidebands": [(3.75, 3.80), (3.95, 4.00)]},
                 {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
             ),
             "Bu": _pp_channel_cfg(
@@ -264,11 +246,9 @@ SAMPLES = {
                     "pp24v2": {
                         "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
                         "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
-                        "train_cut": {"by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "bqvalue_max": None},
                     }
                 },
-                {"fid": {"bqvalue_max": None, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None}},
-                {"signal": None, "sidebands": [(3.75, 3.80), (3.95, 4.00)]},
+                {"fid": None},
                 {"mass_range": [4.9, 5.7], "bin_width": 0.01, "reference_masses": []},
             ),
             "Bd": _pp_channel_cfg(
@@ -289,11 +269,9 @@ SAMPLES = {
                     "pp24v2": {
                         "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
                         "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
-                        "train_cut": {"by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "bqvalue_max": None},
                     }
                 },
-                {"fid": {"bqvalue_max": None, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None}},
-                {"signal": None, "sidebands": [(3.75, 3.80), (3.95, 4.00)]},
+                {"fid": None},
                 {"mass_range": [5.0, 5.7], "bin_width": 0.01, "reference_masses": []},
             ),
             "Bs": _pp_channel_cfg(
@@ -314,11 +292,9 @@ SAMPLES = {
                     "pp24v2": {
                         "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
                         "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
-                        "train_cut": {"by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "bqvalue_max": None},
                     }
                 },
-                {"fid": {"bqvalue_max": None, "by_max": None, "bpt_min": None, "bpt_max": None, "centbin_min": None, "centbin_max": None}},
-                {"signal": None, "sidebands": [(3.75, 3.80), (3.95, 4.00)]},
+                {"fid": None},
                 {"mass_range": [5.0, 5.7], "bin_width": 0.01, "reference_masses": []},
             ),
         }
@@ -393,8 +369,6 @@ def resolve_training_config(sample: str, channel: str, dataset_year: str, select
         "selection_profile": selection_profile,
         "signal_selection": sel["signal_selection"],
         "background_selection": sel["background_selection"],
-        "train_cut": deepcopy(sel["train_cut"]),
-        "mass_windows": deepcopy(cfg["mass_windows"]),
         "dataset_source": f"{sample}_{channel}_{dataset_year}",
         "channel": channel,
     }
@@ -426,4 +400,9 @@ def resolve_draw_config(sample: str, channel: str, dataset_year: str) -> dict:
 
 def resolve_fiducial_config(sample: str, channel: str, fid_profile: str) -> dict:
     cfg = _channel_cfg(sample, channel)
-    return deepcopy(cfg["fiducial_profiles"][fid_profile])
+    raw = deepcopy(cfg["fiducial_profiles"][fid_profile])
+    if isinstance(raw, str):
+        return {"expression": raw}
+    if isinstance(raw, dict) and "expression" in raw:
+        return {"expression": raw["expression"]}
+    raise ValueError(f"Unsupported fiducial profile format: {type(raw)}")
