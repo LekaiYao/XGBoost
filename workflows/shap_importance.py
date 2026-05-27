@@ -118,7 +118,6 @@ ax_left.axhline(95.0, color="tab:red", linestyle="--", linewidth=1.5, label="95%
 ax_left.set_ylim(0, 105)
 ax_left.set_ylabel("Cumulative contribution (%)", color="tab:blue")
 ax_left.tick_params(axis="y", labelcolor="tab:blue")
-ax_left.grid(alpha=0.3, axis="y")
 
 # Right axis: per-feature contribution from shap_bar (percentage form)
 ax_right = ax_left.twinx()
@@ -132,7 +131,18 @@ bars = ax_right.bar(
     label="Per-feature (%)",
 )
 right_max = float(np.max(feature_percent)) if len(feature_percent) else 0.0
-ax_right.set_ylim(0, max(5.0, right_max * 1.25))
+# Right-axis limit rule: ceil(max/5%)*5% + one extra 5% bin
+if right_max <= 0.0:
+    right_ylim_top = 5.0
+else:
+    right_ylim_top = (np.ceil(right_max / 5.0) + 1.0) * 5.0
+ax_right.set_ylim(0, right_ylim_top)
+right_ticks = np.arange(0.0, right_ylim_top + 0.1, 5.0)
+ax_right.set_yticks(right_ticks)
+# Per-feature reference lines every 5%
+for yv in right_ticks:
+    if yv > 0.0:
+        ax_right.axhline(yv, color="tab:orange", linestyle=":", linewidth=0.8, alpha=0.35, zorder=0)
 ax_right.set_ylabel("Per-feature contribution (%)", color="tab:orange")
 ax_right.tick_params(axis="y", labelcolor="tab:orange")
 

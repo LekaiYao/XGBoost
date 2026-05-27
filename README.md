@@ -134,7 +134,7 @@ bash dag/submit_single_workflow.sh X_pp24_v2_fid2_6v4_xgb_v1 1
 ```
 示例：
 ```bash
-.venv/bin/python -m workflows.shap_importance X_pp24_v2_fid2_6v4_xgb_v1
+.venv/bin/python -m workflows.shap_importance X_pp24_v1_fid1_18v1_xgb_v1
 .venv/bin/python -m workflows.shap_importance Bu_pb24_v1_fid1_5v2_xgb_v1 30000
 ```
 
