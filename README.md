@@ -41,7 +41,7 @@ bash dag/submit_dagman_workflow.sh Bd_pp24_v2_fid2_6v4_o200 1 20
 ### 不用 Optuna 的 XGBoost 主线（单模型 DAG）
 命名约定：`train_tag` 必须严格满足 `{channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}`，TRAIN 节点自动走 `workflows/xgboost_train_direct.py`。
 ```bash
-bash dag/submit_single_workflow.sh X_pb24_v2_fid1_8v1_xgb_v1 0
+bash dag/submit_single_workflow.sh X_pp24_v1_fid1_18v1_xgb_v1 1
 bash dag/submit_single_workflow.sh Bs_pp24_v1_fid1_6v1_xgb_v1 0
 ```
 执行链：`TRAIN(Direct XGBoost) -> APPLY -> DRAW`。

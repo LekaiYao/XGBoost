@@ -107,13 +107,41 @@ plt.figure(figsize=(8, 5.5))
 shap.summary_plot(shap_values, features=X_display, feature_names=input_columns, plot_type="bar", show=False)
 plt.tight_layout(); plt.savefig(shap_bar_path(train_tag)); plt.close()
 
-plt.figure(figsize=(8, 5))
-plt.plot(ordered_names, cumulative_percent, color="black", linewidth=1, alpha=0.6)
-plt.scatter(ordered_names, cumulative_percent, color="tab:blue", s=45)
-plt.axhline(95.0, color="tab:red", linestyle="--", linewidth=1.5)
-plt.ylim(0, 105)
-plt.xticks(rotation=25, ha="right")
-plt.grid(alpha=0.3)
-plt.tight_layout(); plt.savefig(shap_cumulative_path(train_tag)); plt.close()
+fig, ax_left = plt.subplots(figsize=(8.8, 5.2))
+x_pos = np.arange(len(ordered_names))
+feature_percent = ordered_fractions * 100.0
+
+# Left axis: cumulative contribution
+line_cum, = ax_left.plot(x_pos, cumulative_percent, color="black", linewidth=1.2, alpha=0.8, label="Cumulative (%)")
+ax_left.scatter(x_pos, cumulative_percent, color="tab:blue", s=45)
+ax_left.axhline(95.0, color="tab:red", linestyle="--", linewidth=1.5, label="95%")
+ax_left.set_ylim(0, 105)
+ax_left.set_ylabel("Cumulative contribution (%)", color="tab:blue")
+ax_left.tick_params(axis="y", labelcolor="tab:blue")
+ax_left.grid(alpha=0.3, axis="y")
+
+# Right axis: per-feature contribution from shap_bar (percentage form)
+ax_right = ax_left.twinx()
+bars = ax_right.bar(
+    x_pos,
+    feature_percent,
+    width=0.68,
+    color="tab:orange",
+    alpha=0.35,
+    edgecolor="tab:orange",
+    label="Per-feature (%)",
+)
+right_max = float(np.max(feature_percent)) if len(feature_percent) else 0.0
+ax_right.set_ylim(0, max(5.0, right_max * 1.25))
+ax_right.set_ylabel("Per-feature contribution (%)", color="tab:orange")
+ax_right.tick_params(axis="y", labelcolor="tab:orange")
+
+ax_left.set_xticks(x_pos)
+ax_left.set_xticklabels(ordered_names, rotation=25, ha="right")
+
+ax_left.legend([line_cum, bars], ["Cumulative (%)", "Per-feature (%)"], loc="upper left")
+fig.tight_layout()
+fig.savefig(shap_cumulative_path(train_tag))
+plt.close(fig)
 
 print("SHAP analysis complete.")
