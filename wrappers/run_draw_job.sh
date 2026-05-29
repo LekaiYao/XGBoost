@@ -14,4 +14,4 @@ cd "${repo_dir}"
 source .venv/bin/activate
 export PYTHONNOUSERSITE=1
 
-exec python3 -m workflows.batch_draw_scores --fid-profile "${fid_profile}" "${train_tag}"
+exec "${repo_dir}/.venv/bin/python" -m workflows.batch_draw_scores --fid-profile "${fid_profile}" "${train_tag}"

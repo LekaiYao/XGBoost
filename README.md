@@ -16,27 +16,51 @@
 ```bash
 bash dag/submit_dagman_workflow.sh <group_tag> <version_start> <version_end> [fid_profile]
 ```
-执行链：`make_dagman_workflow.py -> train_dispatch.py -> (condor_optuna_XGBoost.py / staged_optuna_pipeline.py) -> group_apply_draw.py -> batch_apply_scores.py + batch_draw_scores.py`
+执行链：`make_dagman_workflow.py -> train_dispatch.py -> condor_optuna_XGBoost.py -> group_apply_draw.py -> batch_apply_scores.py + batch_draw_scores.py`
 （Condor 层通过 `wrappers/run_train_dispatch.sh`、`wrappers/run_group_apply_draw.sh` 调用）
 
 参数说明：
-- `group_tag`：同一批任务共享前缀，必须为 `{channel}_{dataset}_v{n}_fid{n}_{varset}_{optuna}`，例如 `X_pb24_v2_fid1_8v1_4o200`
+- `group_tag`：同一批任务共享前缀，必须为 `{channel}_{dataset}_v{n}_fid{n}_{varset}_{n}o{N}_v{k}`，例如 `X_pb24_v2_fid1_8v1_1o200_v1`
 - `version_start`：起始版本号，整数，例如 `1`
 - `version_end`：结束版本号，整数且 `>= version_start`，例如 `10`
 - `fid_profile`：可选覆盖值；默认从 `group_tag` 解析的 `dataset+fid{n}` 自动确定
-- 自动解析：`group_tag` 必须包含 Optuna trial 信息（`_oN` 或 `_MoN`），并从命名解析 `dataset_year`、`selection_profile`、`fid_profile`
+- 自动解析：`group_tag` 必须包含 Optuna 后缀 `_{n}o{N}_v{k}`，并从命名解析 `dataset_year`、`selection_profile`、`fid_profile`
 
 示例（核心提交命令）：
 ```bash
 # PbPb：提交 v1-v10，共10个训练 + 1个最终apply/draw
-bash dag/submit_dagman_workflow.sh X_pb24_v2_fid1_8v1_4o200 1 10
+bash dag/submit_dagman_workflow.sh X_pb24_v2_fid1_8v1_1o200_v1 1 10
 
 # PbPb：提交 v1-v100
-bash dag/submit_dagman_workflow.sh Bu_pb24_v1_fid1_5v2_4o200 1 100
+bash dag/submit_dagman_workflow.sh Bu_pb24_v1_fid1_5v2_1o200_v1 1 100
 
 # pp：提交 v1-v20
-bash dag/submit_dagman_workflow.sh Bd_pp24_v2_fid2_6v4_o200 1 20
+bash dag/submit_dagman_workflow.sh Bd_pp24_v2_fid2_6v4_1o200_v1 1 20
 ```
+
+### 批量 DAGMan（Optuna）配置与记录位置
+1) Optuna 训练配置在哪改：
+- 训练流程入口与行为：`workflows/condor_optuna_XGBoost.py`（单空间一次性调参）
+- DAGMan 训练调度：`workflows/train_dispatch.py`
+- 提交链：`dag/make_dagman_workflow.py`、`dag/submit_dagman_workflow.sh`
+- 训练输入数据与筛选：`configs/samples.py`
+- 训练变量：`utils/varsets.py`
+
+2) Optuna 超参数空间在哪改：
+- `configs/optuna_spaces.py`
+  - `OPTUNA_SPACES[dataset][channel][version]`
+  - `OPTUNA_TRAINING_OPTIONS[dataset][channel][version]`（如 `early_stopping_rounds`）
+- `configs/direct_xgb_settings.py`
+  - `DIRECT_XGB_PARAMS[dataset][channel]`
+
+3) 每轮 trial 超参数和目标值（如 AUC）在哪看：
+- 当前主线单空间 Optuna默认不落盘“全部 trial 明细”。
+- 已落盘内容：
+  - `output/models/<train_tag>/optuna_top20_ranges.json`：
+    - 包含 top20 trial 的 `trial_number`、`objective_value`（validation AUC）和 `params`
+    - 包含初始搜索空间与 top20 收缩区间对比
+  - `output/training/<train_tag>/run_metadata.json`：
+    - 记录 best params、best objective、搜索空间、n_trials 等元信息
 
 ### 不用 Optuna 的 XGBoost 主线（单模型 DAG）
 命名约定：`train_tag` 必须严格满足 `{channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}`，TRAIN 节点自动走 `workflows/xgboost_train_direct.py`。
@@ -50,7 +74,7 @@ bash dag/submit_single_workflow.sh Bs_pp24_v1_fid1_6v1_xgb_v1 0
 ## Single DAG 工作内容（配置来源）
 1) 训练输入、训练前筛选、SHAP筛选
 - 训练输入数据（signal/background 的 ROOT 路径与 TTree）定义在：
-  - [samples.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/configs/samples.py) 的 `SAMPLES[sample]["channels"][channel]["datasets"][year]["train"]`
+  - [configs/samples.py](configs/samples.py) 的 `SAMPLES[sample]["channels"][channel]["datasets"][year]["train"]`
 - 训练前筛选条件定义在：
   - 同文件的 `selection_profiles`（`signal_selection` / `background_selection` 表达式）
   - 训练脚本读取：`workflows/xgboost_train_direct.py`（single DAG 直训）/ `workflows/condor_optuna_XGBoost.py`（optuna）
@@ -60,7 +84,7 @@ bash dag/submit_single_workflow.sh Bs_pp24_v1_fid1_6v1_xgb_v1 0
 
 2) apply输入、apply筛选、draw筛选
 - apply 输入数据（MC/data 的 ROOT 路径与 TTree）定义在：
-  - [samples.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/configs/samples.py) 的 `datasets[year]["apply"]`
+  - [configs/samples.py](configs/samples.py) 的 `datasets[year]["apply"]`
 - apply 阶段在 summary 中记录训练筛选表达式（`signal_selection` / `background_selection`），来源：
   - `resolve_training_config(...)`（`configs/samples.py`）
   - 执行脚本：`workflows/batch_apply_scores.py`
@@ -70,18 +94,19 @@ bash dag/submit_single_workflow.sh Bs_pp24_v1_fid1_6v1_xgb_v1 0
 
 3) 训练变量
 - 训练变量组合定义在：
-  - [varsets.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/utils/varsets.py) 的 `VARSETS[sample][channel][varset]`
+  - [utils/varsets.py](utils/varsets.py) 的 `VARSETS[sample][channel][varset]`
 - single DAG 会从 `train_tag` 解析 `sample/channel/selection_profile/fid_profile/varset`，据此读取配置。
 
 ## 如何输入 Optuna 超参数空间与训练配置
 - Optuna 空间：
-  - 文件：[configs/search_spaces.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/configs/search_spaces.py)
-  - 字段：`OPTUNA_SPACES["pbpb"]`、`OPTUNA_SPACES["pp"]`
-  - 主线脚本按 sample 自动读取，不再从命令行传空间名。
+  - 文件：[configs/optuna_spaces.py](configs/optuna_spaces.py)
+  - 字段：`OPTUNA_SPACES[dataset][channel][version]`（例如 `OPTUNA_SPACES["pb23"]["X"]["v1"]`）
+  - 训练附加配置：`OPTUNA_TRAINING_OPTIONS[dataset][channel][version]`
 - 直接 XGBoost（非 Optuna）参数：
-  - 同文件的 `DIRECT_XGB_PARAMS["pbpb"/"pp"]`
+  - 文件：[configs/direct_xgb_settings.py](configs/direct_xgb_settings.py)
+  - 字段：`DIRECT_XGB_PARAMS[dataset][channel]`
 - 样本路径、TTree、训练筛选、fid cut：
-  - 文件：[configs/samples.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/configs/samples.py)
+  - 文件：[configs/samples.py](configs/samples.py)
 - `samples.py` 核心结构：
   - `SAMPLES[sample]["channels"][channel]["datasets"][year]["train/apply/draw"]`
   - `selection_profiles`：训练筛选表达式（`signal_selection` / `background_selection`）
@@ -93,17 +118,18 @@ bash dag/submit_single_workflow.sh Bs_pp24_v1_fid1_6v1_xgb_v1 0
 - `fiducial_profiles` 控制 apply/draw 筛选表达式（由 `fid_profile` 选择）
   - 以上均按 `sample + channel` 独立配置
 - 变量组合：
-  - 文件：[utils/varsets.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/utils/varsets.py)
+  - 文件：[utils/varsets.py](utils/varsets.py)
 
 ## 如何修改关键配置
-- 修改 varset：编辑 [utils/varsets.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/utils/varsets.py)
+- 修改 varset：编辑 [utils/varsets.py](utils/varsets.py)
   - 结构：`VARSETS[sample][channel][varset]`
   - 示例：`VARSETS["pbpb"]["X"]["4v2"]`、`VARSETS["pbpb"]["Bu"]["4v2"]`、`VARSETS["pp"]["X"]["4v2"]`
-- 修改输入 ROOT/TTree：编辑 [configs/samples.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/configs/samples.py) 的 `datasets`（`train/apply/draw`）
+- 修改输入 ROOT/TTree：编辑 [configs/samples.py](configs/samples.py) 的 `datasets`（`train/apply/draw`）
 - 修改训练筛选条件：编辑 `configs/samples.py` 的 `selection_profiles`
 - 修改 apply/draw fiducial region：编辑 `configs/samples.py` 的 `fiducial_profiles`
-- 修改 Optuna 搜索空间：编辑 [configs/search_spaces.py](/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/configs/search_spaces.py) 的 `OPTUNA_SPACES`
-- 修改无 Optuna 训练参数：编辑 `configs/search_spaces.py` 的 `DIRECT_XGB_PARAMS`
+- 修改 Optuna 搜索空间：编辑 [configs/optuna_spaces.py](configs/optuna_spaces.py) 的 `OPTUNA_SPACES`
+- 修改 Optuna early stop：编辑 `configs/optuna_spaces.py` 的 `OPTUNA_TRAINING_OPTIONS`
+- 修改无 Optuna 训练参数：编辑 `configs/direct_xgb_settings.py` 的 `DIRECT_XGB_PARAMS`
 
 ## 命名强校验
 - single DAG 仅接受：`{channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}`
@@ -153,7 +179,24 @@ bash dag/submit_single_workflow.sh X_pp24_v2_fid2_6v4_xgb_v1 1
 
 ## 命名规范
 - single DAG（direct XGB）：`{channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}`
-- DAGMan Optuna group：`{channel}_{dataset}_v{n}_fid{n}_{varset}_{oN|MoN}`
+- DAGMan Optuna group：`{channel}_{dataset}_v{n}_fid{n}_{varset}_{n}o{N}_v{k}`
+
+## 如何运行 Optuna DAG 训练
+命令：
+```bash
+bash dag/submit_dagman_workflow.sh <group_tag> <version_start> <version_end> [fid_profile]
+```
+`group_tag` 必须形如：
+```text
+{channel}_{dataset}_v{selection}_fid{fid}_{varset}_{n}o{N}_v{k}
+```
+示例：
+```bash
+bash dag/submit_dagman_workflow.sh X_pb23_v1_fid1_18v1_1o200_v1 1 10
+```
+- `n`：Optuna objective index（当前仅支持 `1`，对应 validation AUC）
+- `N`：Optuna trial 次数
+- `k`：Optuna 空间版本（映射到 `configs/optuna_spaces.py` 中的 `v{k}`）
 
 ## 关键约束
 - ROOT/TTree/fid/train cuts 只在 `configs/samples.py` 配置。

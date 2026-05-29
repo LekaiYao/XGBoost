@@ -6,6 +6,7 @@ import re
 from utils.tagging import infer_sample_from_body, split_channel_tag
 
 SINGLE_DAG_BODY_RE = re.compile(r"^(pp24|pb23|pb24)_v(\d+)_fid(\d+)_([0-9]+v[0-9]*)_xgb_v(\d+)$")
+GROUP_DAG_BODY_RE = re.compile(r"^(pp24|pb23|pb24)_v(\d+)_fid(\d+)_([0-9]+v[0-9]*)_(\d+)o(\d+)_v(\d+)$")
 
 
 def _parse_single_dag_body_or_raise(tag: str):
@@ -19,6 +20,37 @@ def _parse_single_dag_body_or_raise(tag: str):
         )
     dataset_token, selection_idx, fid_idx, varset_token, model_version = m.groups()
     return body, dataset_token, int(selection_idx), int(fid_idx), varset_token, int(model_version)
+
+
+def _parse_group_dag_body_or_raise(tag: str):
+    _, body = split_channel_tag(tag)
+    m = GROUP_DAG_BODY_RE.fullmatch(body)
+    if not m:
+        raise ValueError(
+            f"Invalid DAGMan group tag '{tag}'. "
+            "Expected format: {channel}_{dataset}_v{n}_fid{n}_{varset}_{n}o{N}_v{k}, "
+            "for example: X_pb24_v2_fid1_8v1_1o200_v1"
+        )
+    dataset_token, selection_idx, fid_idx, varset_token, objective_idx, n_trials, space_version = m.groups()
+    return (
+        body,
+        dataset_token,
+        int(selection_idx),
+        int(fid_idx),
+        varset_token,
+        int(objective_idx),
+        int(n_trials),
+        int(space_version),
+    )
+
+
+def _parse_common_body_for_profiles(tag: str):
+    try:
+        body, dataset_token, selection_idx, fid_idx, _, _ = _parse_single_dag_body_or_raise(tag)
+        return body, dataset_token, selection_idx, fid_idx
+    except ValueError:
+        body, dataset_token, selection_idx, fid_idx, _, _, _, _ = _parse_group_dag_body_or_raise(tag)
+        return body, dataset_token, selection_idx, fid_idx
 
 
 def _spec(path: str, tree: str) -> dict:
@@ -104,36 +136,36 @@ SAMPLES = {
     "pbpb": {
         "channels": {
             "X": _pbpb_channel_cfg(
-                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC_X3872.root", "ntmix_X3872"),
-                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA0.root", "ntmix"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MCX3872.root", "ntmixX3872"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root", "ntmix"),
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root", "ntmix"),
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC_X3872.root", "ntmix_X3872"),
-                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA_SMALL.root", "ntmix"),
+                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA.root", "ntmix"),
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA.root", "ntmix"),
                 "ntmix",
                 {
                     "pb24_v1": {
-                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
-                        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50",
+                        "signal_selection": "(abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50))",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50))",
                     },
                     "pb24_v2": {
-                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-                        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "signal_selection": "(abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50) and (BQvalue < 0.2))",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50))",
                     },
                     "pb23_v1": {
-                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
-                        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.6 and 15 < Bpt < 50",
+                        "signal_selection": "(abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50))",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50))",
                     },
                     "pb23_v2": {
-                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-                        "background_selection": "((3.75 < Bmass < 3.83) or (3.91 < Bmass < 4.00)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "signal_selection": "(abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50) and (BQvalue < 0.2))",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50))",
                     },
                 },
                 {
-                    "pb24_fid1": "BQvalue < 0.13 and abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0 and CentBin > 0.0 and CentBin < 90.0",
-                    "pb24_fid2": "BQvalue < 0.2 and abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
-                    "pb23_fid1": "BQvalue < 0.13 and abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0 and CentBin > 0.0 and CentBin < 90.0",
-                    "pb23_fid2": "BQvalue < 0.2 and abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
+                    "pb24_fid1": "abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
+                    "pb24_fid2": "BQvalue < 0.2 and abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
+                    "pb23_fid1": "abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
+                    "pb23_fid2": "BQvalue < 0.2 and abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
                 },
                 {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
             ),
@@ -270,11 +302,15 @@ SAMPLES = {
                     "pp24_v2": {
                         "signal_selection": "BQvalue < 0.2",
                         "background_selection": "((BQvalue < 0.2) and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)))",
+                    },
+                    "pp24_v3": {
+                        "signal_selection": "BQvalue < 0.15",
+                        "background_selection": "((BQvalue < 0.15) and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)))",
                     }
                 },
                 {
                     "pp24_fid1": "BQvalue < 0.2",
-                    "pp24_fid2": "BQvalue < 0.2 and abs(By) < 2.4 and Bpt > 5.0 and Bpt < 50.0",
+                    "pp24_fid2": "BQvalue < 0.15",
                 },
                 {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
             ),
@@ -371,7 +407,7 @@ def infer_sample_from_tag(tag: str) -> str:
 
 
 def infer_dataset_year(tag: str, sample: str) -> str:
-    _, dataset_token, _, _, _, _ = _parse_single_dag_body_or_raise(tag)
+    _, dataset_token, _, _ = _parse_common_body_for_profiles(tag)
     if dataset_token.startswith("pb23"):
         return "2023"
     if dataset_token.startswith("pb24") or dataset_token.startswith("pp24"):
@@ -379,10 +415,15 @@ def infer_dataset_year(tag: str, sample: str) -> str:
     raise ValueError(f"Unsupported dataset token '{dataset_token}' in tag '{tag}'.")
 
 
+def infer_dataset_token_from_tag(tag: str) -> str:
+    _, dataset_token, _, _ = _parse_common_body_for_profiles(tag)
+    return dataset_token
+
+
 def infer_selection_profile(tag: str, sample: str) -> str:
     channel = infer_channel_from_tag(tag)
     cfg = _channel_cfg(sample, channel)
-    _, dataset_token, selection_idx, _, _, _ = _parse_single_dag_body_or_raise(tag)
+    _, dataset_token, selection_idx, _ = _parse_common_body_for_profiles(tag)
     profile = f"{dataset_token}_v{selection_idx}"
     if profile in cfg["selection_profiles"]:
         return profile
@@ -394,7 +435,7 @@ def infer_selection_profile(tag: str, sample: str) -> str:
 def infer_fid_profile(tag: str, sample: str) -> str:
     channel = infer_channel_from_tag(tag)
     cfg = _channel_cfg(sample, channel)
-    _, dataset_token, _, fid_idx, _, _ = _parse_single_dag_body_or_raise(tag)
+    _, dataset_token, _, fid_idx = _parse_common_body_for_profiles(tag)
     profile = f"{dataset_token}_fid{fid_idx}"
     if profile in cfg["fiducial_profiles"]:
         return profile

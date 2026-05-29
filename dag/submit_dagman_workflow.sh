@@ -18,16 +18,16 @@ afs_dir="/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost"
 cd "${repo_dir}"
 source "${repo_dir}/.venv/bin/activate"
 export PYTHONNOUSERSITE=1
+python_bin="${repo_dir}/.venv/bin/python"
 
-dag_path=$(python3 -m dag.make_dagman_workflow \
+dag_path=$("${python_bin}" -m dag.make_dagman_workflow \
   --group-tag "${group_tag}" \
   --version-start "${version_start}" \
   --version-end "${version_end}" \
-  --resume-flag 0 \
   --fid-profile "${fid_profile}" \
   --out-dir "dag/generated" | tail -n 1)
 
-cp dag/submit_templates/submit_staged_single.sub "${afs_dir}/submit_staged_single.sub"
+cp dag/submit_templates/submit_train_dispatch_single.sub "${afs_dir}/submit_train_dispatch_single.sub"
 cp dag/submit_templates/submit_apply_job.sub "${afs_dir}/submit_apply_job.sub"
 cp dag/submit_templates/submit_draw_job.sub "${afs_dir}/submit_draw_job.sub"
 cp wrappers/*.sh "${afs_dir}/"

@@ -23,8 +23,9 @@ afs_dir="/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost"
 cd "${repo_dir}"
 source "${repo_dir}/.venv/bin/activate"
 export PYTHONNOUSERSITE=1
+python_bin="${repo_dir}/.venv/bin/python"
 
-dag_path=$(python3 -m dag.make_single_workflow --train-tag "${train_tag}" --with-shap "${with_shap}" --out-dir "dag/generated")
+dag_path=$("${python_bin}" -m dag.make_single_workflow --train-tag "${train_tag}" --with-shap "${with_shap}" --out-dir "dag/generated")
 
 cp dag/submit_templates/submit_train_job.sub "${afs_dir}/submit_train_job.sub"
 cp dag/submit_templates/submit_apply_job.sub "${afs_dir}/submit_apply_job.sub"

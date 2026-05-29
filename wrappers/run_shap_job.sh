@@ -11,4 +11,4 @@ cd "${repo_dir}"
 source .venv/bin/activate
 export PYTHONNOUSERSITE=1
 
-exec python3 -m workflows.shap_importance "$1"
+exec "${repo_dir}/.venv/bin/python" -m workflows.shap_importance "$1"

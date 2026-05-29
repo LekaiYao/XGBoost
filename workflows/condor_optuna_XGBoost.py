@@ -14,9 +14,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
-from configs.search_spaces import OPTUNA_SPACES
+from configs.optuna_spaces import OPTUNA_SPACES, OPTUNA_TRAINING_OPTIONS
 from configs.samples import (
     infer_channel_from_tag,
+    infer_dataset_token_from_tag,
     infer_dataset_year,
     infer_sample_from_tag as infer_sample_from_config,
     infer_selection_profile,
@@ -36,6 +37,7 @@ from utils.paths import (
 )
 from utils.run_metadata import save_run_metadata
 from utils.selection import apply_selection
+from utils.tagging import parse_optuna_spec_from_train_tag
 from utils.varsets import get_varset_columns, infer_sample_from_tag, infer_varset_from_tag
 
 
@@ -89,6 +91,14 @@ def resolve_training_inputs():
 
 
 SAMPLE_KEY, CHANNEL, DATASET_YEAR, DATASET_SOURCE, SELECTION_PROFILE, SIG_PATH, BKG_PATH, SIGNAL_SELECTION, BACKGROUND_SELECTION = resolve_training_inputs()
+DATASET_TOKEN = infer_dataset_token_from_tag(train_tag)
+OPTUNA_OBJECTIVE_INDEX, OPTUNA_N_TRIALS_FROM_TAG, OPTUNA_SPACE_VERSION = parse_optuna_spec_from_train_tag(train_tag)
+if number_trials != OPTUNA_N_TRIALS_FROM_TAG:
+    print(
+        f"Warning: OPTUNA_N_TRIALS env ({number_trials}) != tag trials ({OPTUNA_N_TRIALS_FROM_TAG}). "
+        f"Using tag value: {OPTUNA_N_TRIALS_FROM_TAG}"
+    )
+    number_trials = OPTUNA_N_TRIALS_FROM_TAG
 
 sample_key = infer_sample_from_tag(train_tag)
 feature_set_tag = infer_varset_from_tag(train_tag, sample=sample_key)
@@ -340,7 +350,14 @@ for idx, (md_lo, md_hi, mcw_lo, mcw_hi, lr_lo, lr_hi, ne_lo, ne_hi, ss_lo, ss_hi
 
 if legacy_search_space_tag:
     print(f"Warning: legacy search space tag '{legacy_search_space_tag}' is ignored in single-space mode.")
-OPTUNA_SEARCH_SPACE = OPTUNA_SPACES[sample_key][CHANNEL]
+if OPTUNA_OBJECTIVE_INDEX != 1:
+    raise ValueError(
+        f"Unsupported optuna objective index '{OPTUNA_OBJECTIVE_INDEX}' in tag '{train_tag}'. "
+        "Current workflow supports objective 1 (validation AUC) only."
+    )
+OPTUNA_SEARCH_SPACE = OPTUNA_SPACES[DATASET_TOKEN][CHANNEL][OPTUNA_SPACE_VERSION]
+OPTUNA_TRAINING_CFG = OPTUNA_TRAINING_OPTIONS[DATASET_TOKEN][CHANNEL][OPTUNA_SPACE_VERSION]
+EARLY_STOPPING_ROUNDS = OPTUNA_TRAINING_CFG.get("early_stopping_rounds")
 
 
 def suggest_param(trial, name, config):
@@ -482,6 +499,9 @@ ensure_dir(condor_training_dir(train_tag))
 print(f"Using feature set: {feature_set_tag}")
 print(f"Input columns: {input_columns}")
 print("Using single optuna search space.")
+print(f"Optuna objective index: {OPTUNA_OBJECTIVE_INDEX}")
+print(f"Optuna space version: {OPTUNA_SPACE_VERSION}")
+print(f"Optuna early_stopping_rounds: {EARLY_STOPPING_ROUNDS}")
 print(f"Dataset source: {DATASET_SOURCE}")
 print(f"Selection profile: {SELECTION_PROFILE}")
 print(json.dumps(OPTUNA_SEARCH_SPACE, indent=2))
@@ -544,7 +564,12 @@ def objective(trial):
         params[name] = suggest_param(trial, name, config)
 
     model = XGBClassifier(**params)
-    model.fit(X_train, y_train["is_sig"])
+    fit_kwargs = {}
+    if EARLY_STOPPING_ROUNDS is not None:
+        fit_kwargs["eval_set"] = [(X_val, y_val["is_sig"])]
+        fit_kwargs["early_stopping_rounds"] = int(EARLY_STOPPING_ROUNDS)
+        fit_kwargs["verbose"] = False
+    model.fit(X_train, y_train["is_sig"], **fit_kwargs)
 
     pred = model.predict_proba(X_val)[:, 1]
     val_fpr, val_tpr, _ = roc_curve(y_val["is_sig"].astype(int).to_numpy(), pred)
@@ -560,7 +585,7 @@ print("Best params:", study.best_params)
 print(f"Best validation AUC: {study.best_value:.6f}")
 top20_ranges_json_path = save_top20_range_json(
     train_tag=train_tag,
-    search_space_tag="single",
+    search_space_tag=OPTUNA_SPACE_VERSION,
     search_space=OPTUNA_SEARCH_SPACE,
     study=study,
     top_n=20,
@@ -575,7 +600,12 @@ xgbc = XGBClassifier(
     scale_pos_weight=pos_weight,
     n_jobs=4,
 )
-xgbc.fit(X_train, y_train["is_sig"])
+final_fit_kwargs = {}
+if EARLY_STOPPING_ROUNDS is not None:
+    final_fit_kwargs["eval_set"] = [(X_val, y_val["is_sig"])]
+    final_fit_kwargs["early_stopping_rounds"] = int(EARLY_STOPPING_ROUNDS)
+    final_fit_kwargs["verbose"] = False
+xgbc.fit(X_train, y_train["is_sig"], **final_fit_kwargs)
 
 test_score_xgb = xgbc.predict_proba(X_test)
 test_score_xgb_sig = test_score_xgb[y_test["is_sig"]][:, 1]
@@ -679,6 +709,9 @@ save_run_metadata(
     best_objective_value=study.best_value,
     notes={
         "search_space_tag": "single",
+        "optuna_objective_index": OPTUNA_OBJECTIVE_INDEX,
+        "optuna_space_version": OPTUNA_SPACE_VERSION,
+        "early_stopping_rounds": EARLY_STOPPING_ROUNDS,
         "best_validation_auc": float(study.best_trial.user_attrs.get("validation_auc", study.best_value)),
         "test_auc": float(roc_auc),
         "test_roc_json_path": roc_json_path,

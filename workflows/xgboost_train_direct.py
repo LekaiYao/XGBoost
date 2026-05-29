@@ -13,13 +13,14 @@ from xgboost import XGBClassifier
 
 from configs.samples import (
     infer_channel_from_tag,
+    infer_dataset_token_from_tag,
     infer_dataset_year,
     infer_sample_from_tag as infer_sample_from_config,
     infer_selection_profile,
     resolve_training_config,
     to_root_spec,
 )
-from configs.search_spaces import DIRECT_XGB_PARAMS
+from configs.direct_xgb_settings import DIRECT_XGB_PARAMS
 from utils.paths import (
     condor_feature_importance_cumulative_path,
     condor_feature_importance_path,
@@ -74,6 +75,7 @@ def main():
 
     sample = infer_sample_from_config(train_tag)
     channel = infer_channel_from_tag(train_tag)
+    dataset_token = infer_dataset_token_from_tag(train_tag)
     dataset_year = args.dataset_year or infer_dataset_year(train_tag, sample)
     selection_profile = args.selection_profile or infer_selection_profile(train_tag, sample)
     train_cfg = resolve_training_config(sample, channel, dataset_year, selection_profile)
@@ -119,7 +121,7 @@ def main():
         "eval_metric": "logloss",
         "random_state": 42,
         "n_jobs": 4,
-        **DIRECT_XGB_PARAMS[sample_key][channel],
+        **DIRECT_XGB_PARAMS[dataset_token][channel],
     }
     xgbc = XGBClassifier(**params)
     xgbc.fit(X_train, y_train["is_sig"].to_numpy())

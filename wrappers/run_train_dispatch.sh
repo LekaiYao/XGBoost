@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-if [[ $# -lt 4 ]]; then
-  echo "Usage: $0 <train_tag> <optuna_n_trials> <stage_group> <resume_flag> [dataset_year] [selection_profile]"
+if [[ $# -lt 2 ]]; then
+  echo "Usage: $0 <train_tag> <optuna_n_trials> [dataset_year] [selection_profile]"
   exit 1
 fi
 
@@ -11,4 +11,4 @@ cd "${repo_dir}"
 source .venv/bin/activate
 export PYTHONNOUSERSITE=1
 
-exec python3 -m workflows.train_dispatch "$@"
+exec "${repo_dir}/.venv/bin/python" -m workflows.train_dispatch "$@"
