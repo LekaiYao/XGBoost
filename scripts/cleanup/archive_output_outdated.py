@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import time
@@ -8,6 +9,15 @@ from pathlib import Path
 from typing import Set
 
 OUTPUT_CATEGORIES = ("models", "training", "selected", "shap")
+CHANNEL_RE = r"(X|Bu|Bd|Bs)"
+DATASET_RE = r"(pp24|pb23|pb24)"
+VARSET_RE = r"([0-9]+v[0-9]+)"
+SINGLE_TAG_RE = re.compile(
+    rf"^{CHANNEL_RE}_{DATASET_RE}_v(\d+)_fid(\d+)_{VARSET_RE}_xgb_v(\d+)$"
+)
+OPTUNA_TAG_RE = re.compile(
+    rf"^{CHANNEL_RE}_{DATASET_RE}_v(\d+)_fid(\d+)_{VARSET_RE}_(\d+)o(\d+)_v(\d+)$"
+)
 
 
 def format_bytes(num_bytes: int) -> str:
@@ -30,6 +40,14 @@ def collect_train_tags(output_dir: Path) -> Set[str]:
             if p.is_dir():
                 tags.add(p.name)
     return tags
+
+
+def match_workflow(tag: str, workflow_type: str) -> bool:
+    if workflow_type == "single":
+        return bool(SINGLE_TAG_RE.fullmatch(tag))
+    if workflow_type == "optuna":
+        return bool(OPTUNA_TAG_RE.fullmatch(tag))
+    return bool(SINGLE_TAG_RE.fullmatch(tag) or OPTUNA_TAG_RE.fullmatch(tag))
 
 
 def move_dir(src: Path, dst: Path, dry_run: bool) -> bool:
@@ -68,6 +86,12 @@ def main() -> int:
     )
     parser.add_argument("--dry-run", action="store_true", help="Print operations only")
     parser.add_argument(
+        "--workflow-type",
+        choices=("all", "single", "optuna"),
+        default="all",
+        help="Archive only selected workflow tags by naming rule (default: all)",
+    )
+    parser.add_argument(
         "--afs-dir",
         default="/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost",
         help="AFS submit root used by clear_dag_locks.sh",
@@ -82,7 +106,9 @@ def main() -> int:
     stamp = time.strftime("%Y%m%d_%H%M%S")
     backup_dir = backup_root / stamp
 
-    train_tags = sorted(collect_train_tags(output_dir))
+    all_tags = sorted(collect_train_tags(output_dir))
+    train_tags = [t for t in all_tags if match_workflow(t, args.workflow_type)]
+    skipped_tags = [t for t in all_tags if t not in train_tags]
     moved = []
     removed_data_roots = []
     removed_bytes = 0
@@ -121,8 +147,11 @@ def main() -> int:
         "output_dir": str(output_dir),
         "backup_dir": str(backup_dir),
         "dry_run": args.dry_run,
-        "train_tags_total": len(train_tags),
+        "workflow_type": args.workflow_type,
+        "train_tags_total_detected": len(all_tags),
+        "train_tags_total_matched": len(train_tags),
         "train_tags_to_move": train_tags,
+        "train_tags_skipped": skipped_tags,
         "removed_data_with_score_count": len(removed_data_roots),
         "removed_data_with_score_bytes": removed_bytes,
         "removed_data_with_score_human": format_bytes(removed_bytes),

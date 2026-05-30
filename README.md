@@ -231,12 +231,17 @@ bash dag/submit_dagman_workflow.sh X_pb23_v1_fid1_18v1_1o200 1 10 auto
 python3 scripts/cleanup/cleanup_selected_events.py --days 5 --root-threshold-mb 500
 ```
 
-2) 全量归档当前输出到 `output/backup_outdate/<timestamp>/`：
+2) 归档当前输出到 `output/backup_outdate/<timestamp>/`：
 - 归档前会删除每个 tag 的 `output/selected/<tag>/DATA_with_score.root`（可用 `--keep-selected-data-root` 关闭）。
 - 归档过程中会自动调用 `scripts/cleanup/clear_dag_locks.sh` 清理 single DAG 重提冲突文件（含 `.dag.condor.sub/.dag.lib.out/.dag.lib.err/.dag.dagman.log` 等）。
+- 支持按 workflow 类型过滤：`--workflow-type all|single|optuna`（默认 `all`）
+  - `single`：`{channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}`
+  - `optuna`：`{channel}_{dataset}_v{n}_fid{n}_{varset}_{n}o{N}_v{k}`
 ```bash
 python3 scripts/cleanup/archive_output_outdated.py
 python3 scripts/cleanup/archive_output_outdated.py --dry-run
+python3 scripts/cleanup/archive_output_outdated.py --dry-run --workflow-type single
+python3 scripts/cleanup/archive_output_outdated.py --workflow-type optuna
 ```
 
 3) single DAG 重提前仅清理锁文件：
