@@ -76,19 +76,6 @@ print(f"Apply dataset source: {apply_cfg['dataset_source']}")
 print(f"Apply MC input: {MC_INPUT}")
 print(f"Apply DATA input: {DATA_INPUT}")
 
-extra_output_columns = ["BQvalue", "nSelectedChargedTracks", "CentBin", "Bpt", "By"]
-
-
-def ordered_unique(columns):
-    seen = set()
-    output = []
-    for column in columns:
-        if column not in seen:
-            seen.add(column)
-            output.append(column)
-    return output
-
-
 single_model_mode = len(train_tags) == 1
 
 
@@ -148,19 +135,16 @@ if not models:
 
 input_columns = reference_input_columns
 trans_columns = reference_trans_columns
-base_output_columns = ordered_unique(["Bmass"] + input_columns + extra_output_columns)
-mc_branches = base_output_columns
-data_branches = base_output_columns
 
 
-def score_dataframe(df, model_bundle, output_columns):
+def score_dataframe(df, model_bundle):
     df_trans = pd.DataFrame(
         model_bundle["scaler"].transform(df[model_bundle["input_columns"]]),
         columns=model_bundle["trans_columns"],
         index=df.index,
     )
     scores = model_bundle["model"].predict_proba(df_trans[model_bundle["trans_columns"]])[:, 1]
-    df_out = df[output_columns].copy()
+    df_out = df.copy()
     df_out[model_bundle["score_column"]] = scores
     return df_out
 
@@ -168,11 +152,10 @@ def score_dataframe(df, model_bundle, output_columns):
 output_dir = ensure_dir(selected_dir(output_tag))
 
 print(f"Processing MC: {MC_INPUT}")
-df_mc = uproot.concatenate(MC_INPUT, filter_name=mc_branches, library="pd")
-mc_output_columns = base_output_columns
+df_mc = uproot.concatenate(MC_INPUT, library="pd")
 df_mc_out = None
 for model_bundle in models:
-    df_scored = score_dataframe(df_mc, model_bundle, mc_output_columns)
+    df_scored = score_dataframe(df_mc, model_bundle)
     if df_mc_out is None:
         df_mc_out = df_scored
     else:
@@ -183,10 +166,10 @@ with uproot.recreate(mc_path) as f:
     f[MC_TREE_INPUT] = {col: df_mc_out[col].values for col in df_mc_out.columns}
 
 print(f"Processing DATA: {DATA_INPUT}")
-df_data = uproot.concatenate(DATA_INPUT, filter_name=data_branches, library="pd")
+df_data = uproot.concatenate(DATA_INPUT, library="pd")
 df_data_out = None
 for model_bundle in models:
-    df_scored = score_dataframe(df_data, model_bundle, base_output_columns)
+    df_scored = score_dataframe(df_data, model_bundle)
     if df_data_out is None:
         df_data_out = df_scored
     else:

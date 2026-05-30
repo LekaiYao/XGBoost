@@ -283,12 +283,7 @@ SAMPLES = {
                             "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix"),
                         },
                         "apply": {
-                            "mc": [
-                                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_PSI2S_nonPrompt.root", "ntmix_PSI2S"),
-                                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_PSI2S.root", "ntmix_PSI2S"),
-                                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872_nonPrompt.root", "ntmix_X3872"),
-                                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872.root", "ntmix_X3872"),
-                            ],
+                            "mc": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872.root", "ntmix_X3872"),],
                             "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix")],
                         },
                     },
@@ -318,69 +313,76 @@ SAMPLES = {
                 {
                     "2024": {
                         "train": {
-                            "signal": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BU.root", "ntmix_BU"),
-                            "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix"),
+                            "signal": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/ppRef/flat_ntKp_ppRef_MC.root", "ntKp"),
+                            "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/ppRef/flat_ntKp_ppRef_DATA.root", "ntKp"),
                         },
                         "apply": {
-                            "mc": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BU.root", "ntmix_BU")],
-                            "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix")],
+                            "mc": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/ppRef/flat_ntKp_ppRef_MC.root", "ntKp")],
+                            "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/ppRef/flat_ntKp_ppRef_DATA.root", "ntKp")],
                         },
                     },
                 },
-                "ntmix_BU",
+                "ntKp",
                 {
-                    "pp24_v2": {
-                        "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
-                        "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
+                    "pp24_v1": {
+                        "signal_selection": "(abs(By) < 2.4) and (Bpt > 7.5)",
+                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and (abs(By) < 2.4) and (Bpt > 7.5)",
                     }
                 },
-                {"pp24_fid1": None},
-                {"mass_range": [4.9, 5.7], "bin_width": 0.01, "reference_masses": []},
+                {"pp24_fid1": "(abs(By) < 2.4) and (Bpt > 7.5)"},
+                {"mass_range": [5.0, 5.6], "bin_width": 0.01, "reference_masses": []},
             ),
             "Bd": _pp_channel_cfg(
                 {
                     "2024": {
                         "train": {
-                            "signal": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BD.root", "ntmix_BD"),
-                            "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix"),
+                            "signal": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/ppRef/flat_ntKstar_ppRef_MC.root", "ntKstar"),
+                            "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/ppRef/flat_ntKstar_ppRef_DATA.root", "ntKstar"),
                         },
                         "apply": {
-                            "mc": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BD.root", "ntmix_BD")],
-                            "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix")],
+                            "mc": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/ppRef/flat_ntKstar_ppRef_MC.root", "ntKstar")],
+                            "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/ppRef/flat_ntKstar_ppRef_DATA.root", "ntKstar")],
                         },
                     },
                 },
-                "ntmix_BD",
+                "ntKstar",
                 {
-                    "pp24_v2": {
-                        "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
-                        "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
+                    "pp24_v1": {
+                        "signal_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02)",
+                        "background_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02) and ((Bmass < 5.56) and (Bmass>5.36))",
                     }
                 },
-                {"pp24_fid1": None},
-                {"mass_range": [5.0, 5.7], "bin_width": 0.01, "reference_masses": []},
+                {"pp24_fid1": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02)"},
+                {"mass_range": [5.0, 5.6], "bin_width": 0.01, "reference_masses": []},
             ),
             "Bs": _pp_channel_cfg(
                 {
                     "2024": {
                         "train": {
-                            "signal": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BS.root", "ntmix_BS"),
-                            "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix"),
+                            "signal": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/ppRef/flat_ntphi_ppRef_MC.root", "ntphi"),
+                            "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/ppRef/flat_ntphi_ppRef_DATA.root", "ntphi"),
                         },
                         "apply": {
-                            "mc": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_BS.root", "ntmix_BS")],
-                            "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix")],
+                            "mc": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/ppRef/flat_ntphi_ppRef_MC.root", "ntphi")],
+                            "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/ppRef/flat_ntphi_ppRef_DATA.root", "ntphi")],
                         },
                     },
                 },
-                "ntmix_BS",
+                "ntphi",
                 {
+                    "pp24_v1": {
+                        "signal_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02)",
+                        "background_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02) and ((Bmass < 5.65) and (Bmass>5.45))",
+                    },
                     "pp24_v2": {
-                        "signal_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5",
-                        "background_selection": "Bchi2Prob>0.02 and Btrk1dR<0.5 and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80))",
+                        "signal_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.2) and (Bchi2Prob>0.02)",
+                        "background_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.2) and (Bchi2Prob>0.02) and ((Bmass < 5.65) and (Bmass>5.45))",
                     }
                 },
-                {"pp24_fid1": None},
+                {
+                "pp24_fid1": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02)",
+                "pp24_fid2": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.2) and (Bchi2Prob>0.02)",
+                },
                 {"mass_range": [5.0, 5.7], "bin_width": 0.01, "reference_masses": []},
             ),
         }

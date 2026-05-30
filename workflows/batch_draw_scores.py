@@ -93,8 +93,9 @@ if not valid_train_tags:
     print("No valid score branches found.")
     sys.exit(1)
 
-branches = ["Bmass", "BQvalue", "By", "Bpt", "CentBin"] + sorted({score_branch_map[tag] for tag in valid_train_tags})
-df = tree.arrays(branches, library="pd")
+# Read all branches from input tree so free-form fiducial expressions
+# can reference any variable present in the apply output.
+df = tree.arrays(library="pd")
 
 df_base = df[(df["Bmass"] > MASS_RANGE[0]) & (df["Bmass"] < MASS_RANGE[1])]
 df_fid = apply_selection(df_base, fid_cfg.get("expression"), f"fiducial_profiles[{active_fid}]")

@@ -68,6 +68,9 @@ bash dag/submit_dagman_workflow.sh X_pb24_v2_fid1_8v1_1o200 1 10 auto
 命名约定：`train_tag` 必须严格满足 `{channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}`，TRAIN 节点自动走 `workflows/xgboost_train_direct.py`。
 ```bash
 bash dag/submit_single_workflow.sh X_pp24_v1_fid1_18v1_xgb_v1 1
+bash dag/submit_single_workflow.sh Bu_pp24_v1_fid1_12v1_xgb_v1 1
+bash dag/submit_single_workflow.sh Bs_pp24_v1_fid1_17v1_xgb_v1 1
+bash dag/submit_single_workflow.sh Bd_pp24_v1_fid1_17v1_xgb_v1 1
 bash dag/submit_single_workflow.sh Bs_pp24_v1_fid1_6v1_xgb_v1 0
 ```
 执行链：`TRAIN(Direct XGBoost) -> APPLY -> DRAW`。
@@ -247,4 +250,34 @@ python3 scripts/cleanup/archive_output_outdated.py --workflow-type optuna
 3) single DAG 重提前仅清理锁文件：
 ```bash
 bash scripts/cleanup/clear_dag_locks.sh <train_tag>
+```
+
+## Punzi Optimization（B）
+- 新增脚本：`workflows/optimization/run_optimization_from_tag.py`
+- 功能：
+  - 根据 `train_tag` 生成/覆盖 `../Analysis_CODES/selectionER/optimalCUT.conf` 中同名 profile
+  - profile 名直接使用训练标签
+  - `preCut` 使用该标签对应 `fid_profile`，并自动转换为 ROOT 表达式（`and/or/not -> &&/||/!`）
+  - `dataPath/mcPath` 固定写为 `../../XGBoost/output/selected/<train_tag>/{DATA,MC}_with_score.root`
+  - `sidebandLow/high` 从 `background_selection` 中的 `Bmass` 窗口提取（单边窗会自动生成零宽 low sideband）
+  - `refScoreCut` 默认 `0.6`
+  - `fsRegion`：
+    - `Bu/Bd`: `(Bmass > 5.2 && Bmass < 5.36)`
+    - `Bs`: `(Bmass > 5.3 && Bmass < 5.46)`
+  - `signalWidth` 取 `fsRegion` 宽度；`sidebandWidth` 取 sideband 总宽度
+  - 默认 `punziA=2.0`、`punziB=5.0`
+
+示例：
+```bash
+# 仅更新/覆盖 conf
+.venv/bin/python workflows/optimization/run_optimization_from_tag.py Bs_pp24_v1_fid1_17v1_xgb_v1
+
+# 更新 conf 并运行 punzi + fom
+.venv/bin/python workflows/optimization/run_optimization_from_tag.py Bs_pp24_v1_fid1_17v1_xgb_v1 --run
+
+# 仅运行 punzi
+.venv/bin/python workflows/optimization/run_optimization_from_tag.py Bs_pp24_v1_fid1_17v1_xgb_v1 --run_punzi
+
+# 仅运行 fom
+.venv/bin/python workflows/optimization/run_optimization_from_tag.py Bs_pp24_v1_fid1_17v1_xgb_v1 --run_fom
 ```
