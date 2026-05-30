@@ -179,27 +179,17 @@ SAMPLES = {
                 "ntKp",
                 {
                     "pb24_v1": {
-                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",#no By limit, pT>10 or 5
-                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.6 and 15 < Bpt < 50",
-                    },
-                    "pb24_v2": {
-                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "signal_selection": "(abs(By) < 2.4) and (Bpt > 7.5)",
+                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and (abs(By) < 2.4) and (Bpt > 7.5)",
                     },
                     "pb23_v1": {
-                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
-                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.6 and 15 < Bpt < 50",
-                    },
-                    "pb23_v2": {
-                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "signal_selection": "(abs(By) < 2.4) and (Bpt > 7.5)",
+                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and (abs(By) < 2.4) and (Bpt > 7.5)",
                     },
                 },
                 {
-                    "pb24_fid1": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
-                    "pb24_fid2": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
-                    "pb23_fid1": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
-                    "pb23_fid2": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
+                    "pb24_fid1": "(abs(By) < 2.4) and (Bpt > 7.5)",
+                    "pb23_fid1": "(abs(By) < 2.4) and (Bpt > 7.5)",
                 },
                 {"mass_range": [5.0, 5.6], "bin_width": 0.01, "reference_masses": []},
             ),
@@ -213,27 +203,17 @@ SAMPLES = {
                 "ntKstar",
                 {
                     "pb24_v1": {
-                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
-                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.6 and 15 < Bpt < 50",
-                    },
-                    "pb24_v2": {
-                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "signal_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02)",
+                        "background_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02) and ((Bmass < 5.56) and (Bmass>5.36))",
                     },
                     "pb23_v1": {
-                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
-                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.6 and 15 < Bpt < 50",
-                    },
-                    "pb23_v2": {
-                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-                        "background_selection": "((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "signal_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02)",
+                        "background_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02) and ((Bmass < 5.56) and (Bmass>5.36))",
                     },
                 },
                 {
-                    "pb24_fid1": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
-                    "pb24_fid2": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
-                    "pb23_fid1": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
-                    "pb23_fid2": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
+                    "pb24_fid1": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02)",
+                    "pb23_fid1": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02)",
                 },
                 {"mass_range": [5.0, 5.6], "bin_width": 0.01, "reference_masses": []},
             ),
@@ -247,27 +227,17 @@ SAMPLES = {
                 "ntphi",
                 {
                     "pb24_v1": {
-                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
-                        "background_selection": "((5.1 < Bmass < 5.29) or (5.45 < Bmass < 5.64)) and abs(By) < 1.6 and 15 < Bpt < 50",
-                    },
-                    "pb24_v2": {
-                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-                        "background_selection": "((5.1 < Bmass < 5.29) or (5.45 < Bmass < 5.64)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "signal_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.2) and (Bchi2Prob>0.02)",
+                        "background_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.2) and (Bchi2Prob>0.02) and ((Bmass < 5.65) and (Bmass>5.45))",
                     },
                     "pb23_v1": {
-                        "signal_selection": "abs(By) < 1.6 and 15 < Bpt < 50",
-                        "background_selection": "((5.1 < Bmass < 5.29) or (5.45 < Bmass < 5.64)) and abs(By) < 1.6 and 15 < Bpt < 50",
-                    },
-                    "pb23_v2": {
-                        "signal_selection": "abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
-                        "background_selection": "((5.1 < Bmass < 5.29) or (5.45 < Bmass < 5.64)) and abs(By) < 1.2 and Bpt > 10 and CentBin > 20",
+                        "signal_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.2) and (Bchi2Prob>0.02)",
+                        "background_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.2) and (Bchi2Prob>0.02) and ((Bmass < 5.65) and (Bmass>5.45))",
                     },
                 },
                 {
-                    "pb24_fid1": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
-                    "pb24_fid2": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
-                    "pb23_fid1": "abs(By) < 1.6 and Bpt > 15.0 and Bpt < 50.0",
-                    "pb23_fid2": "abs(By) < 1.2 and Bpt > 10.0 and Bpt < 50.0 and CentBin > 20.0",
+                    "pb24_fid1": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.2) and (Bchi2Prob>0.02)",
+                    "pb23_fid1": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.2) and (Bchi2Prob>0.02)",
                 },
                 {"mass_range": [5.0, 5.7], "bin_width": 0.01, "reference_masses": []},
             ),
@@ -377,7 +347,7 @@ SAMPLES = {
                     "pp24_v2": {
                         "signal_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.2) and (Bchi2Prob>0.02)",
                         "background_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.2) and (Bchi2Prob>0.02) and ((Bmass < 5.65) and (Bmass>5.45))",
-                    }
+                    },
                 },
                 {
                 "pp24_fid1": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02)",

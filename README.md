@@ -35,6 +35,8 @@ bash dag/submit_dagman_workflow.sh <group_tag_with_{n}o{N}> <version_start> <ver
 ```bash
 # 显式模式（不展开）
 bash dag/submit_dagman_workflow.sh X_pb24_v2_fid1_8v1_1o200_v1 auto
+bash dag/submit_dagman_workflow.sh Bu_pb24_v1_fid1_12v1_1o200_v1 auto
+bash dag/submit_dagman_workflow.sh Bs_pb24_v1_fid1_17v1_1o200_v1 auto
 
 # 旧批量模式（展开 v1-v10）
 bash dag/submit_dagman_workflow.sh X_pb24_v2_fid1_8v1_1o200 1 10 auto
