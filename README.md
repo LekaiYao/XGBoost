@@ -14,28 +14,30 @@
 ## 主线工作流
 ### 主线 DAGMan（批量）
 ```bash
-bash dag/submit_dagman_workflow.sh <group_tag> <version_start> <version_end> [fid_profile]
+bash dag/submit_dagman_workflow.sh <group_tag_with_{n}o{N}_v{k}> [fid_profile]
+bash dag/submit_dagman_workflow.sh <group_tag_with_{n}o{N}> <version_start> <version_end> [fid_profile]
 ```
 执行链：`make_dagman_workflow.py -> train_dispatch.py -> condor_optuna_XGBoost.py -> group_apply_draw.py -> batch_apply_scores.py + batch_draw_scores.py`
 （Condor 层通过 `wrappers/run_train_dispatch.sh`、`wrappers/run_group_apply_draw.sh` 调用）
 
 参数说明：
-- `group_tag`：同一批任务共享前缀，必须为 `{channel}_{dataset}_v{n}_fid{n}_{varset}_{n}o{N}_v{k}`，例如 `X_pb24_v2_fid1_8v1_1o200_v1`
-- `version_start`：起始版本号，整数，例如 `1`
-- `version_end`：结束版本号，整数且 `>= version_start`，例如 `10`
+- 显式模式（不展开版本）：
+  - `group_tag`：`{channel}_{dataset}_v{n}_fid{n}_{varset}_{n}o{N}_v{k}`
+  - 命令：`bash dag/submit_dagman_workflow.sh <group_tag> [fid_profile]`
+  - 行为：不追加 train_tag 后缀，直接按输入标签运行一组 `TRAIN->APPLY->DRAW`
+- 旧批量模式（展开版本）：
+  - `group_tag`：`{channel}_{dataset}_v{n}_fid{n}_{varset}_{n}o{N}`
+  - 命令：`bash dag/submit_dagman_workflow.sh <group_tag> <version_start> <version_end> [fid_profile]`
+  - 行为：按 `version_start..version_end` 展开训练节点，并生成 `..._v<run>` 的 train_tag
 - `fid_profile`：可选覆盖值；默认从 `group_tag` 解析的 `dataset+fid{n}` 自动确定
-- 自动解析：`group_tag` 必须包含 Optuna 后缀 `_{n}o{N}_v{k}`，并从命名解析 `dataset_year`、`selection_profile`、`fid_profile`
 
 示例（核心提交命令）：
 ```bash
-# PbPb：提交 v1-v10，共10个训练 + 1个最终apply/draw
-bash dag/submit_dagman_workflow.sh X_pb24_v2_fid1_8v1_1o200_v1 1 10
+# 显式模式（不展开）
+bash dag/submit_dagman_workflow.sh X_pb24_v2_fid1_8v1_1o200_v1 auto
 
-# PbPb：提交 v1-v100
-bash dag/submit_dagman_workflow.sh Bu_pb24_v1_fid1_5v2_1o200_v1 1 100
-
-# pp：提交 v1-v20
-bash dag/submit_dagman_workflow.sh Bd_pp24_v2_fid2_6v4_1o200_v1 1 20
+# 旧批量模式（展开 v1-v10）
+bash dag/submit_dagman_workflow.sh X_pb24_v2_fid1_8v1_1o200 1 10 auto
 ```
 
 ### 批量 DAGMan（Optuna）配置与记录位置
@@ -179,24 +181,26 @@ bash dag/submit_single_workflow.sh X_pp24_v2_fid2_6v4_xgb_v1 1
 
 ## 命名规范
 - single DAG（direct XGB）：`{channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}`
-- DAGMan Optuna group：`{channel}_{dataset}_v{n}_fid{n}_{varset}_{n}o{N}_v{k}`
+- DAGMan Optuna group（显式模式）：`{channel}_{dataset}_v{n}_fid{n}_{varset}_{n}o{N}_v{k}`
+- DAGMan Optuna group（旧批量模式）：`{channel}_{dataset}_v{n}_fid{n}_{varset}_{n}o{N}`
 
 ## 如何运行 Optuna DAG 训练
-命令：
+显式模式命令：
 ```bash
-bash dag/submit_dagman_workflow.sh <group_tag> <version_start> <version_end> [fid_profile]
+bash dag/submit_dagman_workflow.sh <group_tag_with_{n}o{N}_v{k}> [fid_profile]
 ```
-`group_tag` 必须形如：
-```text
-{channel}_{dataset}_v{selection}_fid{fid}_{varset}_{n}o{N}_v{k}
+旧批量模式命令：
+```bash
+bash dag/submit_dagman_workflow.sh <group_tag_with_{n}o{N}> <version_start> <version_end> [fid_profile]
 ```
 示例：
 ```bash
-bash dag/submit_dagman_workflow.sh X_pb23_v1_fid1_18v1_1o200_v1 1 10
+bash dag/submit_dagman_workflow.sh X_pb23_v1_fid1_18v1_1o200_v1 auto
+bash dag/submit_dagman_workflow.sh X_pb23_v1_fid1_18v1_1o200 1 10 auto
 ```
 - `n`：Optuna objective index（当前仅支持 `1`，对应 validation AUC）
 - `N`：Optuna trial 次数
-- `k`：Optuna 空间版本（映射到 `configs/optuna_spaces.py` 中的 `v{k}`）
+- `k`：Optuna 空间版本（仅显式模式需要；映射到 `configs/optuna_spaces.py` 中的 `v{k}`）
 
 ## 关键约束
 - ROOT/TTree/fid/train cuts 只在 `configs/samples.py` 配置。

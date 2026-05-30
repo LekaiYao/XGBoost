@@ -560,6 +560,8 @@ def objective(trial):
         "scale_pos_weight": pos_weight,
         "n_jobs": 4,
     }
+    if EARLY_STOPPING_ROUNDS is not None:
+        params["early_stopping_rounds"] = int(EARLY_STOPPING_ROUNDS)
     for name, config in OPTUNA_SEARCH_SPACE.items():
         params[name] = suggest_param(trial, name, config)
 
@@ -567,7 +569,6 @@ def objective(trial):
     fit_kwargs = {}
     if EARLY_STOPPING_ROUNDS is not None:
         fit_kwargs["eval_set"] = [(X_val, y_val["is_sig"])]
-        fit_kwargs["early_stopping_rounds"] = int(EARLY_STOPPING_ROUNDS)
         fit_kwargs["verbose"] = False
     model.fit(X_train, y_train["is_sig"], **fit_kwargs)
 
@@ -599,11 +600,11 @@ xgbc = XGBClassifier(
     random_state=FIXED_MODEL_PARAMS["random_state"],
     scale_pos_weight=pos_weight,
     n_jobs=4,
+    **({"early_stopping_rounds": int(EARLY_STOPPING_ROUNDS)} if EARLY_STOPPING_ROUNDS is not None else {}),
 )
 final_fit_kwargs = {}
 if EARLY_STOPPING_ROUNDS is not None:
     final_fit_kwargs["eval_set"] = [(X_val, y_val["is_sig"])]
-    final_fit_kwargs["early_stopping_rounds"] = int(EARLY_STOPPING_ROUNDS)
     final_fit_kwargs["verbose"] = False
 xgbc.fit(X_train, y_train["is_sig"], **final_fit_kwargs)
 

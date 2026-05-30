@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -lt 2 ]]; then
-  echo "Usage: $0 <train_tag> <optuna_n_trials> [dataset_year] [selection_profile]"
+  echo "Usage: $0 <train_tag> <optuna_n_trials>"
   exit 1
 fi
 

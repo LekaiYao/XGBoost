@@ -115,12 +115,19 @@ def main():
 
     X_train, X_test, y_train, y_test = train_test_split(df[trans_columns], y, train_size=0.75, random_state=42)
 
+    n_sig_train = int(y_train["is_sig"].sum())
+    n_bkg_train = int(y_train["is_bkg"].sum())
+    if n_sig_train <= 0:
+        raise ValueError("No signal events available in training split after selection.")
+    scale_pos_weight = float(n_bkg_train / n_sig_train)
+
     params = {
         "booster": "gbtree",
         "objective": "binary:logistic",
         "eval_metric": "logloss",
         "random_state": 42,
         "n_jobs": 4,
+        "scale_pos_weight": scale_pos_weight,
         **DIRECT_XGB_PARAMS[dataset_token][channel],
     }
     xgbc = XGBClassifier(**params)
@@ -180,7 +187,7 @@ def main():
         background_selection=train_cfg["background_selection"],
         input_columns=input_columns,
         trans_columns=trans_columns,
-        pos_weight=1.0,
+        pos_weight=scale_pos_weight,
         fixed_model_params=params,
         best_model_params=params,
         is_optuna=False,
@@ -194,6 +201,9 @@ def main():
             "sample": sample,
             "channel": channel,
             "auc": float(roc_auc),
+            "n_sig_train": n_sig_train,
+            "n_bkg_train": n_bkg_train,
+            "scale_pos_weight": scale_pos_weight,
         },
     )
 
