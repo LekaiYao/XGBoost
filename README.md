@@ -249,7 +249,7 @@ bash dag/submit_dagman_workflow.sh X_pb23_v1_fid1_18v1_1o200 1 10 auto
 
 1) 清理 `output/selected` 下旧目录并删除大 ROOT：
 ```bash
-python3 scripts/cleanup/cleanup_selected_events.py --days 5 --root-threshold-mb 500
+python3 scripts/cleanup/cleanup_selected_events.py --hours 72
 ```
 
 2) 归档当前输出到 `output/backup_outdate/<timestamp>/`：
