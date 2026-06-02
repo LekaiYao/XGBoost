@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import json
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,6 +22,7 @@ if len(sys.argv) < 2:
     print(
         "Usage: python3 workflows/batch_draw_scores.py "
         "[--output-tag <output_tag>] [--output-prefix <prefix>] [--fid-profile <auto|fid{n}>] "
+        "[--draw-config <json_path>] "
         "<train_tag> [<train_tag> ...]"
     )
     sys.exit(1)
@@ -29,6 +31,7 @@ args = sys.argv[1:]
 output_tag = None
 output_prefix = ""
 fid_profile = "auto"
+draw_config_path = None
 train_tags = []
 
 i = 0
@@ -44,6 +47,10 @@ while i < len(args):
         continue
     if token == "--fid-profile" and i + 1 < len(args):
         fid_profile = args[i + 1]
+        i += 2
+        continue
+    if token == "--draw-config" and i + 1 < len(args):
+        draw_config_path = args[i + 1]
         i += 2
         continue
     train_tags.append(token)
@@ -67,6 +74,36 @@ BIN_WIDTH = float(draw_cfg["plot"]["bin_width"])
 BINS = np.arange(MASS_RANGE[0], MASS_RANGE[1] + BIN_WIDTH, BIN_WIDTH)
 REFERENCE_MASSES = list(draw_cfg["plot"].get("reference_masses", []))
 score_cuts = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.90, 0.95]
+
+if draw_config_path:
+    with open(draw_config_path) as f:
+        draw_cfg_map = json.load(f)
+    tag_cfg = draw_cfg_map.get(output_tag)
+    if tag_cfg is None:
+        raise ValueError(
+            f"Tag '{output_tag}' not found in draw config '{draw_config_path}'."
+        )
+    if "score_cuts" in tag_cfg:
+        cuts = tag_cfg["score_cuts"]
+        if not isinstance(cuts, list) or not cuts:
+            raise ValueError(f"Invalid score_cuts for tag '{output_tag}' in '{draw_config_path}'")
+        score_cuts = [float(x) for x in cuts]
+    if "mass_range" in tag_cfg:
+        mass_range = tag_cfg["mass_range"]
+        if not isinstance(mass_range, list) or len(mass_range) != 2:
+            raise ValueError(f"Invalid mass_range for tag '{output_tag}' in '{draw_config_path}'")
+        MASS_RANGE = (float(mass_range[0]), float(mass_range[1]))
+    if "bin_width" in tag_cfg:
+        BIN_WIDTH = float(tag_cfg["bin_width"])
+    if BIN_WIDTH <= 0:
+        raise ValueError(f"bin_width must be > 0 for tag '{output_tag}'")
+    if MASS_RANGE[1] <= MASS_RANGE[0]:
+        raise ValueError(f"mass_range must satisfy min < max for tag '{output_tag}'")
+    BINS = np.arange(MASS_RANGE[0], MASS_RANGE[1] + BIN_WIDTH, BIN_WIDTH)
+    print(f"Using draw overrides from {draw_config_path} for tag {output_tag}")
+    print(f"  score_cuts={score_cuts}")
+    print(f"  mass_range={MASS_RANGE}")
+    print(f"  bin_width={BIN_WIDTH}")
 
 input_file = os.path.join(selected_dir(output_tag), f"{output_prefix}DATA_with_score.root")
 if not os.path.exists(input_file):

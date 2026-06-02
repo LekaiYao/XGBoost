@@ -28,6 +28,20 @@ DEFAULT_PUNZI_B = 5.0
 DEFAULT_OUTPUT_DIR = "./opt_plots"
 DEFAULT_REF_SCORE_CUT = 0.6
 
+MASS_RANGE_DEFAULTS = {
+    "Bu": "(Bmass > 5.05 && Bmass < 5.55)",
+    "Bs": "(Bmass > 5.1 && Bmass < 5.7)",
+    "Bd": "(Bmass > 5.1 && Bmass < 5.7)",
+    "X": "(Bmass > 3.6 && Bmass < 4.0)",
+}
+
+BIN_WIDTH_DEFAULTS = {
+    "Bu": 0.01,
+    "Bs": 0.005,
+    "Bd": 0.005,
+    "X": 0.01,
+}
+
 
 def _mass_windows_from_background_selection(expr: str):
     if not expr:
@@ -128,6 +142,8 @@ def _build_profile_from_tag(train_tag: str):
         raise ValueError(f"Unsupported channel for optimization: {channel}")
     fs_region = _fmt_window(fs_low, fs_high)
     fs_width = fs_high - fs_low
+    mass_range_expr = MASS_RANGE_DEFAULTS[channel]
+    bin_width = BIN_WIDTH_DEFAULTS[channel]
 
     profile = {
         "system": "PbPb" if sample == "pbpb" else "pp",
@@ -139,6 +155,8 @@ def _build_profile_from_tag(train_tag: str):
         "preCut": pre_cut,
         "sidebandLow": sideband_low,
         "sidebandHigh": sideband_high,
+        "mass_range": mass_range_expr,
+        "bin_width": f"{bin_width:.8g}",
         "fsRegion": fs_region,
         "refScoreCut": f"{DEFAULT_REF_SCORE_CUT:.1f}",
         "signalWidth": f"{fs_width:.8g}",
@@ -163,6 +181,8 @@ def _render_section(section_name: str, profile: dict) -> str:
         "preCut",
         "sidebandLow",
         "sidebandHigh",
+        "mass_range",
+        "bin_width",
         "fsRegion",
         "refScoreCut",
         "signalWidth",
@@ -257,6 +277,7 @@ def main():
     print(f"preCut={profile['preCut']}")
     print(f"sidebandLow={profile['sidebandLow']}")
     print(f"sidebandHigh={profile['sidebandHigh']}")
+    print(f"mass_range={profile['mass_range']}, bin_width={profile['bin_width']}")
     print(f"fsRegion={profile['fsRegion']}, refScoreCut={profile['refScoreCut']}")
     print(f"signalWidth={profile['signalWidth']}, sidebandWidth={profile['sidebandWidth']}")
 

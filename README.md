@@ -181,8 +181,24 @@ bash dag/submit_single_workflow.sh X_pp24_v2_fid2_6v4_xgb_v1 1
 ## Score 图与 Cut Scan
 - direct XGBoost 训练（`workflows/xgboost_train_direct.py`）现在会输出真实的 `xgb_score.pdf`（分数分布图），不再把 JSON 写入 PDF 文件。
 - 对应 ROC/AUC 指标输出到 `output/training/<train_tag>/test_roc.json`。
-- draw 的 score cut 扫描点（`workflows/batch_draw_scores.py`）固定为：
+- draw 默认 score cut 扫描点（`workflows/batch_draw_scores.py`）为：
   - `0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.90, 0.95`
+- 新增可选灵活模式（不影响默认流程）：
+  - 参数：`--draw-config <json_path>`
+  - 配置文件按 `train_tag` 提供覆盖项：`score_cuts`（多个）、`mass_range`、`bin_width`
+  - fid 仍按标签自动解析（`fid_profile=auto`）并从 `samples.py` 读取
+  - 输出目录与命名保持不变：`output/selected/<train_tag>/cut_scan/` 与 `DATA_<fid>_cutXXX(.pdf)`
+
+示例：
+```bash
+# 默认模式（原行为）
+.venv/bin/python -m workflows.batch_draw_scores X_pp24_v1_fid1_18v1_xgb_v1
+
+# 覆盖 score cuts + x 轴范围/bin 宽
+.venv/bin/python -m workflows.batch_draw_scores \
+  --draw-config configs/draw_overrides.example.json \
+  X_pp24_v1_fid1_18v1_xgb_v1
+```
 
 ## 命名规范
 - single DAG（direct XGB）：`{channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}`
@@ -254,7 +270,7 @@ python3 scripts/cleanup/archive_output_outdated.py --workflow-type optuna
 bash scripts/cleanup/clear_dag_locks.sh <train_tag>
 ```
 
-## Punzi Optimization（B）
+## XGBoost Optimization
 - 新增脚本：`workflows/optimization/run_optimization_from_tag.py`
 - 功能：
   - 根据 `train_tag` 生成/覆盖 `../Analysis_CODES/selectionER/optimalCUT.conf` 中同名 profile

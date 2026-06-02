@@ -28,6 +28,7 @@ PBPB_VARSETS_BD = {
 }
 
 PBPB_VARSETS_BS = {
+    "6v1": ["Bchi2Prob", "Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "BtrkPtimb"],
     "7v1": ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Btktkpt", "Bchi2Prob"],
     "17v1": ["Btrk1dR", "Btrk2dR", "Btrk1Pt", "Btrk2Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Bchi2Prob", "PVz", "BujvProb", "Btktkpt", "Bmu2y", "Bmu1y", "Btrk2Eta", "Btrk1Eta", "Bmu1pt", "Bmu2pt", "BtktkvProb"],
 }
