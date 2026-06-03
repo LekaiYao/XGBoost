@@ -17,8 +17,9 @@
 bash dag/submit_dagman_workflow.sh <group_tag_with_{n}o{N}_v{k}> [fid_profile]
 bash dag/submit_dagman_workflow.sh <group_tag_with_{n}o{N}> <version_start> <version_end> [fid_profile]
 ```
-执行链：`make_dagman_workflow.py -> train_dispatch.py -> condor_optuna_XGBoost.py -> group_apply_draw.py -> batch_apply_scores.py + batch_draw_scores.py`
-（Condor 层通过 `wrappers/run_train_dispatch.sh`、`wrappers/run_group_apply_draw.sh` 调用）
+执行链：`make_dagman_workflow.py -> train_dispatch.py -> condor_optuna_XGBoost.py -> batch_apply_scores.py -> batch_draw_scores.py`
+当前主线 DAG 为每个版本各自执行 `TRAIN -> APPLY -> DRAW`。
+（Condor 层通过 `wrappers/run_train_dispatch.sh`、`wrappers/run_apply_job.sh`、`wrappers/run_draw_job.sh` 调用）
 
 参数说明：
 - 显式模式（不展开版本）：
@@ -180,7 +181,8 @@ bash dag/submit_single_workflow.sh X_pp24_v2_fid2_6v4_xgb_v1 1
 
 ## Score 图与 Cut Scan
 - direct XGBoost 训练（`workflows/xgboost_train_direct.py`）现在会输出真实的 `xgb_score.pdf`（分数分布图），不再把 JSON 写入 PDF 文件。
-- 对应 ROC/AUC 指标输出到 `output/training/<train_tag>/test_roc.json`。
+- 对应 ROC/AUC 指标输出到 `output/training/<train_tag>/roc.json`。
+- 训练目录同时输出 `output/training/<train_tag>/roc.pdf`，同图包含 train/test ROC，横轴为 signal efficiency，纵轴为 background rejection，label 标注各自 AUC。
 - draw 默认 score cut 扫描点（`workflows/batch_draw_scores.py`）为：
   - `0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.90, 0.95`
 - 新增可选灵活模式（不影响默认流程）：
@@ -247,10 +249,13 @@ bash dag/submit_dagman_workflow.sh X_pb23_v1_fid1_18v1_1o200 1 10 auto
 - 清理脚本统一放在 `scripts/cleanup/`。
 - 旧入口 `cleanup_selected_events.py` 仅做兼容转发。
 
-1) 清理 `output/selected` 下旧目录并删除大 ROOT：
+1) 清理 `output/selected` 下旧目录中的 score ROOT：
 ```bash
 python3 scripts/cleanup/cleanup_selected_events.py --hours 72
+python3 scripts/cleanup/cleanup_selected_events.py --hours 72 --run
 ```
+- 默认是 `dry-run`，只展示命中的标签、会删除的 `DATA_with_score.root` / `MC_with_score.root` 和预计释放空间
+- 只有传 `--run` 才会实际删除
 
 2) 归档当前输出到 `output/backup_outdate/<timestamp>/`：
 - 归档前会删除每个 tag 的 `output/selected/<tag>/DATA_with_score.root`（可用 `--keep-selected-data-root` 关闭）。
@@ -269,6 +274,7 @@ python3 scripts/cleanup/archive_output_outdated.py --workflow-type optuna
 ```bash
 bash scripts/cleanup/clear_dag_locks.sh <train_tag>
 ```
+- 该脚本除 lock 外，还会清理同标签 DAG 的 `.dag.condor.sub`、`.dag.lib.out/.err`、`.dag.dagman.log/.out`、`.dag.nodes.log`、`.dag.metrics`
 
 ## XGBoost Optimization
 - 新增脚本：`workflows/optimization/run_optimization_from_tag.py`
@@ -282,6 +288,12 @@ bash scripts/cleanup/clear_dag_locks.sh <train_tag>
   - `fsRegion`：
     - `Bu/Bd`: `(Bmass > 5.2 && Bmass < 5.36)`
     - `Bs`: `(Bmass > 5.3 && Bmass < 5.46)`
+    - `X`: 由 `background_selection` 的双边 sideband 自动推导两侧之间的 gap
+  - `mass_range` / `bin_width` 按 channel 默认写入 `optimalCUT.conf`
+    - `Bu`: `(Bmass > 5.05 && Bmass < 5.55)`, `0.01`
+    - `Bs`: `(Bmass > 5.1 && Bmass < 5.7)`, `0.005`
+    - `Bd`: `(Bmass > 5.1 && Bmass < 5.7)`, `0.005`
+    - `X`: `(Bmass > 3.6 && Bmass < 4.0)`, `0.01`
   - `signalWidth` 取 `fsRegion` 宽度；`sidebandWidth` 取 sideband 总宽度
   - 默认 `punziA=2.0`、`punziB=5.0`
 

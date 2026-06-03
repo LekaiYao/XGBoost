@@ -412,6 +412,19 @@ def save_feature_importance(model, feature_names, train_tag):
     print(f"Feature importance plot saved to: {cumulative_plot_path}")
 
 
+def build_roc_payload(y_true, score):
+    fpr, tpr, thresholds = roc_curve(y_true, score)
+    roc_auc = auc(fpr, tpr)
+    return {
+        "auc": float(roc_auc),
+        "threshold": [float(x) for x in thresholds],
+        "tpr": [float(x) for x in tpr],
+        "fpr": [float(x) for x in fpr],
+        "background_rejection": [float(1.0 - x) for x in fpr],
+        "signal_efficiency": [float(x) for x in tpr],
+    }
+
+
 def summarize_top_trials(study, search_space, top_n=20):
     completed_trials = [trial for trial in study.trials if trial.value is not None]
     ranked_trials = sorted(completed_trials, key=lambda trial: trial.value, reverse=True)
@@ -608,10 +621,13 @@ if EARLY_STOPPING_ROUNDS is not None:
     final_fit_kwargs["verbose"] = False
 xgbc.fit(X_train, y_train["is_sig"], **final_fit_kwargs)
 
+train_score_xgb = xgbc.predict_proba(X_train)
 test_score_xgb = xgbc.predict_proba(X_test)
+train_score_xgb_all = train_score_xgb[:, 1]
 test_score_xgb_sig = test_score_xgb[y_test["is_sig"]][:, 1]
 test_score_xgb_bkg = test_score_xgb[y_test["is_bkg"]][:, 1]
 test_score_xgb_all = test_score_xgb[:, 1]
+train_y_true = y_train["is_sig"].astype(int).to_numpy()
 test_y_true = y_test["is_sig"].astype(int).to_numpy()
 
 score_plot_path = condor_training_score_path(train_tag)
@@ -626,33 +642,39 @@ plt.savefig(score_plot_path)
 plt.close()
 print(f"Score plot saved to: {score_plot_path}")
 
-fpr, tpr, thresholds = roc_curve(test_y_true, test_score_xgb_all)
-roc_auc = auc(fpr, tpr)
-background_rejection = 1.0 - fpr
+train_roc = build_roc_payload(train_y_true, train_score_xgb_all)
+test_roc = build_roc_payload(test_y_true, test_score_xgb_all)
 
-roc_json_path = os.path.join(condor_training_dir(train_tag), "test_roc.json")
+roc_json_path = os.path.join(condor_training_dir(train_tag), "roc.json")
 with open(roc_json_path, "w") as f:
     json.dump(
         {
-            "auc": float(roc_auc),
-            "threshold": [float(x) for x in thresholds],
-            "tpr": [float(x) for x in tpr],
-            "fpr": [float(x) for x in fpr],
-            "background_rejection": [float(x) for x in background_rejection],
-            "signal_efficiency": [float(x) for x in tpr],
+            "mode": "optuna_xgboost",
+            "train": train_roc,
+            "test": test_roc,
         },
         f,
         indent=2,
     )
-print(f"Test ROC saved to: {roc_json_path}")
+print(f"ROC saved to: {roc_json_path}")
 
-roc_plot_path = os.path.join(condor_training_dir(train_tag), "test_roc.pdf")
+roc_plot_path = os.path.join(condor_training_dir(train_tag), "roc.pdf")
 plt.figure(figsize=(6, 6))
-plt.plot(fpr, tpr, linewidth=2, label=f"AUC = {roc_auc:.4f}")
-plt.plot([0, 1], [0, 1], linestyle="--", color="gray", linewidth=1)
-plt.xlabel("Background efficiency (FPR)")
-plt.ylabel("Signal efficiency (TPR)")
-plt.title(f"{train_tag} | Test ROC")
+plt.plot(
+    train_roc["signal_efficiency"],
+    train_roc["background_rejection"],
+    linewidth=2,
+    label=f"Train AUC = {train_roc['auc']:.4f}",
+)
+plt.plot(
+    test_roc["signal_efficiency"],
+    test_roc["background_rejection"],
+    linewidth=2,
+    label=f"Test AUC = {test_roc['auc']:.4f}",
+)
+plt.xlabel("Signal efficiency")
+plt.ylabel("Background rejection")
+plt.title("ROC Curve")
 plt.xlim(0, 1)
 plt.ylim(0, 1)
 plt.grid(alpha=0.3)
@@ -660,7 +682,7 @@ plt.legend()
 plt.tight_layout()
 plt.savefig(roc_plot_path)
 plt.close()
-print(f"Test ROC plot saved to: {roc_plot_path}")
+print(f"ROC plot saved to: {roc_plot_path}")
 
 trained_model_path = condor_model_path(train_tag)
 joblib.dump(xgbc, trained_model_path)
@@ -714,9 +736,10 @@ save_run_metadata(
         "optuna_space_version": OPTUNA_SPACE_VERSION,
         "early_stopping_rounds": EARLY_STOPPING_ROUNDS,
         "best_validation_auc": float(study.best_trial.user_attrs.get("validation_auc", study.best_value)),
-        "test_auc": float(roc_auc),
-        "test_roc_json_path": roc_json_path,
-        "test_roc_plot_path": roc_plot_path,
+        "train_auc": float(train_roc["auc"]),
+        "test_auc": float(test_roc["auc"]),
+        "roc_json_path": roc_json_path,
+        "roc_plot_path": roc_plot_path,
         "dataset_source": DATASET_SOURCE,
         "dataset_year": DATASET_YEAR,
         "selection_profile": SELECTION_PROFILE,

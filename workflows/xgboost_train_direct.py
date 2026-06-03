@@ -37,6 +37,19 @@ from utils.selection import apply_selection
 from utils.varsets import get_varset_columns, infer_sample_from_tag, infer_varset_from_tag
 
 
+def build_roc_payload(y_true, score):
+    fpr, tpr, thresholds = roc_curve(y_true, score)
+    roc_auc = auc(fpr, tpr)
+    return {
+        "auc": float(roc_auc),
+        "threshold": [float(x) for x in thresholds],
+        "tpr": [float(x) for x in tpr],
+        "fpr": [float(x) for x in fpr],
+        "background_rejection": [float(1.0 - x) for x in fpr],
+        "signal_efficiency": [float(x) for x in tpr],
+    }
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Direct XGBoost training without Optuna")
     parser.add_argument("train_tag")
@@ -133,13 +146,16 @@ def main():
     xgbc = XGBClassifier(**params)
     xgbc.fit(X_train, y_train["is_sig"].to_numpy())
 
+    train_score_xgb = xgbc.predict_proba(X_train)
     test_score_xgb = xgbc.predict_proba(X_test)
+    train_score_xgb_all = train_score_xgb[:, 1]
     test_score_xgb_sig = test_score_xgb[y_test["is_sig"]][:, 1]
     test_score_xgb_bkg = test_score_xgb[y_test["is_bkg"]][:, 1]
     test_score_xgb_all = test_score_xgb[:, 1]
+    train_y_true = y_train["is_sig"].astype(int).to_numpy()
     test_y_true = y_test["is_sig"].astype(int).to_numpy()
-    fpr, tpr, thresholds = roc_curve(test_y_true, test_score_xgb_all)
-    roc_auc = auc(fpr, tpr)
+    train_roc = build_roc_payload(train_y_true, train_score_xgb_all)
+    test_roc = build_roc_payload(test_y_true, test_score_xgb_all)
 
     ensure_dir(condor_model_dir(train_tag))
     ensure_dir(condor_training_dir(train_tag))
@@ -160,21 +176,42 @@ def main():
     plt.savefig(score_plot_path)
     plt.close()
 
-    roc_json_path = f"{condor_training_dir(train_tag)}/test_roc.json"
+    roc_json_path = f"{condor_training_dir(train_tag)}/roc.json"
     with open(roc_json_path, "w") as f:
         json.dump(
             {
-                "auc": float(roc_auc),
-                "threshold": [float(x) for x in thresholds],
-                "tpr": [float(x) for x in tpr],
-                "fpr": [float(x) for x in fpr],
-                "background_rejection": [float(1.0 - x) for x in fpr],
-                "signal_efficiency": [float(x) for x in tpr],
                 "mode": "direct_xgboost",
+                "train": train_roc,
+                "test": test_roc,
             },
             f,
             indent=2,
         )
+
+    roc_plot_path = f"{condor_training_dir(train_tag)}/roc.pdf"
+    plt.figure(figsize=(6, 6))
+    plt.plot(
+        train_roc["signal_efficiency"],
+        train_roc["background_rejection"],
+        linewidth=2,
+        label=f"Train AUC = {train_roc['auc']:.4f}",
+    )
+    plt.plot(
+        test_roc["signal_efficiency"],
+        test_roc["background_rejection"],
+        linewidth=2,
+        label=f"Test AUC = {test_roc['auc']:.4f}",
+    )
+    plt.xlabel("Signal efficiency")
+    plt.ylabel("Background rejection")
+    plt.title("ROC Curve")
+    plt.xlim(0, 1)
+    plt.ylim(0, 1)
+    plt.grid(alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(roc_plot_path)
+    plt.close()
 
     save_feature_importance(xgbc, input_columns, train_tag)
 
@@ -192,7 +229,7 @@ def main():
         best_model_params=params,
         is_optuna=False,
         optimization_metric="direct training test AUC",
-        best_objective_value=float(roc_auc),
+        best_objective_value=float(test_roc["auc"]),
         notes={
             "training_mode": "direct_xgboost",
             "dataset_source": train_cfg["dataset_source"],
@@ -200,14 +237,17 @@ def main():
             "selection_profile": selection_profile,
             "sample": sample,
             "channel": channel,
-            "auc": float(roc_auc),
+            "train_auc": float(train_roc["auc"]),
+            "test_auc": float(test_roc["auc"]),
+            "roc_json_path": roc_json_path,
+            "roc_plot_path": roc_plot_path,
             "n_sig_train": n_sig_train,
             "n_bkg_train": n_bkg_train,
             "scale_pos_weight": scale_pos_weight,
         },
     )
 
-    print(f"Direct XGBoost training complete: {train_tag}, AUC={roc_auc:.4f}")
+    print(f"Direct XGBoost training complete: {train_tag}, test AUC={test_roc['auc']:.4f}")
 
 
 if __name__ == "__main__":
