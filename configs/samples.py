@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 import re
 
 from utils.tagging import infer_sample_from_body, split_channel_tag
@@ -204,11 +205,11 @@ SAMPLES = {
                 {
                     "pb24_v1": {
                         "signal_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02)",
-                        "background_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02) and ((Bmass < 5.56) and (Bmass>5.36))",
+                        "background_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02) and ((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56))",
                     },
                     "pb23_v1": {
                         "signal_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02)",
-                        "background_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02) and ((Bmass < 5.56) and (Bmass>5.36))",
+                        "background_selection": "(abs(By) < 2.4) and (Bpt > 7.5) and (Bnorm_svpvDistance_2D>2) and (BtrkPtimb<0.3) and (Bchi2Prob>0.02) and ((5.0 < Bmass < 5.2) or (5.36 < Bmass < 5.56))",
                     },
                 },
                 {
@@ -481,3 +482,26 @@ def resolve_fiducial_config(sample: str, channel: str, fid_profile: str) -> dict
     if isinstance(raw, dict) and "expression" in raw:
         return {"expression": raw["expression"]}
     raise ValueError(f"Unsupported fiducial profile format: {type(raw)}")
+
+
+def supports_bd_pbpb_precut(tag: str) -> bool:
+    sample = infer_sample_from_tag(tag)
+    channel = infer_channel_from_tag(tag)
+    dataset_token = infer_dataset_token_from_tag(tag)
+    return sample == "pbpb" and channel == "Bd" and dataset_token in {"pb23", "pb24"}
+
+
+def bd_pbpb_precut_paths(tag: str, input_dir: str = "input") -> dict:
+    if not supports_bd_pbpb_precut(tag):
+        raise ValueError(
+            f"Precut mode only supports Bd_pb23/Bd_pb24 single-DAG tags, got {tag}."
+        )
+
+    _, dataset_token, selection_idx, fid_idx = _parse_common_body_for_profiles(tag)
+    base = f"Bd_{dataset_token}_v{selection_idx}_fid{fid_idx}"
+    root = Path(input_dir)
+    return {
+        "base": base,
+        "train_background": root / f"{base}_train_background.root",
+        "apply_data": root / f"{base}_apply_data.root",
+    }

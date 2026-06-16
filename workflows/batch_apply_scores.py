@@ -7,6 +7,7 @@ import pandas as pd
 import uproot
 
 from configs.samples import (
+    bd_pbpb_precut_paths,
     infer_channel_from_tag,
     infer_dataset_year,
     infer_fid_profile,
@@ -17,6 +18,7 @@ from configs.samples import (
     resolve_fiducial_config,
     resolve_training_config,
     split_root_spec,
+    supports_bd_pbpb_precut,
     to_root_spec,
 )
 from utils.paths import ensure_dir, resolve_model_config_path, resolve_model_path, resolve_scaler_path, selected_dir, train_group_tag
@@ -25,7 +27,7 @@ from utils.varsets import get_varset_columns, infer_varset_from_tag
 if len(sys.argv) < 2:
     print(
         "Usage: python3 workflows/batch_apply_scores.py "
-        "[--output-tag <output_tag>] [--data-input <root:tree>] [--output-prefix <prefix>] [--dataset-year <year>] "
+        "[--output-tag <output_tag>] [--data-input <root:tree>] [--output-prefix <prefix>] [--dataset-year <year>] [--use-precut <0|1>] "
         "<train_tag> [<train_tag> ...]"
     )
     sys.exit(1)
@@ -35,6 +37,7 @@ output_tag = None
 data_input_override = None
 output_prefix = ""
 dataset_year_override = None
+use_precut = 0
 train_tags = []
 
 i = 0
@@ -56,6 +59,10 @@ while i < len(args):
         dataset_year_override = args[i + 1]
         i += 2
         continue
+    if token == "--use-precut" and i + 1 < len(args):
+        use_precut = int(args[i + 1])
+        i += 2
+        continue
     train_tags.append(token)
     i += 1
 
@@ -71,6 +78,18 @@ draw_tree_name = draw_cfg["data"]["tree"]
 MC_INPUT = to_root_spec(apply_cfg["mc"][0])
 DATA_INPUT = data_input_override or to_root_spec(apply_cfg["data"][0])
 MC_TREE_INPUT = split_root_spec(MC_INPUT)[1]
+
+if use_precut:
+    if not supports_bd_pbpb_precut(output_tag):
+        raise ValueError(f"--use-precut only supports Bd_pb23/Bd_pb24 single-DAG tags, got '{output_tag}'.")
+    if data_input_override:
+        raise ValueError("--use-precut cannot be combined with --data-input.")
+    precut_paths = bd_pbpb_precut_paths(output_tag)
+    apply_data_path = precut_paths["apply_data"]
+    if not apply_data_path.exists():
+        raise FileNotFoundError(f"Missing precut apply DATA file: {apply_data_path}")
+    _, data_tree = split_root_spec(DATA_INPUT)
+    DATA_INPUT = f"{apply_data_path}:{data_tree}"
 
 print(f"Apply dataset source: {apply_cfg['dataset_source']}")
 print(f"Apply MC input: {MC_INPUT}")

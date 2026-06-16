@@ -21,6 +21,7 @@ patterns=(
   "wf_single_${train_tag}.dag.dagman.lock"
   "wf_single_${train_tag}.dag.nodes.log.lock"
   "wf_single_${train_tag}.dag.rescue.lock"
+  "wf_single_${train_tag}.dag.rescue*"
   "wf_single_${train_tag}.dag.condor.sub"
   "wf_single_${train_tag}.dag.lib.out"
   "wf_single_${train_tag}.dag.lib.err"
@@ -32,16 +33,18 @@ patterns=(
 
 removed=0
 for p in "${patterns[@]}"; do
-  f="$dag_gen_dir/$p"
-  if [[ -f "$f" ]]; then
-    if [[ $dry_run -eq 1 ]]; then
-      echo "would_remove: $f"
-    else
-      rm -f "$f"
-      echo "removed: $f"
+  matches=("$dag_gen_dir"/$p)
+  for f in "${matches[@]}"; do
+    if [[ -e "$f" ]]; then
+      if [[ $dry_run -eq 1 ]]; then
+        echo "would_remove: $f"
+      else
+        rm -f "$f"
+        echo "removed: $f"
+      fi
+      removed=$((removed + 1))
     fi
-    removed=$((removed + 1))
-  fi
+  done
 done
 
 if [[ $dry_run -eq 1 ]]; then

@@ -9,6 +9,6 @@ log    = logs/job_$(job_tag).log
 request_cpus = 4
 request_memory = 12000
 
-arguments = $(train_tag)
+arguments = $(train_tag) $(use_precut)
 
 queue 1

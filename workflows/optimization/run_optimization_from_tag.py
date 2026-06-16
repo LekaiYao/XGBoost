@@ -23,8 +23,8 @@ from configs.samples import (
 )
 
 
-DEFAULT_PUNZI_A = 2.0
-DEFAULT_PUNZI_B = 5.0
+DEFAULT_PUNZI_A = 5.0
+DEFAULT_PUNZI_B = 1.64
 DEFAULT_OUTPUT_DIR = "./opt_plots"
 DEFAULT_REF_SCORE_CUT = 0.6
 

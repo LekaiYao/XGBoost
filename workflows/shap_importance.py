@@ -1,5 +1,6 @@
+import argparse
 import json
-import sys
+
 
 import joblib
 import matplotlib.pyplot as plt
@@ -9,11 +10,13 @@ import shap
 import uproot
 
 from configs.samples import (
+    bd_pbpb_precut_paths,
     infer_channel_from_tag,
     infer_dataset_year,
     infer_sample_from_tag,
     infer_selection_profile,
     resolve_training_config,
+    supports_bd_pbpb_precut,
     to_root_spec,
 )
 from utils.paths import (
@@ -30,12 +33,18 @@ from utils.paths import (
 )
 from utils.selection import apply_selection
 
-if len(sys.argv) not in (2, 3):
-    print("Usage: python3 workflows/shap_importance.py <train_tag> [max_events]")
-    sys.exit(1)
+def parse_args():
+    parser = argparse.ArgumentParser(description="Run SHAP analysis for a trained XGBoost model.")
+    parser.add_argument("train_tag")
+    parser.add_argument("max_events", nargs="?", type=int, default=20000)
+    parser.add_argument("--use-precut", type=int, choices=[0, 1], default=0)
+    return parser.parse_args()
 
-train_tag = sys.argv[1]
-max_events = int(sys.argv[2]) if len(sys.argv) == 3 else 20000
+
+args = parse_args()
+train_tag = args.train_tag
+max_events = args.max_events
+use_precut = bool(args.use_precut)
 sample = infer_sample_from_tag(train_tag)
 channel = infer_channel_from_tag(train_tag)
 year = infer_dataset_year(train_tag, sample)
@@ -44,6 +53,8 @@ train_cfg = resolve_training_config(sample, channel, year, sel)
 
 SIG_PATH = to_root_spec(train_cfg["signal"])
 BKG_PATH = to_root_spec(train_cfg["background"])
+if use_precut and supports_bd_pbpb_precut(train_tag):
+    BKG_PATH = str(bd_pbpb_precut_paths(train_tag)["train_background"]) + ":" + train_cfg["background"]["tree"]
 RNG_SEED = 42
 
 resolved_model_path = resolve_model_path(train_tag)

@@ -146,9 +146,17 @@ bash dag/submit_single_workflow.sh Bs_pp24_v1_fid1_6v1_xgb_v1 0
 
 ### 单模型 DAG
 ```bash
-bash dag/submit_single_workflow.sh <train_tag> [with_shap]
+bash dag/submit_single_workflow.sh <train_tag> [with_shap] [use_precut]
 ```
 执行链：`TRAIN -> APPLY -> DRAW -> (optional SHAP)`，`.sub` 直接调用 `workflows/*.py`。
+
+参数说明：
+- `with_shap`：`0|1`，为 `1` 时在 `DRAW` 后追加 `SHAP` 节点。
+- `use_precut`：`0|1`，默认 `0`。当前仅 `Bd_pb23_*` / `Bd_pb24_*` 支持，启用后会先本地准备 precut 输入，再提交 single DAG。
+- 两个参数都支持缺省：
+  - 只传 `train_tag` 等价于 `with_shap=0, use_precut=0`
+  - 传到第二个参数为止时，第三个参数 `use_precut` 默认仍为 `0`
+  - 若要启用 `use_precut=1`，必须显式写出第二个参数位置，例如 `bash dag/submit_single_workflow.sh Bd_pb24_v1_fid1_17v1_xgb_v1 0 1`
 
 ## SHAP 运行命令
 ### 1) 作为 single DAG 的一部分运行 SHAP
@@ -160,6 +168,70 @@ bash dag/submit_single_workflow.sh <train_tag> 1
 ```bash
 bash dag/submit_single_workflow.sh X_pp24_v2_fid2_6v4_xgb_v1 1
 ```
+
+### Bd PbPb 本地 precut 模式
+针对 `Bd_pb23_*` / `Bd_pb24_*`，single DAG 支持可选的本地 precut 输入模式，用于避免在训练和 apply 阶段直接读取超大的原始 DATA ROOT。
+
+启用方式：
+```bash
+bash dag/submit_single_workflow.sh Bd_pb24_v1_fid1_17v1_xgb_v1 0 1
+bash dag/submit_single_workflow.sh Bd_pb23_v1_fid1_17v1_xgb_v1 0 1
+```
+
+行为说明：
+- `TRAIN`：signal 仍使用原始 MC；background 改用本地 precut DATA。
+- `APPLY`：MC 仍使用默认配置；DATA 改用本地 precut DATA。
+- `DRAW` / `SHAP`：不需要额外改动，继续读 apply 产物。
+
+本地文件约定：
+- 原始本地副本：`input/flat_ntKstar_PbPb23_DATA.root`、`input/flat_ntKstar_PbPb24_DATA.root`
+- precut 输出：`input/Bd_pb23_v{n}_fid{N}_train_background.root`、`input/Bd_pb23_v{n}_fid{N}_apply_data.root`
+- precut 输出：`input/Bd_pb24_v{n}_fid{N}_train_background.root`、`input/Bd_pb24_v{n}_fid{N}_apply_data.root`
+
+当前实现细节：
+- 入口脚本：`workflows/prepare_bd_pbpb_precut_inputs.py`
+- 优先读取 `input/` 下与原始文件同名的本地副本；若不存在，再回退到 `configs/samples.py` 中的默认路径。
+- 当前使用 ROOT-native `TTree::CopyTree` 串行处理，不再走 `uproot -> pandas -> uproot.recreate`。
+- 分两步串行生成：`train_background` 与 `apply_data`。
+- 每个阶段最多 `5` 次 retry，默认重试间隔 `3` 秒。
+- 默认 `TTreeCache` 大小为 `256 MB`。
+- 只有在输出 ROOT 文件有效且树中有条目时，才会视为该阶段完成；半成品会在重试前清理。
+
+推荐后台运行命令（lxplus 断线后继续跑）：
+```bash
+mkdir -p logs/precut
+setsid .venv/bin/python -u -m workflows.prepare_bd_pbpb_precut_inputs \
+  Bd_pb24_v1_fid1_17v1_xgb_v1 \
+  --input-dir input \
+  > logs/precut/Bd_pb24_v1_fid1_17v1_xgb_v1.log 2>&1 < /dev/null &
+
+setsid .venv/bin/python -u -m workflows.prepare_bd_pbpb_precut_inputs \
+  Bd_pb23_v1_fid1_17v1_xgb_v1 \
+  --input-dir input \
+  > logs/precut/Bd_pb23_v1_fid1_17v1_xgb_v1.log 2>&1 < /dev/null &
+```
+
+查看进度：
+```bash
+tail -f logs/precut/Bd_pb24_v1_fid1_17v1_xgb_v1.log
+tail -f logs/precut/Bd_pb23_v1_fid1_17v1_xgb_v1.log
+```
+
+### 根据 SHAP 95% 累计重要度生成新 varset
+对已有 `shap_importance_fraction.json`，可以自动提取：
+- 所有 `cumulative_percent <= 95` 的变量
+- 再加上第一个使累计值超过 `95%` 的变量
+
+脚本：
+```bash
+.venv/bin/python scripts/update_varset_from_shap95.py <train_tag>
+```
+
+行为：
+- 自动识别 `train_tag` 对应的 `sample/channel`
+- 写入 `utils/varsets.py` 中对应的字典
+- 若已有同长度 varset（`{n}v{i}`），则取最大 `i+1`
+- 若没有，则从 `v1` 开始
 
 ### 2) 对已完成训练单独运行 SHAP
 不重跑 train/apply/draw，直接针对已有模型做 SHAP：
@@ -204,6 +276,7 @@ bash dag/submit_single_workflow.sh X_pp24_v2_fid2_6v4_xgb_v1 1
 
 ## 命名规范
 - single DAG（direct XGB）：`{channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}`
+- Bd PbPb precut 输出：`Bd_pb23_v{n}_fid{N}_{train_background|apply_data}.root` / `Bd_pb24_v{n}_fid{N}_{train_background|apply_data}.root`（位于 `input/`，本地临时文件，不入库）
 - DAGMan Optuna group（显式模式）：`{channel}_{dataset}_v{n}_fid{n}_{varset}_{n}o{N}_v{k}`
 - DAGMan Optuna group（旧批量模式）：`{channel}_{dataset}_v{n}_fid{n}_{varset}_{n}o{N}`
 
@@ -275,6 +348,7 @@ python3 scripts/cleanup/archive_output_outdated.py --workflow-type optuna
 bash scripts/cleanup/clear_dag_locks.sh <train_tag>
 ```
 - 该脚本除 lock 外，还会清理同标签 DAG 的 `.dag.condor.sub`、`.dag.lib.out/.err`、`.dag.dagman.log/.out`、`.dag.nodes.log`、`.dag.metrics`
+- 现在也会清理 `.dag.rescue*`，避免再次提交时自动从 rescue DAG 恢复；同标签重提会从头开始
 
 ## XGBoost Optimization
 - 新增脚本：`workflows/optimization/run_optimization_from_tag.py`

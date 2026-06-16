@@ -20,11 +20,13 @@ PBPB_VARSETS_BU = {
     "4v1": ["Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D"],
     "5v1": ["Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Bchi2Prob"],
     "12v1": ["Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D",  "Bchi2Prob", "PVz", "BujvProb", "Bmu2y", "Bmu1y", "Btrk1Eta", "Bmu1pt", "Bmu2pt"],
+    "10v1": ["Bcos_dtheta", "Bnorm_svpvDistance_2D", "Btrk1Pt", "Btrk1dR", "Bchi2Prob", "Bmu2pt", "Bmu1pt", "PVz", "Bmu2y", "BujvProb"],
 }
 
 PBPB_VARSETS_BD = {
     "9v1": ["Btrk1dR", "Btrk2dR", "Btrk1Pt", "Btrk2Pt","BtrkPtimb", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Btktkpt", "BtktkvProb"],
     "17v1": ["Btrk1dR", "Btrk2dR", "Btrk1Pt", "Btrk2Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Bchi2Prob", "PVz", "BujvProb", "Btktkpt", "Bmu2y", "Bmu1y", "Btrk2Eta", "Btrk1Eta", "Bmu1pt", "Bmu2pt", "BtktkvProb"],
+    "14v1": ["Bcos_dtheta", "Bnorm_svpvDistance_2D", "Bchi2Prob", "Bmu1pt", "Bmu2pt", "Btktkpt", "Btrk1Pt", "Btrk1dR", "Btrk2Pt", "BujvProb", "PVz", "Btrk2dR", "Bmu2y", "Btrk1Eta"],
 }
 
 PBPB_VARSETS_BS = {
@@ -32,6 +34,7 @@ PBPB_VARSETS_BS = {
     "7v1": ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Btktkpt", "Bchi2Prob"],
     "8v1": ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Btktkpt", "Bchi2Prob", "BtktkvProb"],
     "17v1": ["Btrk1dR", "Btrk2dR", "Btrk1Pt", "Btrk2Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Bchi2Prob", "PVz", "BujvProb", "Btktkpt", "Bmu2y", "Bmu1y", "Btrk2Eta", "Btrk1Eta", "Bmu1pt", "Bmu2pt", "BtktkvProb"],
+    "14v1": ["Bcos_dtheta", "Bnorm_svpvDistance_2D", "Bchi2Prob", "Bmu2pt", "Btktkpt", "Bmu1pt", "Btrk1dR", "Btrk2Pt", "Btrk1Pt", "Btrk2dR", "PVz", "Btrk2Eta", "Btrk1Eta", "BtktkvProb"],
 }
 
 PP_VARSETS_X = {
@@ -52,16 +55,19 @@ PP_VARSETS_BU = {
     "4v1": ["Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D"],
     "5v1": ["Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Bchi2Prob"],
     "12v1": ["Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D",  "Bchi2Prob", "PVz", "BujvProb", "Bmu2y", "Bmu1y", "Btrk1Eta", "Bmu1pt", "Bmu2pt"],
+    "10v1": ["Bcos_dtheta", "Bnorm_svpvDistance_2D", "Btrk1Pt", "Btrk1dR", "Bchi2Prob", "Bmu2pt", "Bmu1pt", "PVz", "Btrk1Eta", "BujvProb"],
 }
 
 PP_VARSETS_BD = {
     "9v1": ["Btrk1dR", "Btrk2dR", "Btrk1Pt", "Btrk2Pt","BtrkPtimb", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Btktkpt", "BtktkvProb"],
     "17v1": ["Btrk1dR", "Btrk2dR", "Btrk1Pt", "Btrk2Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Bchi2Prob", "PVz", "BujvProb", "Btktkpt", "Bmu2y", "Bmu1y", "Btrk2Eta", "Btrk1Eta", "Bmu1pt", "Bmu2pt", "BtktkvProb"],
+    "14v1": ["Bcos_dtheta", "Bnorm_svpvDistance_2D", "Btrk1dR", "Btrk2dR", "Btrk1Pt", "Btrk2Pt", "Bchi2Prob", "Btktkpt", "Bmu2pt", "Bmu1pt", "Bmu1y", "Btrk1Eta", "Btrk2Eta", "BujvProb"],
 }
 
 PP_VARSETS_BS = {
     "7v1": ["Btrk1dR", "Btrk2dR", "BtrkPtimb", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Btktkpt", "Bchi2Prob"],
     "17v1": ["Btrk1dR", "Btrk2dR", "Btrk1Pt", "Btrk2Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Bchi2Prob", "PVz", "BujvProb", "Btktkpt", "Bmu2y", "Bmu1y", "Btrk2Eta", "Btrk1Eta", "Bmu1pt", "Bmu2pt", "BtktkvProb"],
+    "14v1": ["Bcos_dtheta", "Bnorm_svpvDistance_2D", "Btktkpt", "Btrk1Pt", "Btrk2Pt", "Bchi2Prob", "Bmu2pt", "Bmu1pt", "Btrk2dR", "Btrk1dR", "PVz", "Bmu2y", "BtktkvProb", "BujvProb"],
 }
 
 VARSETS = {

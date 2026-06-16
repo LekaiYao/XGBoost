@@ -12,12 +12,15 @@ from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
 from configs.samples import (
+    bd_pbpb_precut_paths,
     infer_channel_from_tag,
     infer_dataset_token_from_tag,
     infer_dataset_year,
     infer_sample_from_tag as infer_sample_from_config,
     infer_selection_profile,
     resolve_training_config,
+    split_root_spec,
+    supports_bd_pbpb_precut,
     to_root_spec,
 )
 from configs.direct_xgb_settings import DIRECT_XGB_PARAMS
@@ -55,6 +58,7 @@ def parse_args():
     parser.add_argument("train_tag")
     parser.add_argument("--dataset-year", choices=["2023", "2024"], default=None)
     parser.add_argument("--selection-profile", default=None)
+    parser.add_argument("--use-precut", type=int, choices=[0, 1], default=0)
     return parser.parse_args()
 
 
@@ -104,9 +108,23 @@ def main():
     bkg_path = to_root_spec(train_cfg["background"])
     signal_selection = train_cfg["signal_selection"]
     background_selection = train_cfg["background_selection"]
+    dataset_source = train_cfg["dataset_source"]
+
+    if args.use_precut:
+        if not supports_bd_pbpb_precut(train_tag):
+            raise ValueError(
+                f"--use-precut only supports Bd_pb23/Bd_pb24 single-DAG tags, got '{train_tag}'."
+            )
+        precut_paths = bd_pbpb_precut_paths(train_tag)
+        train_background_path = precut_paths["train_background"]
+        if not train_background_path.exists():
+            raise FileNotFoundError(f"Missing precut training background file: {train_background_path}")
+        _, bkg_tree = split_root_spec(bkg_path)
+        bkg_path = f"{train_background_path}:{bkg_tree}"
+        dataset_source = f"{dataset_source}_precut_local"
 
     print(f"Train tag: {train_tag}")
-    print(f"Dataset source: {train_cfg['dataset_source']}")
+    print(f"Dataset source: {dataset_source}")
     print(f"Selection profile: {selection_profile}")
 
     ak_sig = uproot.concatenate(sig_path, library="pd")
@@ -232,7 +250,7 @@ def main():
         best_objective_value=float(test_roc["auc"]),
         notes={
             "training_mode": "direct_xgboost",
-            "dataset_source": train_cfg["dataset_source"],
+            "dataset_source": dataset_source,
             "dataset_year": dataset_year,
             "selection_profile": selection_profile,
             "sample": sample,

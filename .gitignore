@@ -9,6 +9,7 @@ myenv/
 
 logs/
 xgb_output/
+input/
 selected_events/
 output/
 dag/generated/

@@ -2,18 +2,19 @@
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 <train_tag>"
+  echo "Usage: $0 <train_tag> [use_precut]"
   exit 1
 fi
 
 train_tag=$1
+use_precut=${2:-0}
 repo_dir="/eos/home-l/leyao/pbpb_work/X_analysis/XGBoost"
 cd "${repo_dir}"
 source .venv/bin/activate
 export PYTHONNOUSERSITE=1
 
 if [[ "${train_tag}" == *_xgb_* ]]; then
-  exec "${repo_dir}/.venv/bin/python" -m workflows.xgboost_train_direct "${train_tag}"
+  exec "${repo_dir}/.venv/bin/python" -m workflows.xgboost_train_direct "${train_tag}" --use-precut "${use_precut}"
 else
   exec "${repo_dir}/.venv/bin/python" -m workflows.condor_optuna_XGBoost "${train_tag}"
 fi
