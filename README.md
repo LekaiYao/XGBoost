@@ -170,18 +170,28 @@ bash dag/submit_single_workflow.sh X_pp24_v2_fid2_6v4_xgb_v1 1
 ```
 
 ### Bd PbPb 本地 precut 模式
-针对 `Bd_pb23_*` / `Bd_pb24_*`，single DAG 支持可选的本地 precut 输入模式，用于避免在训练和 apply 阶段直接读取超大的原始 DATA ROOT。
+针对 `Bd_pb23_*` / `Bd_pb24_*`，single DAG 支持本地 precut 输入模式，用于避免在训练和 apply 阶段直接读取超大的原始 DATA ROOT。
 
-启用方式：
+> **重要约定：Bd PbPb（`Bd_pb23_*` / `Bd_pb24_*`）的标准全链路一律走 precut（`use_precut=1`）。**
+> 原始 DATA ROOT 过大，直接读会导致 LxPlus cgroup OOM / EOS I/O 抖动（`received 0 bytes from FSSpecSource`），且 SHAP 节点曾因整文件读入内存达 `23.6–23.8 GB` 而 HOLD。
+> 走 precut 后，`Bd_pb24_v1_fid1_17v1_xgb_v1` / `Bd_pb23_v1_fid1_17v1_xgb_v1` 的 `TRAIN -> APPLY -> DRAW -> SHAP` 全链产物已验证完整（`output/{models,training,selected,shap}/<tag>/` 齐全，`batch_apply_summary.json` 的 `input_datasets` 指向 `input/Bd_pb*_v1_fid1_apply_data.root`）。
+
+启用方式（推荐带 SHAP 的完整全链）：
 ```bash
+# 完整全链：TRAIN -> APPLY -> DRAW -> SHAP，全部走 precut
+bash dag/submit_single_workflow.sh Bd_pb24_v1_fid1_17v1_xgb_v1 1 1
+bash dag/submit_single_workflow.sh Bd_pb23_v1_fid1_17v1_xgb_v1 1 1
+
+# 仅主路径（不含 SHAP），同样走 precut
 bash dag/submit_single_workflow.sh Bd_pb24_v1_fid1_17v1_xgb_v1 0 1
 bash dag/submit_single_workflow.sh Bd_pb23_v1_fid1_17v1_xgb_v1 0 1
 ```
 
 行为说明：
-- `TRAIN`：signal 仍使用原始 MC；background 改用本地 precut DATA。
-- `APPLY`：MC 仍使用默认配置；DATA 改用本地 precut DATA。
-- `DRAW` / `SHAP`：不需要额外改动，继续读 apply 产物。
+- `TRAIN`：signal 仍使用原始 MC；background 改用本地 precut DATA（`train_background.root`）。
+- `APPLY`：MC 仍使用默认配置；DATA 改用本地 precut DATA（`apply_data.root`）。
+- `DRAW`：不需要额外改动，继续读 apply 产物 `output/selected/<train_tag>/DATA_with_score.root`。
+- `SHAP`：**不读 apply 产物**，而是复用训练输入；`use_precut=1` 时 background 同样改用本地 precut `train_background.root`，signal 仍用原始 MC（详见下文「SHAP 输入筛选说明」）。
 
 本地文件约定：
 - 原始本地副本：`input/flat_ntKstar_PbPb23_DATA.root`、`input/flat_ntKstar_PbPb24_DATA.root`
@@ -236,20 +246,23 @@ tail -f logs/precut/Bd_pb23_v1_fid1_17v1_xgb_v1.log
 ### 2) 对已完成训练单独运行 SHAP
 不重跑 train/apply/draw，直接针对已有模型做 SHAP：
 ```bash
-.venv/bin/python -m workflows.shap_importance <train_tag> [max_events]
+.venv/bin/python -m workflows.shap_importance <train_tag> [max_events] [--use-precut 0|1]
 ```
 示例：
 ```bash
 .venv/bin/python -m workflows.shap_importance X_pp24_v1_fid1_18v1_xgb_v1
 .venv/bin/python -m workflows.shap_importance Bu_pb24_v1_fid1_5v2_xgb_v1 30000
+# Bd PbPb 必须显式加 --use-precut 1（见下文防呆说明）
+.venv/bin/python -m workflows.shap_importance Bd_pb24_v1_fid1_17v1_xgb_v1 --use-precut 1
 ```
 
 ### SHAP 输入筛选说明
-- SHAP 输入样本与训练保持一致：
+- SHAP 输入样本与训练保持一致（**复用训练输入，不读 apply 产物**）：
   - signal/background 使用 `configs/samples.py` 对应 `train` 输入
   - signal 应用 `signal_selection` 表达式
   - background 应用 `background_selection` 表达式
-- 即 SHAP 现在严格复用训练筛选逻辑，不再使用宽松/不一致筛选。
+- 即 SHAP 严格复用训练筛选逻辑，不再使用宽松/不一致筛选。
+- **防呆（Bd PbPb 必读）**：对 `Bd_pb23_*` / `Bd_pb24_*`，单独手动跑 SHAP 时**必须显式加 `--use-precut 1`**。否则会读取原始超大 background ROOT 整文件入内存，曾观测内存约 `23.6–23.8 GB` 并触发 Condor HOLD/OOM。single DAG 内的 SHAP 节点会自动继承提交时的 `use_precut`（`make_single_workflow.py` 对 TRAIN/APPLY/SHAP 传同一标志），无需手动添加。
 
 ## Score 图与 Cut Scan
 - direct XGBoost 训练（`workflows/xgboost_train_direct.py`）现在会输出真实的 `xgb_score.pdf`（分数分布图），不再把 JSON 写入 PDF 文件。
@@ -313,10 +326,10 @@ bash dag/submit_dagman_workflow.sh X_pb23_v1_fid1_18v1_1o200 1 10 auto
   - `draw_selection`（画图时筛选条件）
   - `training_varset`（训练 varset）
 
-手动检查失败任务时优先看：
-- `/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost/logs/job_<train_tag>_{train,apply,draw}.err`
-- `/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost/logs/job_<train_tag>_{train,apply,draw}.log`
-- `/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost/logs/job_<train_tag>_{train,apply,draw}.out`
+手动检查失败任务时优先看 AFS 提交区 `logs/` 下的节点日志（根目录为 AFS 提交目录，非 EOS 代码区）：
+- `logs/job_<train_tag>_{train,apply,draw}.err`：Python 报错栈
+- `logs/job_<train_tag>_{train,apply,draw}.log`：Condor 退出码 / Hold 原因
+- `logs/job_<train_tag>_{train,apply,draw}.out`：脚本打印的输入路径与筛选配置
 
 ## 清理与归档
 - 清理脚本统一放在 `scripts/cleanup/`。

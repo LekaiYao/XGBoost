@@ -29,5 +29,11 @@ dags/
 
 .DS_Store
 
+# coding agent 相关文件/目录，禁止上传 GitHub
 docs/
 AGENTS.md
+CLAUDE.md
+.codex/
+.claude/
+.cursor/
+.aider*
