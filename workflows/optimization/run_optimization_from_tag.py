@@ -151,7 +151,7 @@ def _build_profile_from_tag(train_tag: str):
         "mcPath": f"../../XGBoost/output/selected/{train_tag}/MC_with_score.root",
         "dataTreeName": data_tree_name,
         "mcTreeName": mc_tree_name,
-        "scoreVar": "xgb_score",
+        "scoreVar": "Prediction",
         "preCut": pre_cut,
         "sidebandLow": sideband_low,
         "sidebandHigh": sideband_high,

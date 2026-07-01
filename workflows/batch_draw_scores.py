@@ -116,12 +116,12 @@ available_branches = set(tree.keys())
 score_branch_map = {}
 valid_train_tags, missing_train_tags = [], []
 for train_tag in train_tags:
-    tagged_branch = f"xgb_score_{train_tag}"
+    tagged_branch = f"Prediction_{train_tag}"
     if tagged_branch in available_branches:
         score_branch_map[train_tag] = tagged_branch
         valid_train_tags.append(train_tag)
-    elif "xgb_score" in available_branches:
-        score_branch_map[train_tag] = "xgb_score"
+    elif "Prediction" in available_branches:
+        score_branch_map[train_tag] = "Prediction"
         valid_train_tags.append(train_tag)
     else:
         missing_train_tags.append(train_tag)

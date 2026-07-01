@@ -153,6 +153,18 @@ SAMPLES = {
                         "signal_selection": "(abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50) and (BQvalue < 0.2))",
                         "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50))",
                     },
+                    "pb24_v3": {
+                        "signal_selection": "(abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50)) and (BQvalue < 0.15) and (Btrk2dR < 0.45)",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50))and (BQvalue < 0.15) and (Btrk2dR < 0.45)",
+                    },
+                    "pb24_v4": {
+                        "signal_selection": "(abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50)) and (BQvalue < 0.20) and (Btrk2dR < 0.45)",
+                        "background_selection": "((Bmass > 3.905 and Bmass < 3.94) or (Bmass > 3.805 and Bmass < 3.84)) and (abs(By) < 2.4) and ((Bpt > 10) and (Bpt < 50))and (BQvalue < 0.20) and (Btrk2dR < 0.45)",
+                    },
+                    "pb24_v5": {
+                        "signal_selection": "(abs(By) < 2.4) and ((Bpt > 10) and (Bpt < 50)) and (BQvalue < 0.20) and (Btrk2dR < 0.45)",
+                        "background_selection": "((Bmass > 3.905 and Bmass < 3.94) or (Bmass > 3.805 and Bmass < 3.84)) and (abs(By) < 2.4) and ((Bpt > 10) and (Bpt < 50))and (BQvalue < 0.20) and (Btrk2dR < 0.45)",
+                    },
                     "pb23_v1": {
                         "signal_selection": "(abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50))",
                         "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50))",
@@ -165,6 +177,9 @@ SAMPLES = {
                 {
                     "pb24_fid1": "abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
                     "pb24_fid2": "BQvalue < 0.2 and abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
+                    "pb24_fid3": "BQvalue < 0.15 and abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0 and Btrk2dR < 0.45",
+                    "pb24_fid4": "BQvalue < 0.20 and abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0 and Btrk2dR < 0.45",
+                    "pb24_fid5": "BQvalue < 0.20 and abs(By) < 2.4 and Bpt > 10.0 and Bpt < 50.0 and Btrk2dR < 0.45",
                     "pb23_fid1": "abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
                     "pb23_fid2": "BQvalue < 0.2 and abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
                 },
@@ -269,6 +284,11 @@ SAMPLES = {
                         "apply": {
                             "mc": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872.root", "ntmix_X3872"),],
                             "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix")],
+                            "extra_mc": {
+                                "psi2s": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_PSI2S.root", "ntmix_PSI2S"),
+                                "psi2s_nonprompt": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_PSI2S_nonPrompt.root", "ntmix_PSI2S"),
+                                "x3872_nonprompt": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872_nonPrompt.root", "ntmix_X3872"),
+                            },
                         },
                     },
                 },
@@ -459,6 +479,37 @@ def resolve_apply_config(sample: str, channel: str, dataset_year: str) -> dict:
         "data": deepcopy(ds["data"]),
         "dataset_source": f"{sample}_{channel}_{dataset_year}",
         "channel": channel,
+    }
+
+
+def resolve_extra_mc_apply_config(sample: str, channel: str, dataset_year: str, keys=None) -> dict:
+    """Resolve the extra MC samples (beyond signal MC) to be scored independently.
+
+    keys: None or "all" -> all configured samples; a comma-separated string or an
+    iterable of keys -> only those. Returns ordered {key: spec} under "samples".
+    """
+    cfg = _channel_cfg(sample, channel)
+    ds = cfg["datasets"][dataset_year]["apply"]
+    extra = ds.get("extra_mc")
+    if not extra:
+        raise ValueError(
+            f"No extra_mc configured for {sample}/{channel}/{dataset_year}; add 'extra_mc' to its apply block."
+        )
+    if keys is None or (isinstance(keys, str) and keys.strip() == "all"):
+        selected = list(extra.keys())
+    elif isinstance(keys, str):
+        selected = [k.strip() for k in keys.split(",") if k.strip()]
+    else:
+        selected = list(keys)
+    unknown = [k for k in selected if k not in extra]
+    if unknown:
+        raise ValueError(
+            f"Unknown extra_mc keys {unknown} for {sample}/{channel}/{dataset_year}; available: {list(extra.keys())}"
+        )
+    return {
+        "dataset_year": dataset_year,
+        "channel": channel,
+        "samples": {k: deepcopy(extra[k]) for k in selected},
     }
 
 

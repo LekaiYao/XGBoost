@@ -93,6 +93,9 @@ bash dag/submit_single_workflow.sh Bs_pp24_v1_fid1_6v1_xgb_v1 0
 2) apply输入、apply筛选、draw筛选
 - apply 输入数据（MC/data 的 ROOT 路径与 TTree）定义在：
   - [configs/samples.py](configs/samples.py) 的 `datasets[year]["apply"]`
+- 对 `X` channel，可额外在同一处配置 `extra_mc`，供独立打分：
+  - 当前入口：`datasets[year]["apply"]["extra_mc"]`
+  - 当前解析函数：`resolve_extra_mc_apply_config(...)`
 - apply 阶段在 summary 中记录训练筛选表达式（`signal_selection` / `background_selection`），来源：
   - `resolve_training_config(...)`（`configs/samples.py`）
   - 执行脚本：`workflows/batch_apply_scores.py`
@@ -104,6 +107,51 @@ bash dag/submit_single_workflow.sh Bs_pp24_v1_fid1_6v1_xgb_v1 0
 - 训练变量组合定义在：
   - [utils/varsets.py](utils/varsets.py) 的 `VARSETS[sample][channel][varset]`
 - single DAG 会从 `train_tag` 解析 `sample/channel/selection_profile/fid_profile/varset`，据此读取配置。
+
+## 独立 apply：`apply_extra_mc`
+当只需要对 `X` channel 的额外 MC 样本单独打分，而不想重跑完整 `TRAIN -> APPLY -> DRAW` 时，可直接使用 `workflows/batch_apply_scores.py` 的 `--apply-extra-mc` 模式。
+
+当前行为：
+- 仅支持 `X` channel。
+- 与 `--use-precut` 互斥。
+- `--apply-extra-mc all` 会对 `configs/samples.py` 中该 `dataset_year` 下配置的全部 `extra_mc` 样本逐个打分。
+- 输出文件写到 `output/selected/<train_tag>/MC_<key>_with_score.root`。
+- 单模型输出分支名为 `Prediction`；多模型 group apply 输出分支名为 `Prediction_<train_tag>`。
+
+当前 `X/pp24` 已配置的 `extra_mc`：
+- `psi2s`
+- `psi2s_nonprompt`
+- `x3872_nonprompt`
+
+直接本地运行：
+```bash
+.venv/bin/python -m workflows.batch_apply_scores --apply-extra-mc all X_pp24_v3_fid2_4v1_xgb_v1
+.venv/bin/python -m workflows.batch_apply_scores --apply-extra-mc psi2s X_pp24_v2_fid1_8v1_xgb_v1
+```
+
+推荐的独立 Condor 提交方式：
+- 提交目录：`/afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost`
+- 原因：`submit_apply_job.sub` 使用 `executable = run_apply_job.sh`，依赖 AFS 提交区中已复制好的 wrapper
+
+本次实际提交命令：
+```bash
+cd /afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost
+condor_submit submit_apply_job.sub \
+  -append "train_tag=X_pp24_v3_fid2_4v1_xgb_v1" \
+  -append "use_precut=0" \
+  -append "apply_extra_mc=all" \
+  -append "job_tag=X_pp24_v3_fid2_4v1_xgb_v1_apply_extra_all"
+```
+
+等价的单样本示例：
+```bash
+cd /afs/cern.ch/user/l/leyao/private/pbpb_work/X_analysis/XGBoost
+condor_submit submit_apply_job.sub \
+  -append "train_tag=X_pp24_v2_fid1_8v1_xgb_v1" \
+  -append "use_precut=0" \
+  -append "apply_extra_mc=psi2s" \
+  -append "job_tag=X_pp24_v2_fid1_8v1_xgb_v1_apply_psi2s"
+```
 
 ## 如何输入 Optuna 超参数空间与训练配置
 - Optuna 空间：

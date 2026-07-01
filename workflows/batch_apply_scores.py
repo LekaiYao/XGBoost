@@ -15,6 +15,7 @@ from configs.samples import (
     infer_selection_profile,
     resolve_apply_config,
     resolve_draw_config,
+    resolve_extra_mc_apply_config,
     resolve_fiducial_config,
     resolve_training_config,
     split_root_spec,
@@ -27,7 +28,7 @@ from utils.varsets import get_varset_columns, infer_varset_from_tag
 if len(sys.argv) < 2:
     print(
         "Usage: python3 workflows/batch_apply_scores.py "
-        "[--output-tag <output_tag>] [--data-input <root:tree>] [--output-prefix <prefix>] [--dataset-year <year>] [--use-precut <0|1>] "
+        "[--output-tag <output_tag>] [--data-input <root:tree>] [--output-prefix <prefix>] [--dataset-year <year>] [--use-precut <0|1>] [--apply-extra-mc <keys|all>] "
         "<train_tag> [<train_tag> ...]"
     )
     sys.exit(1)
@@ -38,6 +39,7 @@ data_input_override = None
 output_prefix = ""
 dataset_year_override = None
 use_precut = 0
+apply_extra_mc = None
 train_tags = []
 
 i = 0
@@ -61,6 +63,10 @@ while i < len(args):
         continue
     if token == "--use-precut" and i + 1 < len(args):
         use_precut = int(args[i + 1])
+        i += 2
+        continue
+    if token == "--apply-extra-mc" and i + 1 < len(args):
+        apply_extra_mc = args[i + 1]
         i += 2
         continue
     train_tags.append(token)
@@ -100,8 +106,8 @@ single_model_mode = len(train_tags) == 1
 
 def score_branch_name(train_tag):
     if single_model_mode:
-        return "xgb_score"
-    return f"xgb_score_{train_tag}"
+        return "Prediction"
+    return f"Prediction_{train_tag}"
 
 
 models = []
@@ -169,6 +175,37 @@ def score_dataframe(df, model_bundle):
 
 
 output_dir = ensure_dir(selected_dir(output_tag))
+
+if apply_extra_mc is not None:
+    if channel != "X":
+        raise ValueError("--apply-extra-mc only supports X channel.")
+    if use_precut:
+        raise ValueError("--apply-extra-mc cannot be combined with --use-precut.")
+    extra_cfg = resolve_extra_mc_apply_config(sample_key, channel, dataset_year, apply_extra_mc)
+    failures = []
+    for key, spec in extra_cfg["samples"].items():
+        EXTRA_INPUT = to_root_spec(spec)
+        extra_tree = split_root_spec(EXTRA_INPUT)[1]
+        out_path = os.path.join(output_dir, f"{output_prefix}MC_{key}_with_score.root")
+        print(f"Processing extra MC [{key}]: {EXTRA_INPUT}")
+        try:
+            df_extra = uproot.concatenate(EXTRA_INPUT, library="pd")
+            df_extra_out = None
+            for model_bundle in models:
+                df_scored = score_dataframe(df_extra, model_bundle)
+                if df_extra_out is None:
+                    df_extra_out = df_scored
+                else:
+                    df_extra_out[model_bundle["score_column"]] = df_scored[model_bundle["score_column"]]
+            with uproot.recreate(out_path) as f:
+                f[extra_tree] = {col: df_extra_out[col].values for col in df_extra_out.columns}
+            print(f"Saved extra MC with score: {out_path}")
+        except Exception as exc:
+            failures.append({"key": key, "input": EXTRA_INPUT, "reason": str(exc)})
+            print(f"  [SKIP] extra MC {key}: {exc}")
+    if failures:
+        print(f"Completed extra MC apply with {len(failures)} failure(s): {[f['key'] for f in failures]}")
+    sys.exit(0)
 
 print(f"Processing MC: {MC_INPUT}")
 df_mc = uproot.concatenate(MC_INPUT, library="pd")
