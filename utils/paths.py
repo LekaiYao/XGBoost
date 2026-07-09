@@ -135,6 +135,22 @@ def condor_feature_importance_cumulative_path(train_tag):
     return os.path.join(condor_training_dir(train_tag), "feature_importance_cumulative.pdf")
 
 
+def condor_training_logloss_path(train_tag):
+    return os.path.join(condor_training_dir(train_tag), "logloss.pdf")
+
+
+def condor_training_history_path(train_tag):
+    return os.path.join(condor_training_dir(train_tag), "training_history.json")
+
+
+def condor_training_ks_curve_path(train_tag):
+    return os.path.join(condor_training_dir(train_tag), "ks_curve.pdf")
+
+
+def condor_training_ks_path(train_tag):
+    return os.path.join(condor_training_dir(train_tag), "ks.json")
+
+
 def shap_importance_path(train_tag):
     return os.path.join(shap_dir(train_tag), "shap_importance.json")
 

@@ -32,6 +32,10 @@ from utils.paths import (
     condor_model_path,
     condor_scaler_path,
     condor_training_dir,
+    condor_training_history_path,
+    condor_training_ks_curve_path,
+    condor_training_ks_path,
+    condor_training_logloss_path,
     condor_training_score_path,
     ensure_dir,
 )
@@ -162,7 +166,15 @@ def main():
         **DIRECT_XGB_PARAMS[dataset_token][channel],
     }
     xgbc = XGBClassifier(**params)
-    xgbc.fit(X_train, y_train["is_sig"].to_numpy())
+    xgbc.fit(
+        X_train, y_train["is_sig"].to_numpy(),
+        eval_set=[
+            (X_train, y_train["is_sig"].to_numpy()),
+            (X_test, y_test["is_sig"].to_numpy()),
+        ],
+        verbose=False,
+    )
+    evals_result = xgbc.evals_result()
 
     train_score_xgb = xgbc.predict_proba(X_train)
     test_score_xgb = xgbc.predict_proba(X_test)
@@ -232,6 +244,125 @@ def main():
     plt.close()
 
     save_feature_importance(xgbc, input_columns, train_tag)
+
+    # ---- overtraining diagnostics: logloss history ----
+    train_logloss = evals_result["validation_0"]["logloss"]
+    test_logloss = evals_result["validation_1"]["logloss"]
+    n_estimators_actual = len(train_logloss)
+
+    # Apply CMS AN style for publication-quality figures
+    _cms_an_rc = {
+        "font.family": "serif",
+        "font.size": 13,
+        "axes.labelsize": 14,
+        "xtick.labelsize": 12,
+        "ytick.labelsize": 12,
+        "legend.fontsize": 11,
+        "legend.frameon": False,
+        "lines.linewidth": 1.5,
+    }
+    _saved_rc = {k: plt.rcParams.get(k) for k in _cms_an_rc}
+    plt.rcParams.update(_cms_an_rc)
+
+    logloss_plot_path = condor_training_logloss_path(train_tag)
+    plt.figure(figsize=(7, 5))
+    plt.plot(range(1, n_estimators_actual + 1), train_logloss, label="Train", color="tab:blue")
+    plt.plot(range(1, n_estimators_actual + 1), test_logloss, label="Test", color="tab:orange")
+    plt.xlabel("Boosting round")
+    plt.ylabel("Log-loss")
+    plt.grid(alpha=0.25, linestyle="--", linewidth=0.5)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(logloss_plot_path)
+    plt.close()
+    print(f"Logloss plot saved to: {logloss_plot_path}")
+
+    training_history_path = condor_training_history_path(train_tag)
+    with open(training_history_path, "w") as f:
+        json.dump(
+            {
+                "train_logloss": [float(x) for x in train_logloss],
+                "test_logloss": [float(x) for x in test_logloss],
+                "best_iteration": int(getattr(xgbc, "best_iteration", n_estimators_actual)),
+                "eval_metric": params.get("eval_metric", "logloss"),
+            },
+            f,
+            indent=2,
+        )
+    print(f"Training history saved to: {training_history_path}")
+
+    # ---- overtraining diagnostics: KS curves ----
+    def compute_ks_curve(y_true, score):
+        """Compute KS cumulative distributions for signal and background."""
+        is_sig = np.asarray(y_true, dtype=bool)
+        score_sig = np.sort(score[is_sig])
+        score_bkg = np.sort(score[~is_sig])
+        thresholds = np.linspace(0.0, 1.0, 500)
+        sig_cdf = np.searchsorted(score_sig, thresholds, side="right") / len(score_sig)
+        bkg_cdf = np.searchsorted(score_bkg, thresholds, side="right") / len(score_bkg)
+        diff = sig_cdf - bkg_cdf
+        ks_stat = float(np.max(np.abs(diff)))
+        return {
+            "score_thresholds": [float(x) for x in thresholds],
+            "sig_cdf": [float(x) for x in sig_cdf],
+            "bkg_cdf": [float(x) for x in bkg_cdf],
+            "ks_stat": ks_stat,
+        }
+
+    train_ks = compute_ks_curve(y_train["is_sig"].to_numpy(), train_score_xgb_all)
+    test_ks = compute_ks_curve(y_test["is_sig"].to_numpy(), test_score_xgb_all)
+
+    ks_plot_path = condor_training_ks_curve_path(train_tag)
+    plt.figure(figsize=(7, 5))
+    # Train set: blue family
+    plt.plot(
+        train_ks["score_thresholds"], train_ks["sig_cdf"],
+        color="tab:blue", linestyle="-",
+        label="Train signal",
+    )
+    plt.plot(
+        train_ks["score_thresholds"], train_ks["bkg_cdf"],
+        color="tab:blue", linestyle="--",
+        label="Train background",
+    )
+    # Test set: orange family
+    plt.plot(
+        test_ks["score_thresholds"], test_ks["sig_cdf"],
+        color="tab:orange", linestyle="-",
+        label="Test signal",
+    )
+    plt.plot(
+        test_ks["score_thresholds"], test_ks["bkg_cdf"],
+        color="tab:orange", linestyle="--",
+        label="Test background",
+    )
+    # Annotate KS values in a text box
+    _ks_text = (
+        f"Train KS = {train_ks['ks_stat']:.3f}\n"
+        f"Test KS  = {test_ks['ks_stat']:.3f}"
+    )
+    plt.text(0.03, 0.97, _ks_text, transform=plt.gca().transAxes,
+             fontsize=10, ha="left", va="top",
+             bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.85,
+                       edgecolor="gray", linewidth=0.5))
+    plt.xlabel("BDT score")
+    plt.ylabel("Cumulative fraction")
+    plt.xlim(0, 1)
+    plt.ylim(0, 1)
+    plt.grid(alpha=0.25, linestyle="--", linewidth=0.5)
+    plt.legend(loc="lower right")
+    plt.tight_layout()
+    plt.savefig(ks_plot_path)
+    plt.close()
+    print(f"KS curve plot saved to: {ks_plot_path}")
+
+    ks_json_path = condor_training_ks_path(train_tag)
+    with open(ks_json_path, "w") as f:
+        json.dump({"train": train_ks, "test": test_ks}, f, indent=2)
+    print(f"KS data saved to: {ks_json_path}")
+
+    # Restore original rcParams
+    plt.rcParams.update(_saved_rc)
 
     save_run_metadata(
         train_tag=train_tag,
