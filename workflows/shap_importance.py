@@ -53,8 +53,13 @@ train_cfg = resolve_training_config(sample, channel, year, sel)
 
 SIG_PATH = to_root_spec(train_cfg["signal"])
 BKG_PATH = to_root_spec(train_cfg["background"])
-if use_precut and supports_bd_pbpb_precut(train_tag):
-    BKG_PATH = str(bd_pbpb_precut_paths(train_tag)["train_background"]) + ":" + train_cfg["background"]["tree"]
+if use_precut:
+    if not supports_bd_pbpb_precut(train_tag):
+        raise ValueError(f"--use-precut only supports Bd_pb23/Bd_pb24 single-DAG tags, got '{train_tag}'.")
+    train_background_path = bd_pbpb_precut_paths(train_tag)["train_background"]
+    if not train_background_path.exists():
+        raise FileNotFoundError(f"Missing precut training background file: {train_background_path}")
+    BKG_PATH = str(train_background_path) + ":" + train_cfg["background"]["tree"]
 RNG_SEED = 42
 
 resolved_model_path = resolve_model_path(train_tag)

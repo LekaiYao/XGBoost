@@ -245,6 +245,7 @@ bash dag/submit_single_workflow.sh Bd_pb23_v1_fid1_17v1_xgb_v1 0 1
 - 原始本地副本：`input/flat_ntKstar_PbPb23_DATA.root`、`input/flat_ntKstar_PbPb24_DATA.root`
 - precut 输出：`input/Bd_pb23_v{n}_fid{N}_train_background.root`、`input/Bd_pb23_v{n}_fid{N}_apply_data.root`
 - precut 输出：`input/Bd_pb24_v{n}_fid{N}_train_background.root`、`input/Bd_pb24_v{n}_fid{N}_apply_data.root`
+- 每份输出带同名 `.root.metadata.json`，记录源文件身份、TTree、selection 和 fingerprint。
 
 当前实现细节：
 - 入口脚本：`workflows/prepare_bd_pbpb_precut_inputs.py`
@@ -253,7 +254,8 @@ bash dag/submit_single_workflow.sh Bd_pb23_v1_fid1_17v1_xgb_v1 0 1
 - 分两步串行生成：`train_background` 与 `apply_data`。
 - 每个阶段最多 `5` 次 retry，默认重试间隔 `3` 秒。
 - 默认 `TTreeCache` 大小为 `256 MB`。
-- 只有在输出 ROOT 文件有效且树中有条目时，才会视为该阶段完成；半成品会在重试前清理。
+- 只有输出 ROOT 文件有效、树中有条目且 metadata fingerprint 与当前输入配置一致时，才会复用；源文件或 cut 改变后会自动重建。
+- 如需无条件重建，手动运行准备脚本时添加 `--force`。
 
 推荐后台运行命令（lxplus 断线后继续跑）：
 ```bash

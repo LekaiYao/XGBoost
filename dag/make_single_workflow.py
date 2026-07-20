@@ -15,7 +15,7 @@ def make_dag(out_dir: Path, train_tag: str, with_shap: bool, use_precut: bool) -
         f'VARS TRAIN train_tag="{train_tag}" use_precut="{precut_flag}" job_tag="{train_tag}_train"',
         "",
         "JOB APPLY submit_apply_job.sub",
-        f'VARS APPLY train_tag="{train_tag}" use_precut="{precut_flag}" job_tag="{train_tag}_apply"',
+        f'VARS APPLY train_tag="{train_tag}" use_precut="{precut_flag}" apply_extra_mc="0" job_tag="{train_tag}_apply"',
         "",
         "JOB DRAW submit_draw_job.sub",
         f'VARS DRAW train_tag="{train_tag}" job_tag="{train_tag}_draw"',

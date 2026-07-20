@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -87,6 +88,7 @@ def parse_args():
     parser.add_argument("--max-retries", type=int, default=DEFAULT_MAX_RETRIES)
     parser.add_argument("--retry-delay", type=float, default=DEFAULT_RETRY_DELAY)
     parser.add_argument("--cache-size-mb", type=int, default=DEFAULT_CACHE_SIZE_MB)
+    parser.add_argument("--force", action="store_true", help="Regenerate precut files even when metadata matches.")
     return parser.parse_args()
 
 
@@ -145,6 +147,53 @@ def _is_valid_root_output(path: Path, tree_name: str) -> bool:
         return False
 
 
+def _metadata_path(output_path: Path) -> Path:
+    return output_path.with_suffix(output_path.suffix + ".metadata.json")
+
+
+def _source_identity(source_path: str) -> dict:
+    identity = {"path": source_path}
+    try:
+        stat = Path(source_path).stat()
+    except OSError:
+        return identity
+    identity.update({"size": stat.st_size, "mtime_ns": stat.st_mtime_ns})
+    return identity
+
+
+def _expected_metadata(
+    resolved_path: str,
+    tree_name: str,
+    cut_expr: str,
+    phase_name: str,
+) -> dict:
+    provenance = {
+        "schema_version": 1,
+        "phase": phase_name,
+        "source": _source_identity(resolved_path),
+        "tree": tree_name,
+        "selection": cut_expr,
+    }
+    encoded = json.dumps(provenance, sort_keys=True, separators=(",", ":")).encode()
+    return {**provenance, "fingerprint": hashlib.sha256(encoded).hexdigest()}
+
+
+def _metadata_matches(output_path: Path, expected: dict) -> bool:
+    metadata_path = _metadata_path(output_path)
+    try:
+        actual = json.loads(metadata_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return False
+    return actual == expected
+
+
+def _write_metadata(output_path: Path, metadata: dict):
+    metadata_path = _metadata_path(output_path)
+    temporary_path = metadata_path.with_suffix(metadata_path.suffix + ".tmp")
+    temporary_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n")
+    temporary_path.replace(metadata_path)
+
+
 def _remove_if_exists(path: Path):
     if path.exists():
         path.unlink()
@@ -195,19 +244,23 @@ def _run_phase_with_retry(
     cache_size_mb: int,
     phase_name: str,
     macro_path: Path,
+    force: bool,
 ):
     resolved_spec, resolved_path, tree_name = _resolve_source_spec(source_spec, input_dir)
     _, _ = resolved_spec, tree_name
+    cut_expr = _to_root_expr(selection_expr)
+    expected_metadata = _expected_metadata(resolved_path, tree_name, cut_expr, phase_name)
 
-    if _is_valid_root_output(output_path, tree_name):
+    if not force and _is_valid_root_output(output_path, tree_name) and _metadata_matches(output_path, expected_metadata):
         print(f"Using existing precut file: {output_path}", flush=True)
         return
 
     if output_path.exists():
-        print(f"Removing invalid/incomplete output before retry: {output_path}", flush=True)
+        reason = "forced regeneration" if force else "invalid output or stale/missing metadata"
+        print(f"Removing precut output ({reason}): {output_path}", flush=True)
         _remove_if_exists(output_path)
+    _remove_if_exists(_metadata_path(output_path))
 
-    cut_expr = _to_root_expr(selection_expr)
     print(f"Creating precut file: {output_path}", flush=True)
     print(f"  Source: {resolved_path}:{tree_name}", flush=True)
     print(f"  Mode: ROOT CopyTree serial read, max_retries={max_retries}, cache_size_mb={cache_size_mb}", flush=True)
@@ -235,6 +288,7 @@ def _run_phase_with_retry(
         if result.returncode == 0 and _is_valid_root_output(output_path, tree_name):
             with uproot.open(output_path) as root_file:
                 entries = root_file[tree_name].num_entries
+            _write_metadata(output_path, expected_metadata)
             print(f"  Saved {entries} rows to {output_path}", flush=True)
             return
 
@@ -292,6 +346,7 @@ def main():
             cache_size_mb=args.cache_size_mb,
             phase_name="train_background",
             macro_path=macro_path,
+            force=args.force,
         )
         _run_phase_with_retry(
             source_spec=to_root_spec(apply_cfg["data"][0]),
@@ -303,6 +358,7 @@ def main():
             cache_size_mb=args.cache_size_mb,
             phase_name="apply_data",
             macro_path=macro_path,
+            force=args.force,
         )
     finally:
         _remove_if_exists(macro_path)

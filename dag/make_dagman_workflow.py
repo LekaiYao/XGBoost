@@ -47,7 +47,10 @@ def make_dag(
         lines.append("")
 
         lines.append(f"JOB {apply_node} submit_apply_job.sub")
-        lines.append(f'VARS {apply_node} train_tag="{tag}" job_tag="{apply_job_tag}"')
+        lines.append(
+            f'VARS {apply_node} train_tag="{tag}" use_precut="0" '
+            f'apply_extra_mc="0" job_tag="{apply_job_tag}"'
+        )
         lines.append("")
 
         lines.append(f"JOB {draw_node} submit_draw_job.sub")
