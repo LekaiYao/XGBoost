@@ -6,6 +6,7 @@ MODELS_DIR = os.path.join(OUTPUT_ROOT_DIR, "models")
 TRAINING_DIR = os.path.join(OUTPUT_ROOT_DIR, "training")
 SHAP_DIR = os.path.join(OUTPUT_ROOT_DIR, "shap")
 SELECTED_DIR = os.path.join(OUTPUT_ROOT_DIR, "selected")
+REWEIGHTING_DIR = os.path.join(OUTPUT_ROOT_DIR, "reweighting")
 
 
 def ensure_dir(path):
@@ -81,6 +82,31 @@ def shap_dir(train_tag):
 
 def selected_dir(train_tag):
     return os.path.join(SELECTED_DIR, train_tag)
+
+
+def reweighting_dir(reweight_tag):
+    return os.path.join(REWEIGHTING_DIR, reweight_tag)
+
+
+def reweighter_model_path(reweight_tag):
+    return os.path.join(reweighting_dir(reweight_tag), "reweighter.pkl")
+
+
+def reweighting_manifest_path(reweight_tag):
+    return os.path.join(reweighting_dir(reweight_tag), "reweighting_manifest.json")
+
+
+def reweighting_diagnostics_path(reweight_tag):
+    return os.path.join(reweighting_dir(reweight_tag), "diagnostics.json")
+
+
+def reweighting_domain_closure_path(reweight_tag):
+    return os.path.join(reweighting_dir(reweight_tag), "domain_classifier_holdout.json")
+
+
+def reweighted_root_path(reweight_tag, input_path):
+    stem = os.path.splitext(os.path.basename(str(input_path)))[0]
+    return os.path.join(reweighting_dir(reweight_tag), f"{stem}_with_reweight.root")
 
 
 def cut_scan_dir(train_tag):

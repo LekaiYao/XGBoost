@@ -56,6 +56,13 @@ PP_VARSETS_X = {
     "18v1": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta", "Bmu2y", "Bmu1y", "Bmu1pt", "Bmu2pt", "BujvProb", "Btktkpt", "PVz", "Btrk2Eta", "Btrk1Eta", "Btrk1PtErr", "Btrk2PtErr"],
 }
 
+PP_REWEIGHT_VARSETS_X = {
+    "R3": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob"],
+    "R4_noCos": ["Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt"],
+    "R5": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt"],
+    "R8": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta", "Btktkpt"],
+}
+
 PP_VARSETS_BU = {
     "4v1": ["Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D"],
     "5v1": ["Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Bchi2Prob"],
@@ -95,6 +102,12 @@ SUPPORTED_SAMPLES = tuple(VARSETS.keys())
 SUPPORTED_VARSETS = tuple(sorted({k for ch in VARSETS[DEFAULT_SAMPLE].values() for k in ch.keys()}))
 VARSET_COLUMNS = VARSETS[DEFAULT_SAMPLE]["X"]
 
+REWEIGHT_VARSETS = {
+    "pp": {
+        "X": PP_REWEIGHT_VARSETS_X,
+    },
+}
+
 
 def infer_sample_from_tag(tag):
     _, body = split_channel_tag(tag)
@@ -129,3 +142,23 @@ def infer_varset_from_tag(tag, sample=None):
         if f"_{key}_" in tag:
             return key
     return None
+
+
+def get_reweight_varset_columns(sample, varset, channel):
+    by_sample = REWEIGHT_VARSETS.get(sample)
+    if by_sample is None:
+        raise ValueError(
+            f"Unsupported reweight sample '{sample}'. Expected one of {tuple(REWEIGHT_VARSETS.keys())}."
+        )
+    by_channel = by_sample.get(channel)
+    if by_channel is None:
+        raise ValueError(
+            f"Unsupported reweight channel '{channel}' for sample '{sample}'. "
+            f"Expected one of {tuple(by_sample.keys())}."
+        )
+    if varset not in by_channel:
+        raise ValueError(
+            f"Unsupported reweight varset '{varset}' for sample '{sample}' channel '{channel}'. "
+            f"Expected one of {tuple(by_channel.keys())}."
+        )
+    return list(by_channel[varset])
