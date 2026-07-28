@@ -16,9 +16,12 @@ from configs.samples import (
     infer_channel_from_tag,
     infer_dataset_token_from_tag,
     infer_dataset_year,
+    infer_fid_profile,
+    infer_reweight_profile,
     infer_sample_from_tag as infer_sample_from_config,
     infer_selection_profile,
     resolve_training_config,
+    resolve_training_reweight_config,
     split_root_spec,
     supports_bd_pbpb_precut,
     to_root_spec,
@@ -41,11 +44,16 @@ from utils.paths import (
 )
 from utils.run_metadata import save_run_metadata
 from utils.selection import apply_selection
+from utils.training_weights import (
+    balanced_scale_pos_weight,
+    resolve_training_weights,
+    weighted_ks_curve,
+)
 from utils.varsets import get_varset_columns, infer_sample_from_tag, infer_varset_from_tag
 
 
-def build_roc_payload(y_true, score):
-    fpr, tpr, thresholds = roc_curve(y_true, score)
+def build_roc_payload(y_true, score, sample_weight=None):
+    fpr, tpr, thresholds = roc_curve(y_true, score, sample_weight=sample_weight)
     roc_auc = auc(fpr, tpr)
     return {
         "auc": float(roc_auc),
@@ -99,7 +107,12 @@ def main():
     dataset_token = infer_dataset_token_from_tag(train_tag)
     dataset_year = args.dataset_year or infer_dataset_year(train_tag, sample)
     selection_profile = args.selection_profile or infer_selection_profile(train_tag, sample)
+    fid_profile = infer_fid_profile(train_tag, sample)
+    reweight_profile = infer_reweight_profile(train_tag)
     train_cfg = resolve_training_config(sample, channel, dataset_year, selection_profile)
+    reweight_cfg = resolve_training_reweight_config(
+        sample, channel, dataset_year, reweight_profile, selection_profile, fid_profile
+    )
 
     sample_key = infer_sample_from_tag(train_tag)
     feature_set_tag = infer_varset_from_tag(train_tag, sample=sample_key)
@@ -113,6 +126,10 @@ def main():
     signal_selection = train_cfg["signal_selection"]
     background_selection = train_cfg["background_selection"]
     dataset_source = train_cfg["dataset_source"]
+
+    if reweight_cfg["signal"] is not None:
+        sig_path = to_root_spec(reweight_cfg["signal"])
+        dataset_source = f"{dataset_source}_signal_override"
 
     if args.use_precut:
         if not supports_bd_pbpb_precut(train_tag):
@@ -130,31 +147,55 @@ def main():
     print(f"Train tag: {train_tag}")
     print(f"Dataset source: {dataset_source}")
     print(f"Selection profile: {selection_profile}")
+    print(f"Reweight profile: {reweight_profile}")
 
     ak_sig = uproot.concatenate(sig_path, library="pd")
     ak_bkg = uproot.concatenate(bkg_path, library="pd")
 
     ak_sig = apply_selection(ak_sig, signal_selection, "signal_selection")
     ak_bkg = apply_selection(ak_bkg, background_selection, "background_selection")
+    signal_weight = resolve_training_weights(
+        ak_sig, reweight_cfg["weight_branch"], "signal sample"
+    )
+    background_weight = resolve_training_weights(ak_bkg, None, "background sample")
 
     ak_sig["is_sig"] = True
     ak_bkg["is_sig"] = False
     ak_sig["is_bkg"] = False
     ak_bkg["is_bkg"] = True
+    ak_sig["_training_weight"] = signal_weight
+    ak_bkg["_training_weight"] = background_weight
 
     df_raw = pd.concat([ak_sig, ak_bkg], axis=0, ignore_index=True)
     scaler = StandardScaler()
-    df_trans = pd.DataFrame(scaler.fit_transform(df_raw[input_columns]), columns=trans_columns, index=df_raw.index)
+    scaler.fit(
+        df_raw[input_columns],
+        sample_weight=df_raw["_training_weight"].to_numpy(dtype=float),
+    )
+    df_trans = pd.DataFrame(
+        scaler.transform(df_raw[input_columns]),
+        columns=trans_columns,
+        index=df_raw.index,
+    )
     df = pd.concat([df_trans, df_raw], axis=1)
     y = df[["is_sig", "is_bkg"]]
+    training_weight = df["_training_weight"]
 
-    X_train, X_test, y_train, y_test = train_test_split(df[trans_columns], y, train_size=0.75, random_state=42)
+    X_train, X_test, y_train, y_test, weight_train, weight_test = train_test_split(
+        df[trans_columns],
+        y,
+        training_weight,
+        train_size=0.75,
+        random_state=42,
+    )
 
     n_sig_train = int(y_train["is_sig"].sum())
     n_bkg_train = int(y_train["is_bkg"].sum())
     if n_sig_train <= 0:
         raise ValueError("No signal events available in training split after selection.")
-    scale_pos_weight = float(n_bkg_train / n_sig_train)
+    scale_pos_weight = balanced_scale_pos_weight(
+        y_train["is_sig"].to_numpy(), weight_train.to_numpy()
+    )
 
     params = {
         "booster": "gbtree",
@@ -168,9 +209,14 @@ def main():
     xgbc = XGBClassifier(**params)
     xgbc.fit(
         X_train, y_train["is_sig"].to_numpy(),
+        sample_weight=weight_train.to_numpy(),
         eval_set=[
             (X_train, y_train["is_sig"].to_numpy()),
             (X_test, y_test["is_sig"].to_numpy()),
+        ],
+        sample_weight_eval_set=[
+            weight_train.to_numpy(),
+            weight_test.to_numpy(),
         ],
         verbose=False,
     )
@@ -184,8 +230,12 @@ def main():
     test_score_xgb_all = test_score_xgb[:, 1]
     train_y_true = y_train["is_sig"].astype(int).to_numpy()
     test_y_true = y_test["is_sig"].astype(int).to_numpy()
-    train_roc = build_roc_payload(train_y_true, train_score_xgb_all)
-    test_roc = build_roc_payload(test_y_true, test_score_xgb_all)
+    train_roc = build_roc_payload(
+        train_y_true, train_score_xgb_all, weight_train.to_numpy()
+    )
+    test_roc = build_roc_payload(
+        test_y_true, test_score_xgb_all, weight_test.to_numpy()
+    )
 
     ensure_dir(condor_model_dir(train_tag))
     ensure_dir(condor_training_dir(train_tag))
@@ -193,12 +243,39 @@ def main():
     joblib.dump(scaler, condor_scaler_path(train_tag))
 
     with open(condor_model_config_path(train_tag), "w") as f:
-        json.dump({"input_columns": input_columns, "trans_columns": trans_columns, "model_params": params}, f, indent=2)
+        json.dump(
+            {
+                "input_columns": input_columns,
+                "trans_columns": trans_columns,
+                "model_params": params,
+                "reweight_profile": reweight_profile,
+                "signal_weight_branch": reweight_cfg["weight_branch"],
+                "signal_path": sig_path,
+            },
+            f,
+            indent=2,
+        )
 
     score_plot_path = condor_training_score_path(train_tag)
     plt.figure(figsize=(6, 6))
-    plt.hist(test_score_xgb_sig, label="signal", histtype="step", bins=np.linspace(0, 1, 100), density=True)
-    plt.hist(test_score_xgb_bkg, label="background", histtype="step", bins=np.linspace(0, 1, 100), density=True)
+    test_is_sig = y_test["is_sig"].to_numpy(dtype=bool)
+    test_weights = weight_test.to_numpy(dtype=float)
+    plt.hist(
+        test_score_xgb_sig,
+        weights=test_weights[test_is_sig],
+        label="signal",
+        histtype="step",
+        bins=np.linspace(0, 1, 100),
+        density=True,
+    )
+    plt.hist(
+        test_score_xgb_bkg,
+        weights=test_weights[~test_is_sig],
+        label="background",
+        histtype="step",
+        bins=np.linspace(0, 1, 100),
+        density=True,
+    )
     plt.xlabel("Score (Prob. from XGBoost Prediction)")
     plt.ylabel("(Bin Width)$^{-1}$")
     plt.legend()
@@ -292,25 +369,16 @@ def main():
     print(f"Training history saved to: {training_history_path}")
 
     # ---- overtraining diagnostics: KS curves ----
-    def compute_ks_curve(y_true, score):
-        """Compute KS cumulative distributions for signal and background."""
-        is_sig = np.asarray(y_true, dtype=bool)
-        score_sig = np.sort(score[is_sig])
-        score_bkg = np.sort(score[~is_sig])
-        thresholds = np.linspace(0.0, 1.0, 500)
-        sig_cdf = np.searchsorted(score_sig, thresholds, side="right") / len(score_sig)
-        bkg_cdf = np.searchsorted(score_bkg, thresholds, side="right") / len(score_bkg)
-        diff = sig_cdf - bkg_cdf
-        ks_stat = float(np.max(np.abs(diff)))
-        return {
-            "score_thresholds": [float(x) for x in thresholds],
-            "sig_cdf": [float(x) for x in sig_cdf],
-            "bkg_cdf": [float(x) for x in bkg_cdf],
-            "ks_stat": ks_stat,
-        }
-
-    train_ks = compute_ks_curve(y_train["is_sig"].to_numpy(), train_score_xgb_all)
-    test_ks = compute_ks_curve(y_test["is_sig"].to_numpy(), test_score_xgb_all)
+    train_ks = weighted_ks_curve(
+        y_train["is_sig"].to_numpy(),
+        train_score_xgb_all,
+        weight_train.to_numpy(),
+    )
+    test_ks = weighted_ks_curve(
+        y_test["is_sig"].to_numpy(),
+        test_score_xgb_all,
+        weight_test.to_numpy(),
+    )
 
     ks_plot_path = condor_training_ks_curve_path(train_tag)
     plt.figure(figsize=(7, 5))
@@ -393,6 +461,10 @@ def main():
             "n_sig_train": n_sig_train,
             "n_bkg_train": n_bkg_train,
             "scale_pos_weight": scale_pos_weight,
+            "reweight_profile": reweight_profile,
+            "signal_weight_branch": reweight_cfg["weight_branch"],
+            "signal_weight_sum": float(signal_weight.sum()),
+            "signal_weight_entries": int(len(signal_weight)),
         },
     )
 

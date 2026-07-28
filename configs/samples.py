@@ -6,7 +6,9 @@ import re
 
 from utils.tagging import infer_sample_from_body, split_channel_tag
 
-SINGLE_DAG_BODY_RE = re.compile(r"^(pp24|pb23|pb24)_v(\d+)_fid(\d+)_([0-9]+v[0-9]*)_xgb_v(\d+)$")
+SINGLE_DAG_BODY_RE = re.compile(
+    r"^(pp24|pb23|pb24)_v(\d+)_fid(\d+)_([0-9]+v[0-9]*)(?:_(rw[a-z0-9]+))?_xgb_v(\d+)$"
+)
 GROUP_DAG_BODY_RE = re.compile(r"^(pp24|pb23|pb24)_v(\d+)_fid(\d+)_([0-9]+v[0-9]*)_(\d+)o(\d+)_v(\d+)$")
 
 
@@ -19,7 +21,14 @@ def _parse_single_dag_body_or_raise(tag: str):
             "Expected format: {channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}, "
             "for example: X_pb24_v2_fid1_8v_xgb_v1"
         )
-    dataset_token, selection_idx, fid_idx, varset_token, model_version = m.groups()
+    (
+        dataset_token,
+        selection_idx,
+        fid_idx,
+        varset_token,
+        _reweight_profile,
+        model_version,
+    ) = m.groups()
     return body, dataset_token, int(selection_idx), int(fid_idx), varset_token, int(model_version)
 
 
@@ -305,11 +314,16 @@ SAMPLES = {
                     "pp24_v3": {
                         "signal_selection": "BQvalue < 0.15",
                         "background_selection": "((BQvalue < 0.15) and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)))",
+                    },
+                    "pp24_v4": {
+                        "signal_selection": "(BQvalue < 0.15) and (abs(By) < 2.4) and (Bpt > 7.5)",
+                        "background_selection": "((BQvalue < 0.15) and (abs(By) < 2.4) and (Bpt > 7.5) and ((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)))",
                     }
                 },
                 {
                     "pp24_fid1": "BQvalue < 0.2",
                     "pp24_fid2": "BQvalue < 0.15",
+                    "pp24_fid3": "(BQvalue < 0.15) and (abs(By) < 2.4) and (Bpt > 7.5)",
                 },
                 {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
             ),
@@ -404,6 +418,79 @@ def _channel_cfg(sample: str, channel: str) -> dict:
     if channel not in channels:
         raise ValueError(f"Unsupported channel '{channel}' for sample '{sample}'.")
     return channels[channel]
+
+
+TRAINING_REWEIGHT_PROFILES = {
+    "pp": {
+        "X": {
+            "2024": {
+                "rwpsi2sr5v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_psi2s_R5_rw_v1/"
+                        "flat_ntmix_ppRef_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pp24_v4",
+                    "required_fid_profile": "pp24_fid3",
+                },
+            },
+        },
+    },
+}
+
+
+def infer_reweight_profile(tag: str) -> str:
+    _, body = split_channel_tag(tag)
+    match = SINGLE_DAG_BODY_RE.fullmatch(body)
+    if match:
+        return match.group(5) or "rw0"
+    _parse_group_dag_body_or_raise(tag)
+    return "rw0"
+
+
+def resolve_training_reweight_config(
+    sample: str,
+    channel: str,
+    dataset_year: str,
+    reweight_profile: str,
+    selection_profile: str,
+    fid_profile: str,
+) -> dict:
+    if reweight_profile == "rw0":
+        return {
+            "profile": "rw0",
+            "signal": None,
+            "weight_branch": None,
+            "required_selection_profile": None,
+            "required_fid_profile": None,
+        }
+    profile = (
+        TRAINING_REWEIGHT_PROFILES.get(sample, {})
+        .get(channel, {})
+        .get(dataset_year, {})
+        .get(reweight_profile)
+    )
+    if profile is None:
+        available = tuple(
+            TRAINING_REWEIGHT_PROFILES.get(sample, {})
+            .get(channel, {})
+            .get(dataset_year, {})
+            .keys()
+        )
+        raise ValueError(
+            f"Unknown training reweight profile '{reweight_profile}' for "
+            f"{sample}/{channel}/{dataset_year}. Available: {available}"
+        )
+    expected_selection = profile["required_selection_profile"]
+    expected_fid = profile["required_fid_profile"]
+    if selection_profile != expected_selection or fid_profile != expected_fid:
+        raise ValueError(
+            f"Reweight profile '{reweight_profile}' requires "
+            f"selection='{expected_selection}' and fid='{expected_fid}', got "
+            f"selection='{selection_profile}' and fid='{fid_profile}'."
+        )
+    return {"profile": reweight_profile, **deepcopy(profile)}
 
 
 def infer_channel_from_tag(tag: str) -> str:

@@ -12,7 +12,7 @@ train_tag=$1
 with_shap=${2:-0}
 use_precut=${3:-0}
 
-if [[ ! "${train_tag}" =~ ^(X|Bu|Bd|Bs)_(pp24|pb23|pb24)_v[0-9]+_fid[0-9]+_[0-9]+v[0-9]*_xgb_v[0-9]+$ ]]; then
+if [[ ! "${train_tag}" =~ ^(X|Bu|Bd|Bs)_(pp24|pb23|pb24)_v[0-9]+_fid[0-9]+_[0-9]+v[0-9]*(_rw[a-z0-9]+)?_xgb_v[0-9]+$ ]]; then
   echo "ERROR: invalid single DAG train_tag '${train_tag}'"
   echo "Expected format: {channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}"
   echo "Example: X_pb24_v2_fid1_8v1_xgb_v1"

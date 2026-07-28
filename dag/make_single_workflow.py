@@ -5,7 +5,12 @@ from pathlib import Path
 from utils.tagging import split_channel_tag
 
 
-def make_dag(out_dir: Path, train_tag: str, with_shap: bool, use_precut: bool) -> Path:
+def make_dag(
+    out_dir: Path,
+    train_tag: str,
+    with_shap: bool,
+    use_precut: bool,
+) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     dag_path = out_dir / f"wf_single_{train_tag}.dag"
     precut_flag = int(use_precut)

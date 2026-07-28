@@ -19,6 +19,17 @@ bash dag/submit_single_workflow.sh <train_tag> 1 0
 - 第一个 `1`：`with_shap=1`，在 DRAW 后运行 SHAP；
 - 第二个 `0`：`use_precut=0`，读取标准 ROOT 输入。
 
+带 reweighting 的训练通过 tag 中的 profile 从 `configs/samples.py` 自动解析 signal
+ROOT、TTree 和 weight branch；提交命令不接受显式路径。例如：
+
+```bash
+bash dag/submit_single_workflow.sh \
+  X_pp24_v4_fid3_8v2_rwpsi2sr5v1_xgb_v1 0 0
+```
+
+旧 tag 和显式 `rw0` 都表示无权重。weighted signal 的 SHAP 输入策略尚未固定，因此当前
+先使用 `with_shap=0`。
+
 ### Bu pp24 示例
 
 ```bash
