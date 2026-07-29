@@ -246,6 +246,7 @@ def _run_phase_with_retry(
     macro_path: Path,
     force: bool,
 ):
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     resolved_spec, resolved_path, tree_name = _resolve_source_spec(source_spec, input_dir)
     _, _ = resolved_spec, tree_name
     cut_expr = _to_root_expr(selection_expr)

@@ -43,7 +43,7 @@ from utils.paths import (
     ensure_dir,
 )
 from utils.run_metadata import save_run_metadata
-from utils.selection import apply_selection
+from utils.selection import apply_selection, selection_columns
 from utils.training_weights import (
     balanced_scale_pos_weight,
     resolve_training_weights,
@@ -149,53 +149,92 @@ def main():
     print(f"Selection profile: {selection_profile}")
     print(f"Reweight profile: {reweight_profile}")
 
-    ak_sig = uproot.concatenate(sig_path, library="pd")
-    ak_bkg = uproot.concatenate(bkg_path, library="pd")
+    signal_read_columns = list(
+        dict.fromkeys(
+            input_columns
+            + selection_columns(signal_selection)
+            + ([reweight_cfg["weight_branch"]] if reweight_cfg["weight_branch"] else [])
+        )
+    )
+    background_read_columns = list(
+        dict.fromkeys(input_columns + selection_columns(background_selection))
+    )
+    print(f"Signal read columns ({len(signal_read_columns)}): {signal_read_columns}")
+    print(f"Background read columns ({len(background_read_columns)}): {background_read_columns}")
+
+    ak_sig = uproot.concatenate(
+        sig_path, expressions=signal_read_columns, library="pd"
+    )
+    ak_bkg = uproot.concatenate(
+        bkg_path, expressions=background_read_columns, library="pd"
+    )
 
     ak_sig = apply_selection(ak_sig, signal_selection, "signal_selection")
     ak_bkg = apply_selection(ak_bkg, background_selection, "background_selection")
-    signal_weight = resolve_training_weights(
-        ak_sig, reweight_cfg["weight_branch"], "signal sample"
-    )
-    background_weight = resolve_training_weights(ak_bkg, None, "background sample")
+    is_weighted_training = reweight_cfg["weight_branch"] is not None
+    if is_weighted_training:
+        signal_weight = resolve_training_weights(
+            ak_sig, reweight_cfg["weight_branch"], "signal sample"
+        )
+        background_weight = resolve_training_weights(
+            ak_bkg, None, "background sample"
+        )
+    else:
+        signal_weight = None
+        background_weight = None
 
+    ak_sig = ak_sig[input_columns].copy()
+    ak_bkg = ak_bkg[input_columns].copy()
     ak_sig["is_sig"] = True
     ak_bkg["is_sig"] = False
     ak_sig["is_bkg"] = False
     ak_bkg["is_bkg"] = True
-    ak_sig["_training_weight"] = signal_weight
-    ak_bkg["_training_weight"] = background_weight
+    if is_weighted_training:
+        ak_sig["_training_weight"] = signal_weight
+        ak_bkg["_training_weight"] = background_weight
 
     df_raw = pd.concat([ak_sig, ak_bkg], axis=0, ignore_index=True)
     scaler = StandardScaler()
-    scaler.fit(
-        df_raw[input_columns],
-        sample_weight=df_raw["_training_weight"].to_numpy(dtype=float),
-    )
-    df_trans = pd.DataFrame(
-        scaler.transform(df_raw[input_columns]),
-        columns=trans_columns,
-        index=df_raw.index,
-    )
-    df = pd.concat([df_trans, df_raw], axis=1)
-    y = df[["is_sig", "is_bkg"]]
-    training_weight = df["_training_weight"]
+    if is_weighted_training:
+        scaler.fit(
+            df_raw[input_columns],
+            sample_weight=df_raw["_training_weight"].to_numpy(dtype=float),
+        )
+        transformed = scaler.transform(df_raw[input_columns])
+    else:
+        transformed = scaler.fit_transform(df_raw[input_columns])
+    X = pd.DataFrame(transformed, columns=trans_columns, index=df_raw.index)
+    y = df_raw[["is_sig", "is_bkg"]]
 
-    X_train, X_test, y_train, y_test, weight_train, weight_test = train_test_split(
-        df[trans_columns],
-        y,
-        training_weight,
-        train_size=0.75,
-        random_state=42,
-    )
+    if is_weighted_training:
+        training_weight = df_raw["_training_weight"]
+        X_train, X_test, y_train, y_test, weight_train, weight_test = train_test_split(
+            X,
+            y,
+            training_weight,
+            train_size=0.75,
+            random_state=42,
+        )
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            train_size=0.75,
+            random_state=42,
+        )
+        weight_train = None
+        weight_test = None
 
     n_sig_train = int(y_train["is_sig"].sum())
     n_bkg_train = int(y_train["is_bkg"].sum())
     if n_sig_train <= 0:
         raise ValueError("No signal events available in training split after selection.")
-    scale_pos_weight = balanced_scale_pos_weight(
-        y_train["is_sig"].to_numpy(), weight_train.to_numpy()
-    )
+    if is_weighted_training:
+        scale_pos_weight = balanced_scale_pos_weight(
+            y_train["is_sig"].to_numpy(), weight_train.to_numpy()
+        )
+    else:
+        scale_pos_weight = float(n_bkg_train / n_sig_train)
 
     params = {
         "booster": "gbtree",
@@ -207,19 +246,20 @@ def main():
         **DIRECT_XGB_PARAMS[dataset_token][channel],
     }
     xgbc = XGBClassifier(**params)
-    xgbc.fit(
-        X_train, y_train["is_sig"].to_numpy(),
-        sample_weight=weight_train.to_numpy(),
-        eval_set=[
+    fit_kwargs = {
+        "eval_set": [
             (X_train, y_train["is_sig"].to_numpy()),
             (X_test, y_test["is_sig"].to_numpy()),
         ],
-        sample_weight_eval_set=[
+        "verbose": False,
+    }
+    if is_weighted_training:
+        fit_kwargs["sample_weight"] = weight_train.to_numpy()
+        fit_kwargs["sample_weight_eval_set"] = [
             weight_train.to_numpy(),
             weight_test.to_numpy(),
-        ],
-        verbose=False,
-    )
+        ]
+    xgbc.fit(X_train, y_train["is_sig"].to_numpy(), **fit_kwargs)
     evals_result = xgbc.evals_result()
 
     train_score_xgb = xgbc.predict_proba(X_train)
@@ -231,10 +271,14 @@ def main():
     train_y_true = y_train["is_sig"].astype(int).to_numpy()
     test_y_true = y_test["is_sig"].astype(int).to_numpy()
     train_roc = build_roc_payload(
-        train_y_true, train_score_xgb_all, weight_train.to_numpy()
+        train_y_true,
+        train_score_xgb_all,
+        weight_train.to_numpy() if is_weighted_training else None,
     )
     test_roc = build_roc_payload(
-        test_y_true, test_score_xgb_all, weight_test.to_numpy()
+        test_y_true,
+        test_score_xgb_all,
+        weight_test.to_numpy() if is_weighted_training else None,
     )
 
     ensure_dir(condor_model_dir(train_tag))
@@ -259,10 +303,12 @@ def main():
     score_plot_path = condor_training_score_path(train_tag)
     plt.figure(figsize=(6, 6))
     test_is_sig = y_test["is_sig"].to_numpy(dtype=bool)
-    test_weights = weight_test.to_numpy(dtype=float)
+    test_weights = (
+        weight_test.to_numpy(dtype=float) if is_weighted_training else None
+    )
     plt.hist(
         test_score_xgb_sig,
-        weights=test_weights[test_is_sig],
+        weights=test_weights[test_is_sig] if test_weights is not None else None,
         label="signal",
         histtype="step",
         bins=np.linspace(0, 1, 100),
@@ -270,7 +316,7 @@ def main():
     )
     plt.hist(
         test_score_xgb_bkg,
-        weights=test_weights[~test_is_sig],
+        weights=test_weights[~test_is_sig] if test_weights is not None else None,
         label="background",
         histtype="step",
         bins=np.linspace(0, 1, 100),
@@ -372,12 +418,12 @@ def main():
     train_ks = weighted_ks_curve(
         y_train["is_sig"].to_numpy(),
         train_score_xgb_all,
-        weight_train.to_numpy(),
+        weight_train.to_numpy() if is_weighted_training else np.ones(len(y_train)),
     )
     test_ks = weighted_ks_curve(
         y_test["is_sig"].to_numpy(),
         test_score_xgb_all,
-        weight_test.to_numpy(),
+        weight_test.to_numpy() if is_weighted_training else np.ones(len(y_test)),
     )
 
     ks_plot_path = condor_training_ks_curve_path(train_tag)
@@ -463,8 +509,16 @@ def main():
             "scale_pos_weight": scale_pos_weight,
             "reweight_profile": reweight_profile,
             "signal_weight_branch": reweight_cfg["weight_branch"],
-            "signal_weight_sum": float(signal_weight.sum()),
-            "signal_weight_entries": int(len(signal_weight)),
+            "signal_weight_sum": (
+                float(signal_weight.sum())
+                if is_weighted_training
+                else float(len(ak_sig))
+            ),
+            "signal_weight_entries": (
+                int(len(signal_weight))
+                if is_weighted_training
+                else int(len(ak_sig))
+            ),
         },
     )
 

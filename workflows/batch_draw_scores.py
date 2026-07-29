@@ -16,7 +16,7 @@ from configs.samples import (
     resolve_fiducial_config,
 )
 from utils.paths import ensure_dir, selected_dir, train_group_tag
-from utils.selection import apply_selection
+from utils.selection import apply_selection, selection_columns
 
 if len(sys.argv) < 2:
     print(
@@ -130,9 +130,23 @@ if not valid_train_tags:
     print("No valid score branches found.")
     sys.exit(1)
 
-# Read all branches from input tree so free-form fiducial expressions
-# can reference any variable present in the apply output.
-df = tree.arrays(library="pd")
+draw_columns = list(
+    dict.fromkeys(
+        ["Bmass"]
+        + list(score_branch_map.values())
+        + selection_columns(fid_cfg.get("expression"))
+    )
+)
+missing_draw_columns = [
+    column for column in draw_columns if column not in available_branches
+]
+if missing_draw_columns:
+    raise ValueError(
+        f"Draw input is missing columns required by mass/score/fiducial selection: "
+        f"{missing_draw_columns}"
+    )
+print(f"Draw read columns ({len(draw_columns)}): {draw_columns}")
+df = tree.arrays(draw_columns, library="pd")
 
 df_base = df[(df["Bmass"] > MASS_RANGE[0]) & (df["Bmass"] < MASS_RANGE[1])]
 df_fid = apply_selection(df_base, fid_cfg.get("expression"), f"fiducial_profiles[{active_fid}]")

@@ -3,8 +3,6 @@ import os
 import sys
 
 import joblib
-import pandas as pd
-import uproot
 
 from configs.samples import (
     bd_pbpb_precut_paths,
@@ -24,6 +22,7 @@ from configs.samples import (
 )
 from utils.apply_inputs import resolve_apply_mc_input
 from utils.paths import ensure_dir, resolve_model_config_path, resolve_model_path, resolve_scaler_path, selected_dir, train_group_tag
+from utils.streaming_apply import write_scored_root
 from utils.varsets import get_varset_columns, infer_varset_from_tag
 
 if len(sys.argv) < 2:
@@ -163,17 +162,9 @@ MC_INPUT = resolve_apply_mc_input(
 )
 MC_TREE_INPUT = split_root_spec(MC_INPUT)[1]
 
-
-def score_dataframe(df, model_bundle):
-    df_trans = pd.DataFrame(
-        model_bundle["scaler"].transform(df[model_bundle["input_columns"]]),
-        columns=model_bundle["trans_columns"],
-        index=df.index,
-    )
-    scores = model_bundle["model"].predict_proba(df_trans[model_bundle["trans_columns"]])[:, 1]
-    df_out = df.copy()
-    df_out[model_bundle["score_column"]] = scores
-    return df_out
+print(f"Apply dataset source: {apply_cfg['dataset_source']}")
+print(f"Apply MC input: {MC_INPUT}")
+print(f"Apply DATA input: {DATA_INPUT}")
 
 
 output_dir = ensure_dir(selected_dir(output_tag))
@@ -191,17 +182,13 @@ if apply_extra_mc is not None:
         out_path = os.path.join(output_dir, f"{output_prefix}MC_{key}_with_score.root")
         print(f"Processing extra MC [{key}]: {EXTRA_INPUT}")
         try:
-            df_extra = uproot.concatenate(EXTRA_INPUT, library="pd")
-            df_extra_out = None
-            for model_bundle in models:
-                df_scored = score_dataframe(df_extra, model_bundle)
-                if df_extra_out is None:
-                    df_extra_out = df_scored
-                else:
-                    df_extra_out[model_bundle["score_column"]] = df_scored[model_bundle["score_column"]]
-            with uproot.recreate(out_path) as f:
-                f[extra_tree] = {col: df_extra_out[col].values for col in df_extra_out.columns}
-            print(f"Saved extra MC with score: {out_path}")
+            result = write_scored_root(
+                EXTRA_INPUT, out_path, extra_tree, models
+            )
+            print(
+                f"Saved extra MC with score: {out_path} "
+                f"({result['entries']} entries in {result['chunks']} chunks)"
+            )
         except Exception as exc:
             failures.append({"key": key, "input": EXTRA_INPUT, "reason": str(exc)})
             print(f"  [SKIP] extra MC {key}: {exc}")
@@ -210,32 +197,20 @@ if apply_extra_mc is not None:
     sys.exit(0)
 
 print(f"Processing MC: {MC_INPUT}")
-df_mc = uproot.concatenate(MC_INPUT, library="pd")
-df_mc_out = None
-for model_bundle in models:
-    df_scored = score_dataframe(df_mc, model_bundle)
-    if df_mc_out is None:
-        df_mc_out = df_scored
-    else:
-        df_mc_out[model_bundle["score_column"]] = df_scored[model_bundle["score_column"]]
-
 mc_path = os.path.join(output_dir, f"{output_prefix}MC_with_score.root")
-with uproot.recreate(mc_path) as f:
-    f[MC_TREE_INPUT] = {col: df_mc_out[col].values for col in df_mc_out.columns}
+mc_result = write_scored_root(MC_INPUT, mc_path, MC_TREE_INPUT, models)
+print(
+    f"Saved MC with score: {mc_path} "
+    f"({mc_result['entries']} entries in {mc_result['chunks']} chunks)"
+)
 
 print(f"Processing DATA: {DATA_INPUT}")
-df_data = uproot.concatenate(DATA_INPUT, library="pd")
-df_data_out = None
-for model_bundle in models:
-    df_scored = score_dataframe(df_data, model_bundle)
-    if df_data_out is None:
-        df_data_out = df_scored
-    else:
-        df_data_out[model_bundle["score_column"]] = df_scored[model_bundle["score_column"]]
-
 data_path = os.path.join(output_dir, f"{output_prefix}DATA_with_score.root")
-with uproot.recreate(data_path) as f:
-    f[draw_tree_name] = {col: df_data_out[col].values for col in df_data_out.columns}
+data_result = write_scored_root(DATA_INPUT, data_path, draw_tree_name, models)
+print(
+    f"Saved DATA with score: {data_path} "
+    f"({data_result['entries']} entries in {data_result['chunks']} chunks)"
+)
 
 summary_path = os.path.join(output_dir, f"{output_prefix}batch_apply_summary.json")
 selection_profile = infer_selection_profile(output_tag, sample_key)
