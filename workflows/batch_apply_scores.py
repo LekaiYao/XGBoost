@@ -22,6 +22,7 @@ from configs.samples import (
     supports_bd_pbpb_precut,
     to_root_spec,
 )
+from utils.apply_inputs import resolve_apply_mc_input
 from utils.paths import ensure_dir, resolve_model_config_path, resolve_model_path, resolve_scaler_path, selected_dir, train_group_tag
 from utils.varsets import get_varset_columns, infer_varset_from_tag
 
@@ -83,7 +84,6 @@ draw_tree_name = draw_cfg["data"]["tree"]
 
 MC_INPUT = to_root_spec(apply_cfg["mc"][0])
 DATA_INPUT = data_input_override or to_root_spec(apply_cfg["data"][0])
-MC_TREE_INPUT = split_root_spec(MC_INPUT)[1]
 
 if use_precut:
     if not supports_bd_pbpb_precut(output_tag):
@@ -96,10 +96,6 @@ if use_precut:
         raise FileNotFoundError(f"Missing precut apply DATA file: {apply_data_path}")
     _, data_tree = split_root_spec(DATA_INPUT)
     DATA_INPUT = f"{apply_data_path}:{data_tree}"
-
-print(f"Apply dataset source: {apply_cfg['dataset_source']}")
-print(f"Apply MC input: {MC_INPUT}")
-print(f"Apply DATA input: {DATA_INPUT}")
 
 single_model_mode = len(train_tags) == 1
 
@@ -151,6 +147,7 @@ for train_tag in train_tags:
             "input_columns": input_columns,
             "trans_columns": trans_columns,
             "score_column": score_branch_name(train_tag),
+            "config": config,
         }
     )
 
@@ -160,6 +157,11 @@ if not models:
 
 input_columns = reference_input_columns
 trans_columns = reference_trans_columns
+MC_INPUT = resolve_apply_mc_input(
+    MC_INPUT,
+    [model_bundle["config"] for model_bundle in models],
+)
+MC_TREE_INPUT = split_root_spec(MC_INPUT)[1]
 
 
 def score_dataframe(df, model_bundle):

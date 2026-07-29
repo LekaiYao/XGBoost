@@ -12,6 +12,7 @@ from utils.training_weights import (
 )
 from dag.make_single_workflow import make_dag
 from configs.samples import infer_reweight_profile, resolve_training_reweight_config
+from utils.apply_inputs import resolve_apply_mc_input
 
 
 class TrainingWeightsTest(unittest.TestCase):
@@ -76,6 +77,27 @@ class TrainingWeightsTest(unittest.TestCase):
             resolve_training_reweight_config(
                 "pp", "X", "2024", "rwpsi2sr5v1", "pp24_v3", "pp24_fid2"
             )
+
+    def test_weighted_single_apply_uses_configured_signal_input(self):
+        weighted = {
+            "signal_path": "weighted.root:events",
+            "signal_weight_branch": "Reweight",
+        }
+        self.assertEqual(
+            resolve_apply_mc_input("nominal.root:events", [weighted]),
+            "weighted.root:events",
+        )
+        self.assertEqual(
+            resolve_apply_mc_input(
+                "nominal.root:events",
+                [{"signal_path": "nominal.root:events", "signal_weight_branch": None}],
+            ),
+            "nominal.root:events",
+        )
+        self.assertEqual(
+            resolve_apply_mc_input("nominal.root:events", [weighted, weighted]),
+            "nominal.root:events",
+        )
 
 
 if __name__ == "__main__":

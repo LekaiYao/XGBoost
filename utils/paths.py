@@ -88,6 +88,10 @@ def reweighting_dir(reweight_tag):
     return os.path.join(REWEIGHTING_DIR, reweight_tag)
 
 
+def reweighting_working_points_dir(comparison_tag):
+    return os.path.join(REWEIGHTING_DIR, "working_points", comparison_tag)
+
+
 def reweighter_model_path(reweight_tag):
     return os.path.join(reweighting_dir(reweight_tag), "reweighter.pkl")
 
