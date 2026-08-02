@@ -1,3 +1,5 @@
+import csv
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,9 +19,50 @@ from workflows.reweighting.core import (
     three_way_split_indices,
     validate_columns,
 )
+from workflows.reweighting.validate_x_splot_transfer_closure import (
+    STATUS,
+    normalized_histogram,
+    quantile_bins,
+    refresh_metadata,
+    ratio_to_signed_target,
+)
 
 
 class ReweightingCoreTest(unittest.TestCase):
+    def test_transfer_metadata_refresh_adds_status_without_changing_values(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            csv_path = output / "transfer_closure_summary.csv"
+            csv_path.write_text("variable,cdf_distance_before\nBtrk1dR,0.1\n")
+            binning_path = output / "binning_and_histograms.json"
+            binning_path.write_text(json.dumps({"Btrk1dR": {"edges": [0, 1]}}))
+            refresh_metadata(output)
+            with csv_path.open(newline="") as stream:
+                row = next(csv.DictReader(stream))
+            self.assertEqual(row["status"], STATUS)
+            self.assertEqual(float(row["cdf_distance_before"]), 0.1)
+            payload = json.loads(binning_path.read_text())
+            self.assertEqual(payload["status"], STATUS)
+            self.assertEqual(payload["variables"]["Btrk1dR"]["edges"], [0, 1])
+
+    def test_transfer_quantile_bins_cover_full_range(self):
+        values = np.arange(101, dtype=float)
+        bins = quantile_bins(values, count=10)
+        self.assertEqual(bins[0], 0.0)
+        self.assertEqual(bins[-1], 100.0)
+        self.assertTrue(np.all(np.diff(bins) > 0.0))
+
+    def test_signed_histogram_and_ratio_undefined_bin(self):
+        values = np.array([0.2, 0.3, 1.2, 1.3])
+        weights = np.array([1.0, -1.0, 2.0, 1.0])
+        hist, error = normalized_histogram(values, weights, np.array([0.0, 1.0, 2.0]))
+        np.testing.assert_allclose(hist, [0.0, 1.0])
+        self.assertTrue(np.all(error > 0.0))
+        ratio, valid, _ = ratio_to_signed_target(np.array([0.5, 1.0]), hist)
+        self.assertFalse(valid[0])
+        self.assertTrue(np.isnan(ratio[0]))
+        self.assertEqual(ratio[1], 1.0)
+
     def test_named_reweight_varsets(self):
         self.assertEqual(
             get_reweight_varset_columns("pp", "R3", "X"),
