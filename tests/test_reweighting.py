@@ -11,6 +11,7 @@ from workflows.reweighting.core import (
     build_diagnostics,
     effective_sample_size,
     load_tree_frame,
+    positive_weight_tail_summary,
     resolve_weights,
     signed_weighted_auc,
     three_way_split_indices,
@@ -38,6 +39,15 @@ class ReweightingCoreTest(unittest.TestCase):
         weights = np.array([1.0, 1.0, -0.25, 0.5])
         expected = weights.sum() ** 2 / np.square(weights).sum()
         self.assertAlmostEqual(effective_sample_size(weights), expected)
+
+    def test_positive_weight_tail_summary_uses_complete_range(self):
+        weights = np.array([1.0, 2.0, 3.0, 100.0])
+        summary = positive_weight_tail_summary(weights)
+        self.assertEqual(summary["maximum"], 100.0)
+        self.assertEqual(summary["top_1pct_events"]["event_count"], 1)
+        self.assertAlmostEqual(
+            summary["top_1pct_events"]["weight_fraction"], 100.0 / 106.0
+        )
 
     def test_root_input_validation_and_signed_diagnostics(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

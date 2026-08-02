@@ -1,0 +1,20 @@
+universe = vanilla
+executable = run_reweight_bootstrap_replica.sh
+arguments = $(Process) $(output_dir)
+
+output = logs/reweight_bootstrap_$(Cluster).$(Process).out
+error = logs/reweight_bootstrap_$(Cluster).$(Process).err
+log = logs/reweight_bootstrap_$(Cluster).$(Process).log
+
+getenv = True
+request_cpus = 1
+request_memory = 1500MB
+request_disk = 1GB
++JobFlavour = "longlunch"
+
+max_materialize = 50
+max_idle = 20
+replica_count = 100
+output_dir = /eos/home-l/leyao/pbpb_work/X_analysis/XGBoost/output/reweighting/diagnostics_pp24_psi2s_bootstrap_v1
+
+queue $(replica_count)

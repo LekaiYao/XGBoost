@@ -93,6 +93,38 @@ def weight_summary(weights):
     }
 
 
+def positive_weight_tail_summary(weights):
+    """Summarize the complete finite positive-weight tail without clipping."""
+    weights = np.asarray(weights, dtype=float)
+    if not np.isfinite(weights).all():
+        raise ValueError("Weight-tail summary requires finite weights")
+    positive = weights[weights > 0.0]
+    if positive.size == 0:
+        raise ValueError("Weight-tail summary requires positive weights")
+    total = float(positive.sum())
+    descending = np.sort(positive)[::-1]
+
+    def top_event_share(fraction):
+        count = max(1, int(np.ceil(fraction * len(descending))))
+        return {
+            "event_fraction": float(fraction),
+            "event_count": int(count),
+            "weight_fraction": float(descending[:count].sum() / total),
+        }
+
+    return {
+        "entries": int(len(weights)),
+        "positive_entries": int(len(positive)),
+        "positive_minimum": float(positive.min()),
+        "q99": float(np.quantile(positive, 0.99)),
+        "q995": float(np.quantile(positive, 0.995)),
+        "q999": float(np.quantile(positive, 0.999)),
+        "maximum": float(positive.max()),
+        "effective_sample_size": effective_sample_size(weights),
+        "top_1pct_events": top_event_share(0.01),
+        "top_0p1pct_events": top_event_share(0.001),
+    }
+
 def weighted_cdf_distance(original, target, original_weight, target_weight):
     original = np.asarray(original, dtype=float)
     target = np.asarray(target, dtype=float)
