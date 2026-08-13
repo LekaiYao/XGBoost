@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pbpb24_x_data_only_nominal_fit_scan_v2.schema.json",
+  "title": "PbPb24 X DATA-only nominal fit scan manifest v2",
+  "type": "object",
+  "required": [
+    "schema_version", "contract", "train_tag", "channel", "system", "dataset",
+    "path_base", "inputs", "score", "fiducial_selection", "threshold_provenance",
+    "working_points", "nominal_fit_contract", "required_outputs"
+  ],
+  "properties": {
+    "schema_version": {"const": 2},
+    "contract": {"const": "pbpb24_x_data_only_nominal_fit_scan"},
+    "train_tag": {"type": "string", "minLength": 1},
+    "channel": {"const": "X"},
+    "system": {"const": "PbPb"},
+    "dataset": {"const": "pb24"},
+    "path_base": {"const": "manifest_directory"},
+    "inputs": {
+      "type": "object",
+      "required": ["data"],
+      "properties": {
+        "data": {
+          "type": "object",
+          "required": ["path", "tree", "mass_branch", "event_weight"],
+          "properties": {
+            "path": {"type": "string", "minLength": 1},
+            "tree": {"type": "string", "minLength": 1},
+            "mass_branch": {"const": "Bmass"},
+            "event_weight": {"const": "unit"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "score": {
+      "type": "object",
+      "required": ["branch", "comparison_operator", "threshold_boundary", "equality_passes"],
+      "properties": {
+        "branch": {"const": "Prediction"},
+        "comparison_operator": {"const": ">"},
+        "threshold_boundary": {"const": "exclusive"},
+        "equality_passes": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "fiducial_selection": {
+      "type": "object",
+      "required": ["profile", "expression"],
+      "properties": {
+        "profile": {"type": "string", "minLength": 1},
+        "expression": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "threshold_provenance": {
+      "type": "object",
+      "required": ["definition", "event_weight_branch", "used_for_nominal_mass_shape"],
+      "properties": {
+        "definition": {"type": ["string", "null"]},
+        "event_weight_branch": {"const": "Reweight"},
+        "used_for_nominal_mass_shape": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "working_points": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["key", "threshold", "target_weighted_efficiency", "achieved_weighted_efficiency", "selection"],
+        "properties": {
+          "key": {"type": "string", "pattern": "^xeff(10|15|20|25|30|35|40)$"},
+          "threshold": {"type": "number"},
+          "target_weighted_efficiency": {"type": "number"},
+          "achieved_weighted_efficiency": {"type": "number"},
+          "selection": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "nominal_fit_contract": {
+      "type": "object",
+      "required": ["fit_type", "mass_range_gev", "data_event_weight", "signal", "background", "significance"],
+      "properties": {
+        "fit_type": {"const": "extended_unbinned"},
+        "mass_range_gev": {"const": [3.8, 3.94]},
+        "data_event_weight": {"const": "unit"},
+        "signal": {
+          "type": "object",
+          "required": ["model", "shape_source", "mc_shape_constraint", "mu_gev", "sigma_gev"],
+          "properties": {
+            "model": {"const": "single_gaussian"},
+            "shape_source": {"const": "data_only"},
+            "mc_shape_constraint": {"const": false},
+            "mu_gev": {"type": "object", "required": ["range"], "properties": {"range": {"const": [3.86, 3.88]}}, "additionalProperties": false},
+            "sigma_gev": {"type": "object", "required": ["range"], "properties": {"range": {"const": [0.002, 0.008]}}, "additionalProperties": false}
+          },
+          "additionalProperties": false
+        },
+        "background": {
+          "type": "object",
+          "required": ["model", "order"],
+          "properties": {"model": {"const": "chebyshev"}, "order": {"const": 2}},
+          "additionalProperties": false
+        },
+        "significance": {
+          "type": "object",
+          "required": ["name", "definition", "null_hypothesis"],
+          "properties": {
+            "name": {"const": "one_sided_local_profile_likelihood_Z"},
+            "definition": {"type": "string", "minLength": 1},
+            "null_hypothesis": {
+              "type": "object",
+              "required": ["signal_yield", "background_refit", "mu_sigma_fixed_to_alternative_best_fit"],
+              "properties": {
+                "signal_yield": {"const": 0},
+                "background_refit": {"const": true},
+                "mu_sigma_fixed_to_alternative_best_fit": {"const": true}
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "required_outputs": {
+      "type": "object",
+      "required": ["per_point_fields"],
+      "properties": {
+        "per_point_fields": {
+          "const": ["point", "yield", "yield_error", "fit_status", "covQual", "EDM", "parameter_boundary_flags", "Z", "Z_method", "artifact_paths"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
