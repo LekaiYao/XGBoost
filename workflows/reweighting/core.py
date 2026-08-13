@@ -30,14 +30,14 @@ def require_hep_ml_classifier():
     return UGradientBoostingClassifier, LogLossFunction
 
 
-def load_tree_frame(path, tree):
+def load_tree_frame(path, tree, columns=None):
     path = Path(path)
     if not path.is_file():
         raise FileNotFoundError(f"Missing ROOT input: {path}")
     with uproot.open(path) as root_file:
         if tree not in root_file:
             raise KeyError(f"Missing TTree '{tree}' in {path}")
-        return root_file[tree].arrays(library="pd")
+        return root_file[tree].arrays(expressions=columns, library="pd")
 
 
 def select_frame(frame, selection, label):

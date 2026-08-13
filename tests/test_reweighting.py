@@ -22,7 +22,7 @@ from workflows.reweighting.core import (
 from workflows.reweighting.validate_x_splot_transfer_closure import (
     STATUS,
     normalized_histogram,
-    quantile_bins,
+    common_equal_width_bins,
     refresh_metadata,
     ratio_to_signed_target,
 )
@@ -45,12 +45,13 @@ class ReweightingCoreTest(unittest.TestCase):
             self.assertEqual(payload["status"], STATUS)
             self.assertEqual(payload["variables"]["Btrk1dR"]["edges"], [0, 1])
 
-    def test_transfer_quantile_bins_cover_full_range(self):
-        values = np.arange(101, dtype=float)
-        bins = quantile_bins(values, count=10)
-        self.assertEqual(bins[0], 0.0)
-        self.assertEqual(bins[-1], 100.0)
-        self.assertTrue(np.all(np.diff(bins) > 0.0))
+    def test_transfer_common_bins_cover_data_and_mc_full_range(self):
+        mc = np.arange(101, dtype=float)
+        data = np.array([-5.0, 120.0])
+        bins = common_equal_width_bins(mc, data, count=10)
+        self.assertEqual(bins[0], -5.0)
+        self.assertEqual(bins[-1], 120.0)
+        np.testing.assert_allclose(np.diff(bins), 12.5)
 
     def test_signed_histogram_and_ratio_undefined_bin(self):
         values = np.array([0.2, 0.3, 1.2, 1.3])
@@ -71,6 +72,18 @@ class ReweightingCoreTest(unittest.TestCase):
         self.assertEqual(
             get_reweight_varset_columns("pp", "R5", "X"),
             ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt"],
+        )
+        self.assertEqual(
+            get_reweight_varset_columns("pp", "R5v2", "X"),
+            ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk1Pt", "Btrk1dR"],
+        )
+        self.assertEqual(
+            get_reweight_varset_columns("pp", "R6", "X"),
+            ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt", "Btrk1dR"],
+        )
+        self.assertEqual(
+            get_reweight_varset_columns("pp", "R6v2", "X"),
+            ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk1Pt", "Btrk1dR", "Btrk2dR"],
         )
         self.assertEqual(
             get_reweight_varset_columns("pp", "R4_noCos", "X"),

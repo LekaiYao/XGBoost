@@ -9,6 +9,7 @@ from utils.paths import (
     reweighting_manifest_path,
 )
 from utils.varsets import get_reweight_varset_columns
+from utils.selection import selection_columns
 from workflows.reweighting.core import (
     build_diagnostics,
     load_tree_frame,
@@ -68,13 +69,24 @@ def resolve_variables(args):
 def main():
     args = parse_args()
     variable_set, variables, validation_variables = resolve_variables(args)
+    required_columns = list(
+        dict.fromkeys([*validation_variables, *selection_columns(args.selection)])
+    )
     original = select_frame(
-        load_tree_frame(args.original_root, args.original_tree),
+        load_tree_frame(
+            args.original_root,
+            args.original_tree,
+            [*required_columns, *([args.original_weight_branch] if args.original_weight_branch else [])],
+        ),
         args.selection,
         "original selection",
     )
     target = select_frame(
-        load_tree_frame(args.target_root, args.target_tree),
+        load_tree_frame(
+            args.target_root,
+            args.target_tree,
+            [*required_columns, args.target_weight_branch],
+        ),
         args.selection,
         "target selection",
     )

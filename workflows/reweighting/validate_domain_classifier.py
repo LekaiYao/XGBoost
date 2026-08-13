@@ -6,6 +6,7 @@ import numpy as np
 
 from utils.paths import ensure_dir, reweighting_dir, reweighting_domain_closure_path
 from utils.varsets import get_reweight_varset_columns
+from utils.selection import selection_columns
 from workflows.reweighting.core import (
     evaluate_domain_classifier,
     load_tree_frame,
@@ -113,14 +114,25 @@ def main():
         args.sample, args.classifier_variable_set, args.channel
     )
     all_variables = list(dict.fromkeys([*rw_variables, *classifier_variables]))
+    required_columns = list(
+        dict.fromkeys([*all_variables, *selection_columns(args.selection)])
+    )
 
     original = select_frame(
-        load_tree_frame(args.original_root, args.original_tree),
+        load_tree_frame(
+            args.original_root,
+            args.original_tree,
+            [*required_columns, *([args.original_weight_branch] if args.original_weight_branch else [])],
+        ),
         args.selection,
         "original selection",
     )
     target = select_frame(
-        load_tree_frame(args.target_root, args.target_tree),
+        load_tree_frame(
+            args.target_root,
+            args.target_tree,
+            [*required_columns, args.target_weight_branch],
+        ),
         args.selection,
         "target selection",
     )
