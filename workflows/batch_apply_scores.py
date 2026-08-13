@@ -204,6 +204,18 @@ print(
     f"({mc_result['entries']} entries in {mc_result['chunks']} chunks)"
 )
 
+# A common weighted signal reference makes score thresholds comparable between
+# weighted and unweighted trainings at fixed weighted signal efficiency.
+reference_input = models[0]["config"].get("efficiency_reference_signal") if single_model_mode else None
+if reference_input:
+    reference_tree = split_root_spec(reference_input)[1]
+    reference_path = os.path.join(output_dir, f"{output_prefix}REFERENCE_MC_with_score.root")
+    reference_result = write_scored_root(reference_input, reference_path, reference_tree, models)
+    print(
+        f"Saved efficiency-reference MC with score: {reference_path} "
+        f"({reference_result['entries']} entries in {reference_result['chunks']} chunks)"
+    )
+
 print(f"Processing DATA: {DATA_INPUT}")
 data_path = os.path.join(output_dir, f"{output_prefix}DATA_with_score.root")
 data_result = write_scored_root(DATA_INPUT, data_path, draw_tree_name, models)

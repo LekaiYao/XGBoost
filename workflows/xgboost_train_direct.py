@@ -194,36 +194,25 @@ def main():
         ak_bkg["_training_weight"] = background_weight
 
     df_raw = pd.concat([ak_sig, ak_bkg], axis=0, ignore_index=True)
-    scaler = StandardScaler()
-    if is_weighted_training:
-        scaler.fit(
-            df_raw[input_columns],
-            sample_weight=df_raw["_training_weight"].to_numpy(dtype=float),
-        )
-        transformed = scaler.transform(df_raw[input_columns])
-    else:
-        transformed = scaler.fit_transform(df_raw[input_columns])
-    X = pd.DataFrame(transformed, columns=trans_columns, index=df_raw.index)
+    X_raw = df_raw[input_columns]
     y = df_raw[["is_sig", "is_bkg"]]
-
     if is_weighted_training:
-        training_weight = df_raw["_training_weight"]
-        X_train, X_test, y_train, y_test, weight_train, weight_test = train_test_split(
-            X,
-            y,
-            training_weight,
-            train_size=0.75,
-            random_state=42,
+        X_train_raw, X_test_raw, y_train, y_test, weight_train, weight_test = train_test_split(
+            X_raw, y, df_raw["_training_weight"], train_size=0.75, random_state=42
         )
     else:
-        X_train, X_test, y_train, y_test = train_test_split(
-            X,
-            y,
-            train_size=0.75,
-            random_state=42,
+        X_train_raw, X_test_raw, y_train, y_test = train_test_split(
+            X_raw, y, train_size=0.75, random_state=42
         )
         weight_train = None
         weight_test = None
+    scaler = StandardScaler()
+    scaler.fit(
+        X_train_raw,
+        sample_weight=weight_train.to_numpy(dtype=float) if is_weighted_training else None,
+    )
+    X_train = pd.DataFrame(scaler.transform(X_train_raw), columns=trans_columns, index=X_train_raw.index)
+    X_test = pd.DataFrame(scaler.transform(X_test_raw), columns=trans_columns, index=X_test_raw.index)
 
     n_sig_train = int(y_train["is_sig"].sum())
     n_bkg_train = int(y_train["is_bkg"].sum())
@@ -280,6 +269,13 @@ def main():
         test_score_xgb_all,
         weight_test.to_numpy() if is_weighted_training else None,
     )
+    efficiency_reference = train_cfg.get("efficiency_reference_signal")
+    efficiency_reference_weight = train_cfg.get(
+        "efficiency_reference_weight_branch"
+    )
+    if efficiency_reference is None and reweight_cfg["signal"] is not None:
+        efficiency_reference = reweight_cfg["signal"]
+        efficiency_reference_weight = reweight_cfg["weight_branch"]
 
     ensure_dir(condor_model_dir(train_tag))
     ensure_dir(condor_training_dir(train_tag))
@@ -293,8 +289,19 @@ def main():
                 "trans_columns": trans_columns,
                 "model_params": params,
                 "reweight_profile": reweight_profile,
+                "signal_input_override": reweight_cfg["signal"] is not None,
                 "signal_weight_branch": reweight_cfg["weight_branch"],
                 "signal_path": sig_path,
+                "split_policy": "candidate_level_random_split_preliminary",
+                "split_random_state": 42,
+                "train_fraction": 0.75,
+                "scaler_fit_scope": "training_subset_only",
+                "efficiency_reference_signal": (
+                    to_root_spec(efficiency_reference)
+                    if efficiency_reference is not None
+                    else None
+                ),
+                "efficiency_reference_weight_branch": efficiency_reference_weight,
             },
             f,
             indent=2,
@@ -493,6 +500,9 @@ def main():
         is_optuna=False,
         optimization_metric="direct training test AUC",
         best_objective_value=float(test_roc["auc"]),
+        train_fraction=0.75,
+        val_fraction=0.0,
+        test_fraction=0.25,
         notes={
             "training_mode": "direct_xgboost",
             "dataset_source": dataset_source,
@@ -508,6 +518,7 @@ def main():
             "n_bkg_train": n_bkg_train,
             "scale_pos_weight": scale_pos_weight,
             "reweight_profile": reweight_profile,
+            "signal_input_override": reweight_cfg["signal"] is not None,
             "signal_weight_branch": reweight_cfg["weight_branch"],
             "signal_weight_sum": (
                 float(signal_weight.sum())

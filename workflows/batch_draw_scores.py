@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import json
+import textwrap
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,9 +15,12 @@ from configs.samples import (
     infer_sample_from_tag,
     resolve_draw_config,
     resolve_fiducial_config,
+    split_root_spec,
 )
 from utils.paths import ensure_dir, selected_dir, train_group_tag
+from utils.paths import resolve_model_config_path
 from utils.selection import apply_selection, selection_columns
+from utils.score_thresholds import weighted_efficiency_thresholds
 
 if len(sys.argv) < 2:
     print(
@@ -74,6 +78,22 @@ BIN_WIDTH = float(draw_cfg["plot"]["bin_width"])
 BINS = np.arange(MASS_RANGE[0], MASS_RANGE[1] + BIN_WIDTH, BIN_WIDTH)
 REFERENCE_MASSES = list(draw_cfg["plot"].get("reference_masses", []))
 score_cuts = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.90, 0.95]
+efficiency_targets = [
+    0.90, 0.80, 0.70, 0.60, 0.50, 0.40, 0.35,
+    0.30, 0.25, 0.20, 0.15, 0.10, 0.05,
+]
+
+
+def format_plot_title(train_tag, detail):
+    wrapped_tag = "\n".join(
+        textwrap.wrap(
+            train_tag,
+            width=48,
+            break_long_words=True,
+            break_on_hyphens=False,
+        )
+    )
+    return f"{wrapped_tag}\n{detail}"
 
 if draw_config_path:
     with open(draw_config_path) as f:
@@ -155,8 +175,9 @@ df_fid = apply_selection(df_base, fid_cfg.get("expression"), f"fiducial_profiles
 for train_tag in valid_train_tags:
     score_column = score_branch_map[train_tag]
     cut_scan_root = ensure_dir(os.path.join(selected_dir(output_tag), "cut_scan"))
+    score_cut_root = ensure_dir(os.path.join(cut_scan_root, "score_cut"))
     if len(valid_train_tags) == 1:
-        output_dir = cut_scan_root
+        output_dir = score_cut_root
     else:
         output_dir = ensure_dir(os.path.join(cut_scan_root, f"{output_prefix}{train_tag}"))
     for cut in score_cuts:
@@ -170,7 +191,7 @@ for train_tag in valid_train_tags:
                 plt.axvline(mass, linestyle="--", linewidth=1.2, color="gray", alpha=0.8)
         plt.xlabel("Bmass (GeV)")
         plt.ylabel("Entries")
-        plt.title(f"{train_tag} | score > {cut}")
+        plt.title(format_plot_title(train_tag, f"score > {cut}"), fontsize=10)
         plt.xlim(MASS_RANGE[0], MASS_RANGE[1])
         plt.grid(alpha=0.3)
         plt.tight_layout()
@@ -179,5 +200,48 @@ for train_tag in valid_train_tags:
             out_name = os.path.join(output_dir, f"DATA_{active_fid}_cut{cut_tag:04d}.pdf")
         else:
             out_name = os.path.join(output_dir, f"DATA_{active_fid}_cut{cut_tag:03d}.pdf")
-        plt.savefig(out_name)
+        plt.savefig(out_name, bbox_inches="tight")
         plt.close()
+
+    reference_file = os.path.join(selected_dir(output_tag), f"{output_prefix}REFERENCE_MC_with_score.root")
+    if os.path.exists(reference_file):
+        with open(resolve_model_config_path(train_tag)) as f:
+            model_cfg = json.load(f)
+        weight_branch = model_cfg.get("efficiency_reference_weight_branch")
+        efficiency_label = "weighted signal efficiency" if weight_branch else "signal efficiency"
+        reference_tree_name = split_root_spec(model_cfg["efficiency_reference_signal"])[1]
+        reference_tree = uproot.open(reference_file)[reference_tree_name]
+        ref_columns = list(dict.fromkeys([score_column] + ([weight_branch] if weight_branch else []) + selection_columns(fid_cfg.get("expression"))))
+        ref_df = reference_tree.arrays(ref_columns, library="pd")
+        ref_df = apply_selection(ref_df, fid_cfg.get("expression"), f"fiducial_profiles[{active_fid}]")
+        scores = ref_df[score_column].to_numpy(dtype=float)
+        weights = ref_df[weight_branch].to_numpy(dtype=float) if weight_branch else np.ones(len(ref_df))
+        valid = np.isfinite(scores) & np.isfinite(weights) & (weights > 0)
+        scores, weights = scores[valid], weights[valid]
+        threshold_rows = weighted_efficiency_thresholds(
+            scores, weights, efficiency_targets
+        )
+        efficiency_dir = ensure_dir(os.path.join(cut_scan_root, "weighted_signal_efficiency"))
+        efficiency_rows = []
+        for row in threshold_rows:
+            target = row["target_efficiency"]
+            threshold = row["score_threshold"]
+            achieved = row["achieved_efficiency"]
+            data_cut = df_fid[df_fid[score_column] > threshold]
+            plt.figure(figsize=(6, 6))
+            plt.hist(data_cut["Bmass"], bins=BINS, histtype="step", linewidth=2)
+            for mass in REFERENCE_MASSES if channel == "X" else []:
+                plt.axvline(mass, linestyle="--", linewidth=1.2, color="gray", alpha=0.8)
+            plt.xlabel("Bmass (GeV)"); plt.ylabel("Entries")
+            plt.title(
+                format_plot_title(train_tag, f"{efficiency_label} {target:.0%}"),
+                fontsize=10,
+            )
+            plt.xlim(MASS_RANGE[0], MASS_RANGE[1]); plt.grid(alpha=0.3); plt.tight_layout()
+            plt.savefig(
+                os.path.join(efficiency_dir, f"DATA_{active_fid}_eff{int(target*100):03d}.pdf"),
+                bbox_inches="tight",
+            ); plt.close()
+            efficiency_rows.append({"target_efficiency": target, "score_threshold": threshold, "achieved_efficiency": achieved, "data_entries": int(len(data_cut))})
+        with open(os.path.join(efficiency_dir, "thresholds.json"), "w") as f:
+            json.dump({"train_tag": train_tag, "efficiency_label": efficiency_label, "weight_branch": weight_branch, "reference_file": reference_file, "thresholds": efficiency_rows}, f, indent=2)

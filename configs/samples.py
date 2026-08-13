@@ -174,6 +174,68 @@ SAMPLES = {
                         "signal_selection": "(abs(By) < 2.4) and ((Bpt > 10) and (Bpt < 50)) and (BQvalue < 0.20) and (Btrk2dR < 0.45)",
                         "background_selection": "((Bmass > 3.905 and Bmass < 3.94) or (Bmass > 3.805 and Bmass < 3.84)) and (abs(By) < 2.4) and ((Bpt > 10) and (Bpt < 50))and (BQvalue < 0.20) and (Btrk2dR < 0.45)",
                     },
+                    "pb24_v6": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 10) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1Pt >= 0.5) and (Btrk1Pt <= 4.5) and (Btrk2Pt >= 0.5) and (Btrk2Pt <= 4.5) and (Btrk1dR >= 0) and (Btrk1dR <= 0.5)",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 10) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1Pt >= 0.5) and (Btrk1Pt <= 4.5) and (Btrk2Pt >= 0.5) and (Btrk2Pt <= 4.5) and (Btrk1dR >= 0) and (Btrk1dR <= 0.5)",
+                        "efficiency_reference_signal": _spec(
+                            "output/reweighting/X_pp24_xsplot_R6range2_rw_v1/"
+                            "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                            "ntmix_X3872",
+                        ),
+                        "efficiency_reference_weight_branch": "Reweight",
+                    },
+                    "pb24_v7": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 10) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1Pt >= 1.0) and (Btrk1Pt <= 4.5) and (Btrk2Pt >= 1.0) and (Btrk2Pt <= 4.5) and (Btrk1dR >= 0) and (Btrk1dR <= 0.5)",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 10) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1Pt >= 1.0) and (Btrk1Pt <= 4.5) and (Btrk2Pt >= 1.0) and (Btrk2Pt <= 4.5) and (Btrk1dR >= 0) and (Btrk1dR <= 0.5)",
+                    },
+                    "pb24_v8": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 10) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1Pt >= 1.0) and (Btrk1Pt <= 4.5) and (Btrk2Pt >= 1.0) and (Btrk2Pt <= 4.5) and (Btrk1dR >= 0) and (Btrk1dR <= 0.5) and (Btrk2dR < 0.45)",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 10) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1Pt >= 1.0) and (Btrk1Pt <= 4.5) and (Btrk2Pt >= 1.0) and (Btrk2Pt <= 4.5) and (Btrk1dR >= 0) and (Btrk1dR <= 0.5) and (Btrk2dR < 0.45)",
+                    },
+                    "pb24_v9": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk2Pt > 0.9) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1Pt <= 4.5) and (Btrk2Pt <= 4.5) and (Btrk1dR >= 0) and (Btrk1dR <= 0.5)",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk2Pt > 0.9) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1Pt <= 4.5) and (Btrk2Pt <= 4.5) and (Btrk1dR >= 0) and (Btrk1dR <= 0.5)",
+                    },
+                    "pb24_v10": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk2Pt > 0.9) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1Pt <= 4.5) and (Btrk1dR >= 0) and (Btrk1dR <= 0.5) and (Btrk2dR >= 0) and (Btrk2dR <= 0.5)",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk2Pt > 0.9) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1Pt <= 4.5) and (Btrk1dR >= 0) and (Btrk1dR <= 0.5) and (Btrk2dR >= 0) and (Btrk2dR <= 0.5)",
+                    },
+                    "pb24_v11": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk2Pt > 0.9) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1Pt <= 4.5) and (Btrk2Pt <= 4.5) and (Btrk1dR >= 0) and (Btrk1dR <= 0.5) and (Btrk2dR < 0.45)",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk2Pt > 0.9) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1Pt <= 4.5) and (Btrk2Pt <= 4.5) and (Btrk1dR >= 0) and (Btrk1dR <= 0.5) and (Btrk2dR < 0.45)",
+                    },
+                    "pb24_v12": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk2Pt > 0.9) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1Pt <= 4.5) and (Btrk2Pt <= 4.5) and (Btrk1dR >= 0) and (Btrk1dR <= 0.5) and (Btrk2dR < 0.25)",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk2Pt > 0.9) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1Pt <= 4.5) and (Btrk2Pt <= 4.5) and (Btrk1dR >= 0) and (Btrk1dR <= 0.5) and (Btrk2dR < 0.25)",
+                    },
+                    "pb24_v13": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.45)",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.45)",
+                    },
+                    "pb24_v14": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.40)",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.40)",
+                    },
+                    "pb24_v15": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.35)",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.35)",
+                    },
+                    "pb24_v16": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.30)",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.30)",
+                    },
+                    "pb24_v17": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.25)",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.25)",
+                    },
+                    "pb24_v18": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR < 0.25)",
+                        "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR < 0.25)",
+                    },
+                    "pb24_v19": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR < 0.25)",
+                        "background_selection": "((Bmass > 3.82 and Bmass < 3.85) or (Bmass > 3.89 and Bmass < 3.92)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR < 0.25)",
+                    },
                     "pb23_v1": {
                         "signal_selection": "(abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50))",
                         "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50))",
@@ -189,6 +251,20 @@ SAMPLES = {
                     "pb24_fid3": "BQvalue < 0.15 and abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0 and Btrk2dR < 0.45",
                     "pb24_fid4": "BQvalue < 0.20 and abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0 and Btrk2dR < 0.45",
                     "pb24_fid5": "BQvalue < 0.20 and abs(By) < 2.4 and Bpt > 10.0 and Bpt < 50.0 and Btrk2dR < 0.45",
+                    "pb24_fid6": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 10 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1Pt >= 0.5 and Btrk1Pt <= 4.5 and Btrk2Pt >= 0.5 and Btrk2Pt <= 4.5 and Btrk1dR >= 0 and Btrk1dR <= 0.5",
+                    "pb24_fid7": "BQvalue < 0.15 and abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
+                    "pb24_fid8": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 10 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1Pt >= 1.0 and Btrk1Pt <= 4.5 and Btrk2Pt >= 1.0 and Btrk2Pt <= 4.5 and Btrk1dR >= 0 and Btrk1dR <= 0.5",
+                    "pb24_fid9": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 10 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1Pt >= 1.0 and Btrk1Pt <= 4.5 and Btrk2Pt >= 1.0 and Btrk2Pt <= 4.5 and Btrk1dR >= 0 and Btrk1dR <= 0.5 and Btrk2dR < 0.45",
+                    "pb24_fid10": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk2Pt > 0.9 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1Pt <= 4.5 and Btrk2Pt <= 4.5 and Btrk1dR >= 0 and Btrk1dR <= 0.5",
+                    "pb24_fid11": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk2Pt > 0.9 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1Pt <= 4.5 and Btrk1dR >= 0 and Btrk1dR <= 0.5 and Btrk2dR >= 0 and Btrk2dR <= 0.5",
+                    "pb24_fid12": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk2Pt > 0.9 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1Pt <= 4.5 and Btrk2Pt <= 4.5 and Btrk1dR >= 0 and Btrk1dR <= 0.5 and Btrk2dR < 0.45",
+                    "pb24_fid13": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk2Pt > 0.9 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1Pt <= 4.5 and Btrk2Pt <= 4.5 and Btrk1dR >= 0 and Btrk1dR <= 0.5 and Btrk2dR < 0.25",
+                    "pb24_fid14": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk1Pt <= 4.5 and Btrk2Pt > 0.9 and Btrk2Pt <= 4.5 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1dR >= 0 and Btrk1dR <= 0.45 and Btrk2dR >= 0 and Btrk2dR <= 0.45",
+                    "pb24_fid15": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk1Pt <= 4.5 and Btrk2Pt > 0.9 and Btrk2Pt <= 4.5 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1dR >= 0 and Btrk1dR <= 0.45 and Btrk2dR >= 0 and Btrk2dR <= 0.40",
+                    "pb24_fid16": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk1Pt <= 4.5 and Btrk2Pt > 0.9 and Btrk2Pt <= 4.5 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1dR >= 0 and Btrk1dR <= 0.45 and Btrk2dR >= 0 and Btrk2dR <= 0.35",
+                    "pb24_fid17": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk1Pt <= 4.5 and Btrk2Pt > 0.9 and Btrk2Pt <= 4.5 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1dR >= 0 and Btrk1dR <= 0.45 and Btrk2dR >= 0 and Btrk2dR <= 0.30",
+                    "pb24_fid18": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk1Pt <= 4.5 and Btrk2Pt > 0.9 and Btrk2Pt <= 4.5 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1dR >= 0 and Btrk1dR <= 0.45 and Btrk2dR >= 0 and Btrk2dR <= 0.25",
+                    "pb24_fid19": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk1Pt <= 4.5 and Btrk2Pt > 0.9 and Btrk2Pt <= 4.5 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1dR >= 0 and Btrk1dR <= 0.45 and Btrk2dR >= 0 and Btrk2dR < 0.25",
                     "pb23_fid1": "abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
                     "pb23_fid2": "BQvalue < 0.2 and abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
                 },
@@ -324,6 +400,8 @@ SAMPLES = {
                     "pp24_fid1": "BQvalue < 0.2",
                     "pp24_fid2": "BQvalue < 0.15",
                     "pp24_fid3": "(BQvalue < 0.15) and (abs(By) < 2.4) and (Bpt > 7.5)",
+                    "pp24_fid4": "BQvalue < 0.15 and abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
+                    "pp24_fid5": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 10 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1Pt >= 1.0 and Btrk1Pt <= 4.5 and Btrk2Pt >= 1.0 and Btrk2Pt <= 4.5 and Btrk1dR >= 0 and Btrk1dR <= 0.5",
                 },
                 {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
             ),
@@ -411,6 +489,21 @@ SAMPLES = {
     },
 }
 
+# Additional X-channel MC samples scored on demand via
+# workflows.batch_apply_scores --apply-extra-mc.  They are deliberately kept
+# outside the nominal train/apply inputs so an extra-MC job cannot overwrite the
+# standard DATA/MC scored artifacts.
+SAMPLES["pbpb"]["channels"]["X"]["datasets"]["2024"]["apply"]["extra_mc"] = {
+    "psi2s": _spec(
+        "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC_PSI2S.root",
+        "ntmix_PSI2S",
+    ),
+    "x3872": _spec(
+        "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC_X3872.root",
+        "ntmix_X3872",
+    ),
+}
+
 
 def _channel_cfg(sample: str, channel: str) -> dict:
     cfg = SAMPLES.get(sample, {})
@@ -421,6 +514,195 @@ def _channel_cfg(sample: str, channel: str) -> dict:
 
 
 TRAINING_REWEIGHT_PROFILES = {
+    "pbpb": {
+        "X": {
+            "2024": {
+                "rwr6range2v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range2_rw_v1/flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v6",
+                    "required_fid_profile": "pb24_fid6",
+                },
+                "rwr6range3v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range3_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v9",
+                    "required_fid_profile": "pb24_fid10",
+                },
+                "rwr6range3dr045v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range3_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v11",
+                    "required_fid_profile": "pb24_fid12",
+                },
+                "rwr6range3dr025v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range3_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v12",
+                    "required_fid_profile": "pb24_fid13",
+                },
+                "rwr6range4v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range4_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v13",
+                    "required_fid_profile": "pb24_fid14",
+                },
+                "rwr6range5v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range5_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v14",
+                    "required_fid_profile": "pb24_fid15",
+                    "allowed_profile_pairs": [
+                        ("pb24_v14", "pb24_fid15"),
+                        ("pb24_v19", "pb24_fid19"),
+                    ],
+                },
+                "rwr6range6v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range6_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v15",
+                    "required_fid_profile": "pb24_fid16",
+                },
+                "rwr6range7v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range7_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v16",
+                    "required_fid_profile": "pb24_fid17",
+                },
+                "rwr6range8v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range8_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v17",
+                    "required_fid_profile": "pb24_fid18",
+                },
+                "rwr6range4dr025v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range4_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v18",
+                    "required_fid_profile": "pb24_fid19",
+                },
+                "rwr6range5dr025v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range5_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v18",
+                    "required_fid_profile": "pb24_fid19",
+                },
+                "rwr6range5train40apply25v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range5_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v14",
+                    "required_fid_profile": "pb24_fid19",
+                },
+                "rwr6range6dr025v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range6_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v18",
+                    "required_fid_profile": "pb24_fid19",
+                },
+                "rwr6range7dr025v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range7_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v18",
+                    "required_fid_profile": "pb24_fid19",
+                },
+                "rwr6v2range3v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6v2range3_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_X3872_with_reweight.root",
+                        "ntmix_X3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v10",
+                    "required_fid_profile": "pb24_fid11",
+                },
+                "rwpsi2sr5range3v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_psi2s_R5range3_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_PSI2S_with_reweight.root",
+                        "ntmix_PSI2S",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v7",
+                    "required_fid_profile": "pb24_fid8",
+                },
+                "rwpsi2sr5range3dr045v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_psi2s_R5range3_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_PSI2S_with_reweight.root",
+                        "ntmix_PSI2S",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v8",
+                    "required_fid_profile": "pb24_fid9",
+                },
+                "rwpsi2srawv1": {
+                    "signal": _spec(
+                        "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/"
+                        "flat_ntmix_PbPb24_MC_PSI2S.root",
+                        "ntmix_PSI2S",
+                    ),
+                    "weight_branch": None,
+                    "required_selection_profile": "pb24_v7",
+                    "required_fid_profile": "pb24_fid8",
+                },
+            },
+        },
+    },
     "pp": {
         "X": {
             "2024": {
@@ -484,10 +766,13 @@ def resolve_training_reweight_config(
         )
     expected_selection = profile["required_selection_profile"]
     expected_fid = profile["required_fid_profile"]
-    if selection_profile != expected_selection or fid_profile != expected_fid:
+    allowed_pairs = profile.get(
+        "allowed_profile_pairs", [(expected_selection, expected_fid)]
+    )
+    if (selection_profile, fid_profile) not in allowed_pairs:
         raise ValueError(
             f"Reweight profile '{reweight_profile}' requires "
-            f"selection='{expected_selection}' and fid='{expected_fid}', got "
+            f"one of profile pairs {allowed_pairs}, got "
             f"selection='{selection_profile}' and fid='{fid_profile}'."
         )
     return {"profile": reweight_profile, **deepcopy(profile)}
@@ -545,7 +830,7 @@ def resolve_training_config(sample: str, channel: str, dataset_year: str, select
     cfg = _channel_cfg(sample, channel)
     ds = cfg["datasets"][dataset_year]["train"]
     sel = cfg["selection_profiles"][selection_profile]
-    return {
+    resolved = {
         "dataset_year": dataset_year,
         "signal": deepcopy(ds["signal"]),
         "background": deepcopy(ds["background"]),
@@ -555,6 +840,13 @@ def resolve_training_config(sample: str, channel: str, dataset_year: str, select
         "dataset_source": f"{sample}_{channel}_{dataset_year}",
         "channel": channel,
     }
+    for key in (
+        "efficiency_reference_signal",
+        "efficiency_reference_weight_branch",
+    ):
+        if key in sel:
+            resolved[key] = deepcopy(sel[key])
+    return resolved
 
 
 def resolve_apply_config(sample: str, channel: str, dataset_year: str) -> dict:

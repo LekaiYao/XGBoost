@@ -13,9 +13,12 @@ from configs.samples import (
     bd_pbpb_precut_paths,
     infer_channel_from_tag,
     infer_dataset_year,
+    infer_fid_profile,
+    infer_reweight_profile,
     infer_sample_from_tag,
     infer_selection_profile,
     resolve_training_config,
+    resolve_training_reweight_config,
     supports_bd_pbpb_precut,
     to_root_spec,
 )
@@ -49,9 +52,15 @@ sample = infer_sample_from_tag(train_tag)
 channel = infer_channel_from_tag(train_tag)
 year = infer_dataset_year(train_tag, sample)
 sel = infer_selection_profile(train_tag, sample)
+fid = infer_fid_profile(train_tag, sample)
 train_cfg = resolve_training_config(sample, channel, year, sel)
+reweight_cfg = resolve_training_reweight_config(
+    sample, channel, year, infer_reweight_profile(train_tag), sel, fid
+)
 
 SIG_PATH = to_root_spec(train_cfg["signal"])
+if reweight_cfg["signal"] is not None:
+    SIG_PATH = to_root_spec(reweight_cfg["signal"])
 BKG_PATH = to_root_spec(train_cfg["background"])
 if use_precut:
     if not supports_bd_pbpb_precut(train_tag):
@@ -78,6 +87,13 @@ df_sig = uproot.concatenate(SIG_PATH, library="pd")
 df_bkg = uproot.concatenate(BKG_PATH, library="pd")
 df_sig = apply_selection(df_sig, train_cfg["signal_selection"], "signal_selection")
 df_bkg = apply_selection(df_bkg, train_cfg["background_selection"], "background_selection")
+weight_branch = reweight_cfg["weight_branch"]
+if weight_branch:
+    signal_weights = df_sig[weight_branch].to_numpy(dtype=float)
+else:
+    signal_weights = np.ones(len(df_sig), dtype=float)
+df_sig["_shap_weight"] = signal_weights
+df_bkg["_shap_weight"] = 1.0
 
 df_raw = pd.concat([df_sig, df_bkg], axis=0, ignore_index=True)
 if max_events > 0 and len(df_raw) > max_events:
@@ -91,7 +107,8 @@ shap_values = explainer.shap_values(X_trans)
 if isinstance(shap_values, list):
     shap_values = shap_values[1]
 
-mean_abs_shap = np.abs(shap_values).mean(axis=0)
+shap_weights = df_raw["_shap_weight"].to_numpy(dtype=float)
+mean_abs_shap = np.average(np.abs(shap_values), axis=0, weights=shap_weights)
 total_mean_abs_shap = float(mean_abs_shap.sum())
 importance_pairs = sorted(zip(input_columns, mean_abs_shap), key=lambda x: x[1], reverse=True)
 ordered_names = [name for name, _ in importance_pairs]
@@ -120,7 +137,9 @@ shap.summary_plot(shap_values, features=X_display, feature_names=input_columns, 
 plt.tight_layout(); plt.savefig(shap_summary_path(train_tag)); plt.close()
 
 plt.figure(figsize=(8, 5.5))
-shap.summary_plot(shap_values, features=X_display, feature_names=input_columns, plot_type="bar", show=False)
+bar_order = np.argsort(mean_abs_shap)
+plt.barh(np.asarray(input_columns)[bar_order], mean_abs_shap[bar_order])
+plt.xlabel("Weighted mean(|SHAP value|)")
 plt.tight_layout(); plt.savefig(shap_bar_path(train_tag)); plt.close()
 
 fig, ax_left = plt.subplots(figsize=(8.8, 5.2))

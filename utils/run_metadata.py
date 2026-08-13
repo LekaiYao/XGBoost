@@ -115,6 +115,9 @@ def save_run_metadata(
     hyperparameter_search_space=None,
     optimization_metric=None,
     best_objective_value=None,
+    train_fraction=0.8,
+    val_fraction=0.1,
+    test_fraction=0.1,
     notes=None,
 ):
     if optimized_hyperparameters is None:
@@ -145,9 +148,9 @@ def save_run_metadata(
         "input_columns": input_columns,
         "trans_columns": trans_columns,
         "feature_count": len(input_columns),
-        "train_fraction": 0.8,
-        "val_fraction": 0.1,
-        "test_fraction": 0.1,
+        "train_fraction": float(train_fraction),
+        "val_fraction": float(val_fraction),
+        "test_fraction": float(test_fraction),
         "class_weighting": {
             "method": "scale_pos_weight",
             "value": float(pos_weight),

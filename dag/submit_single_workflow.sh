@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 <train_tag> [with_shap] [use_precut]"
+  echo "Usage: $0 <train_tag> [with_shap] [use_precut] [apply_extra_mc]"
   echo "Example: $0 X_pb24_v2_fid1_8v1_xgb_v1 0 0"
   echo "Example: $0 Bd_pb24_v1_fid1_6v1_xgb_v1 0 1"
   exit 1
@@ -11,6 +11,7 @@ fi
 train_tag=$1
 with_shap=${2:-0}
 use_precut=${3:-0}
+apply_extra_mc=${4:-0}
 
 if [[ ! "${train_tag}" =~ ^(X|Bu|Bd|Bs)_(pp24|pb23|pb24)_v[0-9]+_fid[0-9]+_[0-9]+v[0-9]*(_rw[a-z0-9]+)?_xgb_v[0-9]+$ ]]; then
   echo "ERROR: invalid single DAG train_tag '${train_tag}'"
@@ -21,6 +22,16 @@ fi
 
 if [[ ! "${use_precut}" =~ ^[01]$ ]]; then
   echo "ERROR: use_precut must be 0 or 1"
+  exit 1
+fi
+
+if [[ ! "${apply_extra_mc}" =~ ^(0|all|[a-z0-9_]+(,[a-z0-9_]+)*)$ ]]; then
+  echo "ERROR: apply_extra_mc must be 0, all, or comma-separated lowercase keys"
+  exit 1
+fi
+
+if [[ "${use_precut}" == "1" && "${apply_extra_mc}" != "0" ]]; then
+  echo "ERROR: apply_extra_mc cannot be combined with use_precut=1"
   exit 1
 fi
 
@@ -40,7 +51,7 @@ if [[ "${use_precut}" == "1" ]]; then
   "${python_bin}" -m workflows.prepare_bd_pbpb_precut_inputs "${train_tag}" --input-dir "input"
 fi
 
-dag_path=$("${python_bin}" -m dag.make_single_workflow --train-tag "${train_tag}" --with-shap "${with_shap}" --use-precut "${use_precut}" --out-dir "dag/generated")
+dag_path=$("${python_bin}" -m dag.make_single_workflow --train-tag "${train_tag}" --with-shap "${with_shap}" --use-precut "${use_precut}" --apply-extra-mc "${apply_extra_mc}" --out-dir "dag/generated")
 
 cp dag/submit_templates/submit_train_job.sub "${afs_dir}/submit_train_job.sub"
 cp dag/submit_templates/submit_apply_job.sub "${afs_dir}/submit_apply_job.sub"

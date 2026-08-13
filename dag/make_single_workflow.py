@@ -10,6 +10,7 @@ def make_dag(
     train_tag: str,
     with_shap: bool,
     use_precut: bool,
+    apply_extra_mc: str = "0",
 ) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     dag_path = out_dir / f"wf_single_{train_tag}.dag"
@@ -25,10 +26,26 @@ def make_dag(
         "JOB DRAW submit_draw_job.sub",
         f'VARS DRAW train_tag="{train_tag}" job_tag="{train_tag}_draw"',
         "",
-        "PARENT TRAIN CHILD APPLY",
-        "PARENT APPLY CHILD DRAW",
-        "",
     ]
+    if apply_extra_mc != "0":
+        lines.extend(
+            [
+                "JOB APPLY_EXTRA submit_apply_job.sub",
+                f'VARS APPLY_EXTRA train_tag="{train_tag}" use_precut="{precut_flag}" apply_extra_mc="{apply_extra_mc}" job_tag="{train_tag}_apply_extra"',
+                "",
+                "PARENT TRAIN CHILD APPLY APPLY_EXTRA",
+                "PARENT APPLY APPLY_EXTRA CHILD DRAW",
+                "",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "PARENT TRAIN CHILD APPLY",
+                "PARENT APPLY CHILD DRAW",
+                "",
+            ]
+        )
     if with_shap:
         lines.extend(
             [
@@ -49,11 +66,15 @@ def main():
     parser.add_argument("--train-tag", required=True)
     parser.add_argument("--with-shap", type=int, choices=[0, 1], default=0)
     parser.add_argument("--use-precut", type=int, choices=[0, 1], default=0)
+    parser.add_argument("--apply-extra-mc", default="0")
     parser.add_argument("--out-dir", default="dag/generated")
     args = parser.parse_args()
     split_channel_tag(args.train_tag)
 
-    dag = make_dag(Path(args.out_dir), args.train_tag, bool(args.with_shap), bool(args.use_precut))
+    dag = make_dag(
+        Path(args.out_dir), args.train_tag, bool(args.with_shap),
+        bool(args.use_precut), args.apply_extra_mc,
+    )
     print(dag)
 
 
