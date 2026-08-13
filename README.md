@@ -111,6 +111,29 @@ exporter 会验证：
 
 manifest 包含 ROOT/TTree、channel/system、fid/selection、sidebands 和建议质量区间；不包含 Punzi 参数、最终 cut 或 fit model。XGBoost 不直接修改 Analysis_CODES。
 
+PbPb24 X 的固定 signal-efficiency 七点拟合交接使用专用 exporter：
+
+```bash
+.venv/bin/python -m workflows.integration.export_x_fit_scan_manifest <train_tag>
+```
+
+它在 scored DATA 完整存在后原子生成版本化任务入口：
+
+```text
+output/selected/<train_tag>/fit_scan_manifest.data_only_nominal_v2.json
+```
+
+schema 位于
+`workflows/integration/schemas/pbpb24_x_data_only_nominal_fit_scan_v2.schema.json`。
+manifest 交付 DATA 文件/tree、10%--40%（间隔 5%）weighted-X-efficiency thresholds、
+完整 fiducial/score selection、DATA-only 单 Gaussian nominal fit contract 和预期输出。
+v2 将 Gaussian `sigma` 范围收紧为 `[0.002,0.008] GeV`；v1
+`[0.0001,0.010] GeV` 及其 H019/H020 结果继续保留，仅作历史 provenance。
+`Reweight` 只说明 ML 如何得到 threshold，不作为 nominal mass-fit shape 输入。
+
+历史 `fit_scan_manifest.json` 是 H019 首轮 reweighted-MC/double-Gaussian contract，
+为 provenance 保留，不会被新 exporter 覆盖，也不得用于新的 nominal fit。
+
 ## 3. 同名 tag 重新提交
 
 重新提交前清理 AFS 中的旧 DAG lock/rescue/log：
@@ -260,7 +283,19 @@ Optuna 执行 `TRAIN → APPLY → DRAW`，当前不自动追加 SHAP。objectiv
 | Optuna 空间与 early stop | `configs/optuna_spaces.py` |
 | 输出路径 | `utils/paths.py` |
 
-## 8. 其他可选功能
+## 8. 汇总 selected tags
+
+从 `output/selected/` 的直接子目录重新生成配置摘要：
+
+```bash
+python3 scripts/summarize_selected_tags.py
+```
+
+默认写入 `docs/selected_tag_summary.md`；也可用 `--selected-dir` 和 `--output` 指定输入、输出。
+脚本优先采用各 tag 已落盘的 `model_config.json`、`run_metadata.json` 和
+`batch_apply_summary.json`，并用当前 resolver 补全及检查差异。任一 tag 无法解析时不会写出不完整摘要。
+
+## 9. 其他可选功能
 
 X channel extra MC：
 
@@ -277,10 +312,12 @@ X channel extra MC：
 
 旧 `workflows/optimization/run_optimization_from_tag.py` 只作为 compatibility helper 保留，不再扩展。
 
-## 9. 测试
+## 10. 测试
 
 ```bash
-.venv/bin/python -m unittest -v tests.test_export_analysis_manifest
+.venv/bin/python -m unittest -v \
+  tests.test_export_analysis_manifest \
+  tests.test_export_x_fit_scan_manifest
 ```
 
 ```bash
@@ -290,6 +327,7 @@ X channel extra MC：
   workflows/batch_draw_scores.py \
   workflows/shap_importance.py \
   workflows/integration/export_analysis_manifest.py \
+  workflows/integration/export_x_fit_scan_manifest.py \
   dag/make_dagman_workflow.py dag/make_single_workflow.py \
   utils/varsets.py utils/paths.py configs/samples.py
 ```
