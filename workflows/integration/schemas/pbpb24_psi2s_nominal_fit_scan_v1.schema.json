@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pbpb24_psi2s_nominal_fit_scan_v1.schema.json",
+  "title": "PbPb24 Psi2S nominal fit scan manifest v1",
+  "type": "object",
+  "required": [
+    "schema_version", "contract", "train_tag", "channel", "system", "dataset",
+    "path_base", "inputs", "score", "fiducial_selection", "threshold_provenance",
+    "working_points", "nominal_fit_contract", "required_outputs"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "contract": {"const": "pbpb24_psi2s_nominal_fit_scan"},
+    "train_tag": {"type": "string", "pattern": "^Psi2S_pb24_"},
+    "channel": {"const": "Psi2S"},
+    "system": {"const": "PbPb"},
+    "dataset": {"const": "pb24"},
+    "path_base": {"const": "manifest_directory"},
+    "inputs": {
+      "type": "object",
+      "required": ["data", "signal_mc"],
+      "properties": {
+        "data": {
+          "type": "object",
+          "required": ["path", "tree", "entries", "mass_branch", "score_branch", "event_weight"],
+          "properties": {
+            "path": {"const": "DATA_with_score.root"},
+            "tree": {"const": "ntmix"},
+            "entries": {"type": "integer", "minimum": 1},
+            "mass_branch": {"const": "Bmass"},
+            "score_branch": {"const": "Prediction"},
+            "event_weight": {"const": "unit"}
+          },
+          "additionalProperties": false
+        },
+        "signal_mc": {
+          "type": "object",
+          "required": ["path", "tree", "entries", "mass_branch", "score_branch", "event_weight_branch", "weight_usage"],
+          "properties": {
+            "path": {"const": "MC_with_score.root"},
+            "tree": {"const": "ntmix_PSI2S"},
+            "entries": {"type": "integer", "minimum": 1},
+            "mass_branch": {"const": "Bmass"},
+            "score_branch": {"const": "Prediction"},
+            "event_weight_branch": {"const": "Reweight"},
+            "weight_usage": {"const": "signal_shape_and_efficiency"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "score": {
+      "type": "object",
+      "required": ["branch", "comparison_operator", "threshold_boundary", "equality_passes"],
+      "properties": {
+        "branch": {"const": "Prediction"},
+        "comparison_operator": {"const": ">"},
+        "threshold_boundary": {"const": "exclusive"},
+        "equality_passes": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "fiducial_selection": {
+      "type": "object",
+      "required": ["profile", "expression"],
+      "properties": {
+        "profile": {"const": "pb24_fid1"},
+        "expression": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "threshold_provenance": {
+      "type": "object",
+      "required": ["path", "definition", "event_weight_branch"],
+      "properties": {
+        "path": {"const": "cut_scan/weighted_signal_efficiency/thresholds.json"},
+        "definition": {"const": "weighted signal efficiency"},
+        "event_weight_branch": {"const": "Reweight"}
+      },
+      "additionalProperties": false
+    },
+    "working_points": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["key", "threshold", "target_weighted_efficiency", "achieved_weighted_efficiency", "fiducial_score_selected_data_entries", "selection"],
+        "properties": {
+          "key": {"type": "string", "pattern": "^psi2seff(10|15|20|25|30|35|40)$"},
+          "threshold": {"type": "number"},
+          "target_weighted_efficiency": {"type": "number"},
+          "achieved_weighted_efficiency": {"type": "number"},
+          "fiducial_score_selected_data_entries": {"type": "integer", "minimum": 0},
+          "selection": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "nominal_fit_contract": {
+      "type": "object",
+      "required": ["version", "fit_type", "mass_range_gev", "data_event_weight", "signal", "background"],
+      "properties": {
+        "version": {"const": 1},
+        "fit_type": {"const": "extended_unbinned"},
+        "mass_range_gev": {"const": [3.6, 3.8]},
+        "data_event_weight": {"const": "unit"},
+        "signal": {
+          "type": "object",
+          "required": ["model", "shape_source", "event_weight_branch", "shared_mean", "fixed_from_mc", "data_mean_gev", "data_mc_width_scale"],
+          "properties": {
+            "model": {"const": "double_gaussian_mc_shape"},
+            "shape_source": {"const": "weighted_signal_mc"},
+            "event_weight_branch": {"const": "Reweight"},
+            "shared_mean": {"const": true},
+            "fixed_from_mc": {"const": ["sigma1", "sigma2", "fraction"]},
+            "data_mean_gev": {"type": "object", "required": ["range"], "properties": {"range": {"const": [3.6811, 3.6911]}}, "additionalProperties": false},
+            "data_mc_width_scale": {"type": "object", "required": ["range"], "properties": {"range": {"const": [0.9, 1.15]}}, "additionalProperties": false}
+          },
+          "additionalProperties": false
+        },
+        "background": {
+          "type": "object",
+          "required": ["model", "order", "coefficient_ranges", "additional_stability_models_required"],
+          "properties": {
+            "model": {"const": "chebyshev"},
+            "order": {"const": 2},
+            "coefficient_ranges": {
+              "type": "object",
+              "required": ["a0", "a1"],
+              "properties": {"a0": {"const": [-0.8, 0.8]}, "a1": {"const": [-0.8, 0.8]}},
+              "additionalProperties": false
+            },
+            "additional_stability_models_required": {"const": false}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "required_outputs": {
+      "type": "object",
+      "required": ["per_point_fields"],
+      "properties": {
+        "per_point_fields": {
+          "const": ["point", "target_weighted_efficiency", "achieved_weighted_efficiency", "threshold", "data_entries", "mc_entries", "mc_sumw", "mc_sumw2", "mc_effective_entries", "yield", "yield_error", "fit_status", "covQual", "EDM", "mean", "width_scale", "background_parameters", "signal_over_background", "signal_over_sqrt_signal_plus_background", "parameter_boundary_flags", "artifact_paths"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

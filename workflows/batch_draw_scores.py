@@ -186,9 +186,8 @@ for train_tag in valid_train_tags:
 
         plt.figure(figsize=(6, 6))
         plt.hist(df_cut["Bmass"], bins=BINS, histtype="step", linewidth=2)
-        if channel == "X":
-            for mass in REFERENCE_MASSES:
-                plt.axvline(mass, linestyle="--", linewidth=1.2, color="gray", alpha=0.8)
+        for mass in REFERENCE_MASSES:
+            plt.axvline(mass, linestyle="--", linewidth=1.2, color="gray", alpha=0.8)
         plt.xlabel("Bmass (GeV)")
         plt.ylabel("Entries")
         plt.title(format_plot_title(train_tag, f"score > {cut}"), fontsize=10)
@@ -230,7 +229,7 @@ for train_tag in valid_train_tags:
             data_cut = df_fid[df_fid[score_column] > threshold]
             plt.figure(figsize=(6, 6))
             plt.hist(data_cut["Bmass"], bins=BINS, histtype="step", linewidth=2)
-            for mass in REFERENCE_MASSES if channel == "X" else []:
+            for mass in REFERENCE_MASSES:
                 plt.axvline(mass, linestyle="--", linewidth=1.2, color="gray", alpha=0.8)
             plt.xlabel("Bmass (GeV)"); plt.ylabel("Entries")
             plt.title(

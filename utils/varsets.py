@@ -23,6 +23,10 @@ PBPB_VARSETS_X = {
     "18v1": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta", "Bmu2y", "Bmu1y", "Bmu1pt", "Bmu2pt", "BujvProb", "Btktkpt", "PVz", "Btrk2Eta", "Btrk1Eta", "Btrk1PtErr", "Btrk2PtErr"],
 }
 
+PBPB_VARSETS_PSI2S = {
+    "6v1": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt"],
+}
+
 PBPB_VARSETS_BU = {
     "4v1": ["Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D"],
     "5v1": ["Btrk1dR", "Btrk1Pt", "Bcos_dtheta", "Bnorm_svpvDistance_2D", "Bchi2Prob"],
@@ -62,6 +66,10 @@ PP_VARSETS_X = {
     "18v1": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta", "Bmu2y", "Bmu1y", "Bmu1pt", "Bmu2pt", "BujvProb", "Btktkpt", "PVz", "Btrk2Eta", "Btrk1Eta", "Btrk1PtErr", "Btrk2PtErr"],
 }
 
+PP_VARSETS_PSI2S = {
+    "6v1": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt"],
+}
+
 PP_REWEIGHT_VARSETS_X = {
     "R3": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob"],
     "R4_noCos": ["Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt"],
@@ -69,6 +77,11 @@ PP_REWEIGHT_VARSETS_X = {
     "R5v2": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk1Pt", "Btrk1dR"],
     "R6": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt", "Btrk1dR"],
     "R6v2": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk1Pt", "Btrk1dR", "Btrk2dR"],
+    "R8": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta", "Btktkpt"],
+}
+
+PP_REWEIGHT_VARSETS_PSI2S = {
+    "R6": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt", "Btrk1dR"],
     "R8": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta", "Btktkpt"],
 }
 
@@ -94,12 +107,14 @@ PP_VARSETS_BS = {
 VARSETS = {
     "pbpb": {
         "X": PBPB_VARSETS_X,
+        "Psi2S": PBPB_VARSETS_PSI2S,
         "Bu": PBPB_VARSETS_BU,
         "Bd": PBPB_VARSETS_BD,
         "Bs": PBPB_VARSETS_BS,
     },
     "pp": {
         "X": PP_VARSETS_X,
+        "Psi2S": PP_VARSETS_PSI2S,
         "Bu": PP_VARSETS_BU,
         "Bd": PP_VARSETS_BD,
         "Bs": PP_VARSETS_BS,
@@ -114,6 +129,7 @@ VARSET_COLUMNS = VARSETS[DEFAULT_SAMPLE]["X"]
 REWEIGHT_VARSETS = {
     "pp": {
         "X": PP_REWEIGHT_VARSETS_X,
+        "Psi2S": PP_REWEIGHT_VARSETS_PSI2S,
     },
 }
 

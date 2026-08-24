@@ -67,6 +67,32 @@ def _spec(path: str, tree: str) -> dict:
     return {"path": path, "tree": tree}
 
 
+_PBPB24_NTMIX_DATA = _spec(
+    "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA.root",
+    "ntmix",
+)
+_PBPB24_PSI2S_MC = _spec(
+    "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC_PSI2S.root",
+    "ntmix_PSI2S",
+)
+_PBPB24_X3872_MC = _spec(
+    "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC_X3872.root",
+    "ntmix_X3872",
+)
+_PPREF24_NTMIX_DATA = _spec(
+    "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root",
+    "ntmix",
+)
+_PPREF24_PSI2S_MC = _spec(
+    "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_PSI2S.root",
+    "ntmix_PSI2S",
+)
+_PPREF24_X3872_MC = _spec(
+    "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872.root",
+    "ntmix_X3872",
+)
+
+
 def _draw_from_apply_spec(tree: str) -> dict:
     # Draw consumes apply output DATA_with_score.root in selected/<tag>/.
     return _spec("__APPLY_OUTPUT__/DATA_with_score.root", tree)
@@ -149,9 +175,9 @@ SAMPLES = {
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MCX3872.root", "ntmixX3872"),
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root", "ntmix"),
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root", "ntmix"),
-                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC_X3872.root", "ntmix_X3872"),
-                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA.root", "ntmix"),
-                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_DATA.root", "ntmix"),
+                _PBPB24_X3872_MC,
+                _PBPB24_NTMIX_DATA,
+                _PBPB24_NTMIX_DATA,
                 "ntmix",
                 {
                     "pb24_v1": {
@@ -270,6 +296,32 @@ SAMPLES = {
                 },
                 {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
             ),
+            "Psi2S": _pp_channel_cfg(
+                {
+                    "2024": {
+                        "train": {
+                            "signal": _PBPB24_PSI2S_MC,
+                            "background": _PBPB24_NTMIX_DATA,
+                        },
+                        "apply": {
+                            "mc": [_PBPB24_PSI2S_MC],
+                            "data": [_PBPB24_NTMIX_DATA],
+                            "extra_mc": {"x3872": _PBPB24_X3872_MC},
+                        },
+                    },
+                },
+                "ntmix",
+                {
+                    "pb24_v1": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.25)",
+                        "background_selection": "((Bmass > 3.60 and Bmass < 3.65) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.25)",
+                    },
+                },
+                {
+                    "pb24_fid1": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk1Pt <= 4.5 and Btrk2Pt > 0.9 and Btrk2Pt <= 4.5 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1dR >= 0 and Btrk1dR <= 0.45 and Btrk2dR >= 0 and Btrk2dR <= 0.25",
+                },
+                {"mass_range": [3.60, 3.80], "bin_width": 0.01, "reference_masses": [3.686]},
+            ),
             "Bu": _pbpb_channel_cfg(
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/PbPb24/flat_ntKp_PbPb24_MC.root", "ntKp"),#no 2023 pbpb MC for Bu, using 2024 instead
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/Bmesons/PbPb23/flat_ntKp_PbPb23_DATA.root", "ntKp"),
@@ -363,12 +415,12 @@ SAMPLES = {
                 {
                     "2024": {
                         "train": {
-                            "signal": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872.root", "ntmix_X3872"),
-                            "background": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix"),
+                            "signal": _PPREF24_X3872_MC,
+                            "background": _PPREF24_NTMIX_DATA,
                         },
                         "apply": {
-                            "mc": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_X3872.root", "ntmix_X3872"),],
-                            "data": [_spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root", "ntmix")],
+                            "mc": [_PPREF24_X3872_MC],
+                            "data": [_PPREF24_NTMIX_DATA],
                             "extra_mc": {
                                 "psi2s": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_PSI2S.root", "ntmix_PSI2S"),
                                 "psi2s_nonprompt": _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_MC_PSI2S_nonPrompt.root", "ntmix_PSI2S"),
@@ -404,6 +456,32 @@ SAMPLES = {
                     "pp24_fid5": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 10 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1Pt >= 1.0 and Btrk1Pt <= 4.5 and Btrk2Pt >= 1.0 and Btrk2Pt <= 4.5 and Btrk1dR >= 0 and Btrk1dR <= 0.5",
                 },
                 {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
+            ),
+            "Psi2S": _pp_channel_cfg(
+                {
+                    "2024": {
+                        "train": {
+                            "signal": _PPREF24_PSI2S_MC,
+                            "background": _PPREF24_NTMIX_DATA,
+                        },
+                        "apply": {
+                            "mc": [_PPREF24_PSI2S_MC],
+                            "data": [_PPREF24_NTMIX_DATA],
+                            "extra_mc": {"x3872": _PPREF24_X3872_MC},
+                        },
+                    },
+                },
+                "ntmix",
+                {
+                    "pp24_v1": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.25)",
+                        "background_selection": "((Bmass > 3.60 and Bmass < 3.65) or (Bmass > 3.75 and Bmass < 3.80)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.25)",
+                    },
+                },
+                {
+                    "pp24_fid1": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk1Pt <= 4.5 and Btrk2Pt > 0.9 and Btrk2Pt <= 4.5 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1dR >= 0 and Btrk1dR <= 0.45 and Btrk2dR >= 0 and Btrk2dR <= 0.25",
+                },
+                {"mass_range": [3.60, 3.80], "bin_width": 0.01, "reference_masses": [3.686]},
             ),
             "Bu": _pp_channel_cfg(
                 {
@@ -699,6 +777,20 @@ TRAINING_REWEIGHT_PROFILES = {
                     "weight_branch": None,
                     "required_selection_profile": "pb24_v7",
                     "required_fid_profile": "pb24_fid8",
+                },
+            },
+        },
+        "Psi2S": {
+            "2024": {
+                "rwr6range4v1": {
+                    "signal": _spec(
+                        "output/reweighting/Psi2S_pp24_R6range4_rw_v1/"
+                        "flat_ntmix_PbPb24_MC_PSI2S_with_reweight.root",
+                        "ntmix_PSI2S",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb24_v1",
+                    "required_fid_profile": "pb24_fid1",
                 },
             },
         },

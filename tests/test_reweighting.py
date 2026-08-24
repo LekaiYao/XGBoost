@@ -90,6 +90,11 @@ class ReweightingCoreTest(unittest.TestCase):
             ["Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt"],
         )
         self.assertEqual(len(get_reweight_varset_columns("pp", "R8", "X")), 8)
+        self.assertEqual(
+            get_reweight_varset_columns("pp", "R6", "Psi2S"),
+            ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt", "Btrk1dR"],
+        )
+        self.assertEqual(len(get_reweight_varset_columns("pp", "R8", "Psi2S")), 8)
 
     def test_effective_sample_size_supports_signed_weights(self):
         weights = np.array([1.0, 1.0, -0.25, 0.5])

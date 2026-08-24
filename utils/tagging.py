@@ -1,6 +1,6 @@
 import re
 
-CHANNELS = ("X", "Bu", "Bd", "Bs")
+CHANNELS = ("X", "Psi2S", "Bu", "Bd", "Bs")
 _CHANNEL_SET = set(CHANNELS)
 
 

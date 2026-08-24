@@ -40,15 +40,16 @@ DIRECT_XGB_PARAMS = {
     },
     "pb24": {
         "X": dict(_PBPB_DIRECT_BASE),
+        "Psi2S": dict(_PBPB_DIRECT_BASE),
         "Bu": dict(_PBPB_DIRECT_BASE),
         "Bd": dict(_PBPB_DIRECT_BASE),
         "Bs": dict(_PBPB_DIRECT_BASE),
     },
     "pp24": {
         "X": dict(_PP_DIRECT_BASE),
+        "Psi2S": dict(_PP_DIRECT_BASE),
         "Bu": dict(_PP_DIRECT_BASE),
         "Bd": dict(_PP_DIRECT_BASE),
         "Bs": dict(_PP_DIRECT_BASE),
     },
 }
-

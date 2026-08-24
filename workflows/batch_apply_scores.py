@@ -170,8 +170,6 @@ print(f"Apply DATA input: {DATA_INPUT}")
 output_dir = ensure_dir(selected_dir(output_tag))
 
 if apply_extra_mc is not None:
-    if channel != "X":
-        raise ValueError("--apply-extra-mc only supports X channel.")
     if use_precut:
         raise ValueError("--apply-extra-mc cannot be combined with --use-precut.")
     extra_cfg = resolve_extra_mc_apply_config(sample_key, channel, dataset_year, apply_extra_mc)

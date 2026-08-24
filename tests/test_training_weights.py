@@ -13,17 +13,63 @@ from utils.training_weights import (
 from dag.make_single_workflow import make_dag
 from configs.samples import (
     infer_reweight_profile,
+    resolve_apply_config,
+    resolve_draw_config,
     resolve_extra_mc_apply_config,
     resolve_fiducial_config,
     resolve_training_config,
     resolve_training_reweight_config,
 )
+from configs.direct_xgb_settings import DIRECT_XGB_PARAMS
 from utils.apply_inputs import resolve_apply_mc_input
 from utils.selection import apply_selection
 from utils.varsets import get_varset_columns
 
 
 class TrainingWeightsTest(unittest.TestCase):
+    def test_psi2s_top_level_channel_configuration(self):
+        tag = "Psi2S_pb24_v1_fid1_6v1_rwr6range4v1_xgb_v1"
+        self.assertEqual(infer_reweight_profile(tag), "rwr6range4v1")
+
+        training = resolve_training_config("pbpb", "Psi2S", "2024", "pb24_v1")
+        fiducial = resolve_fiducial_config("pbpb", "Psi2S", "pb24_fid1")
+        self.assertEqual(training["signal"]["tree"], "ntmix_PSI2S")
+        self.assertEqual(training["background"]["tree"], "ntmix")
+        self.assertIn("Bmass > 3.60 and Bmass < 3.65", training["background_selection"])
+        self.assertIn("Bmass > 3.75 and Bmass < 3.80", training["background_selection"])
+        self.assertNotIn("Bmass > 3.95", training["background_selection"])
+        for expression in (
+            training["signal_selection"], training["background_selection"],
+            fiducial["expression"],
+        ):
+            self.assertIn("Btrk1Pt > 0.9", expression)
+            self.assertIn("Btrk2Pt > 0.9", expression)
+            self.assertIn("Btrk2dR <= 0.25", expression)
+
+        profile = resolve_training_reweight_config(
+            "pbpb", "Psi2S", "2024", "rwr6range4v1", "pb24_v1", "pb24_fid1"
+        )
+        self.assertEqual(profile["signal"]["tree"], "ntmix_PSI2S")
+        self.assertEqual(profile["weight_branch"], "Reweight")
+        self.assertIn("Psi2S_pp24_R6range4_rw_v1", profile["signal"]["path"])
+        with self.assertRaisesRegex(ValueError, "requires"):
+            resolve_training_reweight_config(
+                "pbpb", "Psi2S", "2024", "rwr6range4v1", "pb24_v2", "pb24_fid1"
+            )
+
+        apply_cfg = resolve_apply_config("pbpb", "Psi2S", "2024")
+        extra_cfg = resolve_extra_mc_apply_config("pbpb", "Psi2S", "2024", "x3872")
+        draw_cfg = resolve_draw_config("pbpb", "Psi2S", "2024")
+        self.assertEqual(apply_cfg["mc"][0]["tree"], "ntmix_PSI2S")
+        self.assertEqual(extra_cfg["samples"]["x3872"]["tree"], "ntmix_X3872")
+        self.assertEqual(draw_cfg["plot"]["reference_masses"], [3.686])
+        self.assertEqual(draw_cfg["plot"]["mass_range"], [3.60, 3.80])
+        self.assertEqual(DIRECT_XGB_PARAMS["pb24"]["Psi2S"], DIRECT_XGB_PARAMS["pb24"]["X"])
+
+        x_training = resolve_training_config("pbpb", "X", "2024", "pb24_v17")
+        self.assertEqual(training["background"]["path"], x_training["background"]["path"])
+        self.assertNotEqual(training["signal"]["tree"], x_training["signal"]["tree"])
+
     def test_ppref_pbpb24_common_fiducial_profiles_match(self):
         pp = resolve_fiducial_config("pp", "X", "pp24_fid4")
         pbpb = resolve_fiducial_config("pbpb", "X", "pb24_fid7")
