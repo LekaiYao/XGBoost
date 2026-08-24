@@ -223,6 +223,40 @@ class TrainingWeightsTest(unittest.TestCase):
                         "pb24_v7", "pb24_fid8",
                     )
 
+    def test_pbpb23_x_narrow_background_weighted_profile(self):
+        tag = "X_pb23_v3_fid3_6v5_rwr6range5v1_xgb_v1"
+        self.assertEqual(infer_reweight_profile(tag), "rwr6range5v1")
+        training = resolve_training_config("pbpb", "X", "2023", "pb23_v3")
+        fiducial = resolve_fiducial_config("pbpb", "X", "pb23_fid3")
+        self.assertEqual(training["signal"]["tree"], "ntmixX3872")
+        self.assertIn("Bmass > 3.82 and Bmass < 3.85", training["background_selection"])
+        self.assertIn("Bmass > 3.89 and Bmass < 3.92", training["background_selection"])
+        for expression in (training["signal_selection"], fiducial["expression"]):
+            self.assertIn("Btrk1Pt > 0.9", expression)
+            self.assertIn("Btrk2Pt > 0.9", expression)
+            self.assertIn("Btrk2dR < 0.25", expression)
+
+        profile = resolve_training_reweight_config(
+            "pbpb", "X", "2023", "rwr6range5v1", "pb23_v3", "pb23_fid3"
+        )
+        self.assertEqual(profile["signal"]["tree"], "ntmixX3872")
+        self.assertEqual(profile["weight_branch"], "Reweight")
+        self.assertTrue(
+            profile["signal"]["path"].endswith(
+                "flat_ntmix_PbPb23_MCX3872_with_reweight.root"
+            )
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dag_path = make_dag(
+                Path(tmpdir), tag, with_shap=False, use_precut=False,
+                pre_reweight_job="X_pb23_R6range5_migrate_v1",
+            )
+            dag_text = dag_path.read_text()
+        self.assertIn("JOB REWEIGHT submit_reweight_job.sub", dag_text)
+        self.assertIn("PARENT REWEIGHT CHILD TRAIN", dag_text)
+        self.assertIn('reweight_job="X_pb23_R6range5_migrate_v1"', dag_text)
+
     def test_pbpb_x_common09_nine_variable_set(self):
         self.assertEqual(
             get_varset_columns("pbpb", "9v2", channel="X"),

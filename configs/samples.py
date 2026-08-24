@@ -270,6 +270,10 @@ SAMPLES = {
                         "signal_selection": "(abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50) and (BQvalue < 0.2))",
                         "background_selection": "((Bmass > 3.95 and Bmass < 4.0) or (Bmass > 3.75 and Bmass < 3.80)) and (abs(By) < 1.6) and ((Bpt > 10) and (Bpt < 50))",
                     },
+                    "pb23_v3": {
+                        "signal_selection": "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR < 0.25)",
+                        "background_selection": "((Bmass > 3.82 and Bmass < 3.85) or (Bmass > 3.89 and Bmass < 3.92)) and (Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR < 0.25)",
+                    },
                 },
                 {
                     "pb24_fid1": "abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
@@ -293,6 +297,7 @@ SAMPLES = {
                     "pb24_fid19": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk1Pt <= 4.5 and Btrk2Pt > 0.9 and Btrk2Pt <= 4.5 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1dR >= 0 and Btrk1dR <= 0.45 and Btrk2dR >= 0 and Btrk2dR < 0.25",
                     "pb23_fid1": "abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
                     "pb23_fid2": "BQvalue < 0.2 and abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
+                    "pb23_fid3": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk1Pt <= 4.5 and Btrk2Pt > 0.9 and Btrk2Pt <= 4.5 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1dR >= 0 and Btrk1dR <= 0.45 and Btrk2dR >= 0 and Btrk2dR < 0.25",
                 },
                 {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
             ),
@@ -594,6 +599,18 @@ def _channel_cfg(sample: str, channel: str) -> dict:
 TRAINING_REWEIGHT_PROFILES = {
     "pbpb": {
         "X": {
+            "2023": {
+                "rwr6range5v1": {
+                    "signal": _spec(
+                        "output/reweighting/X_pp24_xsplot_R6range5_rw_v1/"
+                        "flat_ntmix_PbPb23_MCX3872_with_reweight.root",
+                        "ntmixX3872",
+                    ),
+                    "weight_branch": "Reweight",
+                    "required_selection_profile": "pb23_v3",
+                    "required_fid_profile": "pb23_fid3",
+                },
+            },
             "2024": {
                 "rwr6range2v1": {
                     "signal": _spec(

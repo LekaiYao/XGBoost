@@ -11,12 +11,22 @@ def make_dag(
     with_shap: bool,
     use_precut: bool,
     apply_extra_mc: str = "0",
+    pre_reweight_job: str = "0",
 ) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     dag_path = out_dir / f"wf_single_{train_tag}.dag"
     precut_flag = int(use_precut)
 
-    lines = [
+    lines = []
+    if pre_reweight_job != "0":
+        lines.extend(
+            [
+                "JOB REWEIGHT submit_reweight_job.sub",
+                f'VARS REWEIGHT reweight_job="{pre_reweight_job}" stage="apply" job_tag="{train_tag}_reweight"',
+                "",
+            ]
+        )
+    lines.extend([
         "JOB TRAIN submit_train_job.sub",
         f'VARS TRAIN train_tag="{train_tag}" use_precut="{precut_flag}" job_tag="{train_tag}_train"',
         "",
@@ -26,7 +36,9 @@ def make_dag(
         "JOB DRAW submit_draw_job.sub",
         f'VARS DRAW train_tag="{train_tag}" job_tag="{train_tag}_draw"',
         "",
-    ]
+    ])
+    if pre_reweight_job != "0":
+        lines.extend(["PARENT REWEIGHT CHILD TRAIN", ""])
     if apply_extra_mc != "0":
         lines.extend(
             [
@@ -68,12 +80,14 @@ def main():
     parser.add_argument("--use-precut", type=int, choices=[0, 1], default=0)
     parser.add_argument("--apply-extra-mc", default="0")
     parser.add_argument("--out-dir", default="dag/generated")
+    parser.add_argument("--pre-reweight-job", default="0")
     args = parser.parse_args()
     split_channel_tag(args.train_tag)
 
     dag = make_dag(
         Path(args.out_dir), args.train_tag, bool(args.with_shap),
         bool(args.use_precut), args.apply_extra_mc,
+        args.pre_reweight_job,
     )
     print(dag)
 
