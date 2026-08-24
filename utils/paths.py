@@ -7,6 +7,7 @@ TRAINING_DIR = os.path.join(OUTPUT_ROOT_DIR, "training")
 SHAP_DIR = os.path.join(OUTPUT_ROOT_DIR, "shap")
 SELECTED_DIR = os.path.join(OUTPUT_ROOT_DIR, "selected")
 REWEIGHTING_DIR = os.path.join(OUTPUT_ROOT_DIR, "reweighting")
+COMPARISONS_DIR = os.path.join(OUTPUT_ROOT_DIR, "comparisons")
 
 
 def ensure_dir(path):
@@ -86,6 +87,10 @@ def selected_dir(train_tag):
 
 def reweighting_dir(reweight_tag):
     return os.path.join(REWEIGHTING_DIR, reweight_tag)
+
+
+def comparison_dir(comparison_tag):
+    return os.path.join(COMPARISONS_DIR, comparison_tag)
 
 
 def reweighting_working_points_dir(comparison_tag):
