@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pbpb_x_simultaneous_year_fit_scan_v1.schema.json",
+  "title": "PbPb23-anchor PbPb23+PbPb24 X simultaneous fit scan manifest v1",
+  "type": "object",
+  "required": ["schema_version", "contract", "anchor_train_tag", "channel", "system", "path_base", "pairing", "working_points", "nominal_fit_contract", "required_outputs"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "contract": {"const": "pbpb_x_simultaneous_year_fit_scan"},
+    "anchor_train_tag": {"type": "string", "pattern": "^X_pb23_"},
+    "channel": {"const": "X"},
+    "system": {"const": "PbPb"},
+    "path_base": {"const": "manifest_directory"},
+    "pairing": {
+      "type": "object",
+      "required": ["anchor_dataset", "selection_policy", "categories"],
+      "properties": {
+        "anchor_dataset": {"const": "pb23"},
+        "selection_policy": {"const": "year-specific score thresholds matched at common weighted X efficiency"},
+        "categories": {
+          "type": "object",
+          "required": ["pb23", "pb24"],
+          "properties": {
+            "pb23": {"$ref": "#/$defs/category"},
+            "pb24": {"$ref": "#/$defs/category"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "working_points": {
+      "type": "array", "minItems": 7, "maxItems": 7,
+      "items": {
+        "type": "object", "required": ["key", "target_weighted_efficiency", "categories"],
+        "properties": {
+          "key": {"type": "string", "pattern": "^xeff(10|15|20|25|30|35|40)$"},
+          "target_weighted_efficiency": {"type": "number"},
+          "categories": {
+            "type": "object", "required": ["pb23", "pb24"],
+            "properties": {"pb23": {"$ref": "#/$defs/workingPointCategory"}, "pb24": {"$ref": "#/$defs/workingPointCategory"}},
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "nominal_fit_contract": {
+      "type": "object",
+      "required": ["fit_type", "mass_range_gev", "data_event_weight", "shared_parameters", "category_specific_parameters", "signal", "background", "significance"],
+      "properties": {
+        "fit_type": {"const": "simultaneous_extended_unbinned"},
+        "mass_range_gev": {"const": [3.8, 3.94]},
+        "data_event_weight": {"const": "unit"},
+        "shared_parameters": {"const": ["signal_mean"]},
+        "category_specific_parameters": {"type": "array"},
+        "signal": {"type": "object"},
+        "background": {"type": "object"},
+        "significance": {"type": "object"}
+      }
+    },
+    "required_outputs": {"type": "object"}
+  },
+  "$defs": {
+    "category": {
+      "type": "object",
+      "required": ["dataset", "train_tag", "data", "score", "fiducial_selection", "threshold_provenance"],
+      "properties": {
+        "dataset": {"enum": ["pb23", "pb24"]},
+        "train_tag": {"type": "string", "minLength": 1},
+        "data": {"type": "object"},
+        "score": {"type": "object"},
+        "fiducial_selection": {"type": "object"},
+        "threshold_provenance": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "workingPointCategory": {
+      "type": "object",
+      "required": ["threshold", "achieved_weighted_efficiency", "selected_data_entries", "selection"],
+      "properties": {
+        "threshold": {"type": "number"},
+        "achieved_weighted_efficiency": {"type": "number"},
+        "selected_data_entries": {"type": "integer", "minimum": 0},
+        "selection": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,15 @@
+universe = vanilla
+executable = run_combined_efficiency_draw.sh
+arguments = $(output_tag) $(train_tag_a) $(train_tag_b)
+
+output = logs/job_$(job_tag).out
+error = logs/job_$(job_tag).err
+log = logs/job_$(job_tag).log
+
+getenv = True
+request_cpus = 1
+request_memory = 4000MB
+request_disk = 1GB
++JobFlavour = "workday"
+
+queue 1
