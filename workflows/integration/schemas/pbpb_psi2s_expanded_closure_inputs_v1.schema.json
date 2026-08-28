@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pbpb_psi2s_expanded_closure_inputs_v1.schema.json",
+  "title": "PbPb23+PbPb24 Psi2S expanded closure inputs v1",
+  "type": "object",
+  "required": [
+    "schema_version", "contract", "artifact_version", "anchor_train_tag",
+    "channel", "system", "path_base", "formal_fit_manifest", "categories",
+    "expanded_branch_names", "added_branch_names", "artifact_semantics"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "contract": {"const": "pbpb_psi2s_expanded_closure_inputs"},
+    "artifact_version": {"const": "closure25_v1"},
+    "anchor_train_tag": {"type": "string", "pattern": "^Psi2S_pb23_"},
+    "channel": {"const": "Psi2S"},
+    "system": {"const": "PbPb"},
+    "path_base": {"const": "manifest_directory"},
+    "formal_fit_manifest": {
+      "type": "object",
+      "required": ["path", "sha256", "contract", "schema_version"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "contract": {"const": "pbpb_psi2s_simultaneous_year_fit_scan"},
+        "schema_version": {"const": 1}
+      },
+      "additionalProperties": false
+    },
+    "categories": {
+      "type": "object",
+      "required": ["pb23", "pb24"],
+      "properties": {
+        "pb23": {"$ref": "#/$defs/category"},
+        "pb24": {"$ref": "#/$defs/category"}
+      },
+      "additionalProperties": false
+    },
+    "expanded_branch_names": {
+      "const": [
+        "Bmass", "Bchi2Prob", "Btrk1dR", "Btrk2dR", "BtrkPtimb",
+        "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta", "Btktkpt",
+        "Bpt", "By", "BQvalue", "Reweight", "Prediction", "BujvProb",
+        "Balpha", "Btrk2Eta", "Btrk1Eta", "Btrk1Phi", "Btrk2Phi",
+        "Bmu1y", "Bmu2y", "Bmu1pt", "Bmu2pt"
+      ]
+    },
+    "added_branch_names": {
+      "const": [
+        "BujvProb", "Balpha", "Btrk2Eta", "Btrk1Eta", "Btrk1Phi",
+        "Btrk2Phi", "Bmu1y", "Bmu2y", "Bmu1pt", "Bmu2pt"
+      ]
+    },
+    "artifact_semantics": {
+      "type": "object",
+      "required": [
+        "purpose", "training_changed", "score_recomputed", "reweight_recomputed",
+        "selection_changed", "event_set_changed", "event_order_changed",
+        "triggers_downstream_execution"
+      ],
+      "properties": {
+        "purpose": {"const": "expanded_signal_mc_branches_for_closure_only"},
+        "training_changed": {"const": false},
+        "score_recomputed": {"const": false},
+        "reweight_recomputed": {"const": false},
+        "selection_changed": {"const": false},
+        "event_set_changed": {"const": false},
+        "event_order_changed": {"const": false},
+        "triggers_downstream_execution": {"const": false}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "branch": {
+      "type": "object",
+      "required": ["name", "root_typename", "numpy_dtype"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "root_typename": {"type": "string", "minLength": 1},
+        "numpy_dtype": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "data": {
+      "type": "object",
+      "required": ["path", "tree", "entries", "size_bytes", "mtime_ns", "source_role"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "tree": {"const": "ntmix"},
+        "entries": {"type": "integer", "minimum": 1},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "mtime_ns": {"type": "integer", "minimum": 1},
+        "source_role": {"const": "existing_formal_scored_data_unchanged"}
+      },
+      "additionalProperties": false
+    },
+    "expandedMC": {
+      "type": "object",
+      "required": ["path", "tree", "entries", "branches", "sha256", "size_bytes", "provenance"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "tree": {"const": "ntmix_PSI2S"},
+        "entries": {"type": "integer", "minimum": 1},
+        "branches": {
+          "type": "array", "minItems": 25, "maxItems": 25,
+          "items": {"$ref": "#/$defs/branch"}
+        },
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "provenance": {
+          "type": "object",
+          "required": ["raw_source", "current_scored", "identity_validation"],
+          "properties": {
+            "raw_source": {"$ref": "#/$defs/source"},
+            "current_scored": {"$ref": "#/$defs/source"},
+            "identity_validation": {"type": "object"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": ["path", "sha256", "entries"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "entries": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "category": {
+      "type": "object",
+      "required": ["dataset", "train_tag", "data", "expanded_signal_mc"],
+      "properties": {
+        "dataset": {"enum": ["pb23", "pb24"]},
+        "train_tag": {"type": "string", "pattern": "^Psi2S_pb(23|24)_"},
+        "data": {"$ref": "#/$defs/data"},
+        "expanded_signal_mc": {"$ref": "#/$defs/expandedMC"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
