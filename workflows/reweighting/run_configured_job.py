@@ -13,6 +13,24 @@ from utils.varsets import get_reweight_varset_columns
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 JOBS = {
+    "Psi2S_pb23_R5_migrate_v1": {
+        "source_reweight_tag": "Psi2S_pp24_R5_rw_v1",
+        "channel": "Psi2S",
+        "apply_sample": "pbpb",
+        "apply_dataset_year": "2023",
+        "apply_selection_profile": "pb23_v2",
+        "apply_fid_profile": "pb23_fid2",
+        "training_reweight_profile": "rwr5v1",
+    },
+    "Psi2S_pb23_R6range4_migrate_v1": {
+        "source_reweight_tag": "Psi2S_pp24_R6range4_rw_v1",
+        "channel": "Psi2S",
+        "apply_sample": "pbpb",
+        "apply_dataset_year": "2023",
+        "apply_selection_profile": "pb23_v1",
+        "apply_fid_profile": "pb23_fid1",
+        "training_reweight_profile": "rwr6range4v1",
+    },
     "X_pb23_R6range5_migrate_v1": {
         "source_reweight_tag": "X_pp24_xsplot_R6range5_rw_v1",
         "channel": "X",
@@ -20,6 +38,53 @@ JOBS = {
         "apply_dataset_year": "2023",
         "apply_selection_profile": "pb23_v3",
         "apply_fid_profile": "pb23_fid3",
+        "training_reweight_profile": "rwr6range5v1",
+    },
+    "X_pb23_R5v3_migrate_v1": {
+        "source_reweight_tag": "X_pp24_xsplot_R5v3_rw_v1",
+        "channel": "X",
+        "apply_sample": "pbpb",
+        "apply_dataset_year": "2023",
+        "apply_selection_profile": "pb23_v4",
+        "apply_fid_profile": "pb23_fid4",
+        "training_reweight_profile": "rwr5v3v1",
+    },
+    "X_pp24_xsplot_R5v3_rw_v1": {
+        "sample": "pp",
+        "channel": "X",
+        "dataset_year": "2024",
+        "selection_profile": "pp24_v5",
+        "variable_set": "R5v3",
+        "validation_variable_set": "R8",
+        "target_root": (
+            "/eos/home-l/leyao/pbpb_work/X_analysis/Analysis_CODES/plotER/Validation/results/"
+            "ppRef_X_r5_splot/SignalWeight_TTree_ppRef_X_r5_fiducial_splot_ntmix_X3872.root"
+        ),
+        "target_tree": "ntmix_X3872_sWeight",
+        "target_weight_branch": "signal_sWeight",
+        "apply_sample": "pbpb",
+        "apply_dataset_year": "2024",
+        "apply_selection_profile": "pb24_v20",
+        "apply_fid_profile": "pb24_fid20",
+        "training_reweight_profile": "rwr5v3v1",
+    },
+    "X_pp24_xsplot_R6range5_rw_v1": {
+        "sample": "pp",
+        "channel": "X",
+        "dataset_year": "2024",
+        "selection_profile": "pp24_v6",
+        "variable_set": "R6",
+        "validation_variable_set": "R8",
+        "target_root": (
+            "/eos/home-l/leyao/pbpb_work/X_analysis/Analysis_CODES/plotER/Validation/results/"
+            "ppRef_X_r5_splot/SignalWeight_TTree_ppRef_X_r5_fiducial_splot_ntmix_X3872.root"
+        ),
+        "target_tree": "ntmix_X3872_sWeight",
+        "target_weight_branch": "signal_sWeight",
+        "apply_sample": "pbpb",
+        "apply_dataset_year": "2024",
+        "apply_selection_profile": "pb24_v19",
+        "apply_fid_profile": "pb24_fid19",
         "training_reweight_profile": "rwr6range5v1",
     },
     "Psi2S_pp24_R6range4_rw_v1": {
@@ -41,7 +106,62 @@ JOBS = {
         "apply_fid_profile": "pb24_fid1",
         "training_reweight_profile": "rwr6range4v1",
     },
+    "Psi2S_pp24_R5_rw_v1": {
+        "sample": "pp",
+        "channel": "Psi2S",
+        "dataset_year": "2024",
+        "selection_profile": "pp24_v2",
+        "variable_set": "R5",
+        "validation_variable_set": "R8",
+        "target_root": (
+            "/eos/home-l/leyao/pbpb_work/X_analysis/Analysis_CODES/plotER/Validation/WEIGHTS/"
+            "SignalWeight_TTree_ppRef_ntmix_PSI2S_PSI2S_btrk2dr_v2.root"
+        ),
+        "target_tree": "ntmix_PSI2S_sWeight",
+        "target_weight_branch": "signal_sWeight",
+        "apply_sample": "pbpb",
+        "apply_dataset_year": "2024",
+        "apply_selection_profile": "pb24_v2",
+        "apply_fid_profile": "pb24_fid2",
+        "training_reweight_profile": "rwr5v1",
+    },
 }
+
+
+def resolve_training_job(reweight_tag):
+    spec = JOBS.get(reweight_tag)
+    if spec is None:
+        raise ValueError(
+            f"Unsupported configured reweight job '{reweight_tag}'. "
+            f"Expected one of {tuple(JOBS)}."
+        )
+    if "source_reweight_tag" in spec:
+        raise ValueError(f"Configured job '{reweight_tag}' is apply-only")
+    return spec
+
+
+def configured_apply_jobs(reweight_tag):
+    training_spec = resolve_training_job(reweight_tag)
+    jobs = []
+    if "apply_dataset_year" in training_spec:
+        jobs.append((reweight_tag, training_spec))
+    jobs.extend(
+        (job_tag, spec)
+        for job_tag, spec in JOBS.items()
+        if spec.get("source_reweight_tag") == reweight_tag
+    )
+    return sorted(jobs, key=lambda item: item[1]["apply_dataset_year"])
+
+
+def validation_splot_spec(training_spec):
+    return training_spec.get(
+        "validation_splot",
+        {
+            "path": training_spec.get("target_root"),
+            "tree": training_spec.get("target_tree"),
+            "weight_branch": training_spec.get("target_weight_branch"),
+        },
+    )
 
 
 def source_fingerprint():
@@ -62,14 +182,7 @@ def source_fingerprint():
 
 
 def build_train_command(reweight_tag):
-    if reweight_tag not in JOBS:
-        raise ValueError(
-            f"Unsupported configured reweight job '{reweight_tag}'. "
-            f"Expected one of {tuple(JOBS)}."
-        )
-    spec = JOBS[reweight_tag]
-    if "source_reweight_tag" in spec:
-        raise ValueError(f"Configured job '{reweight_tag}' is apply-only")
+    spec = resolve_training_job(reweight_tag)
     training = resolve_training_config(
         spec["sample"], spec["channel"], spec["dataset_year"], spec["selection_profile"]
     )
@@ -105,7 +218,7 @@ def build_train_command(reweight_tag):
         "--loss-regularization", "5.0",
         "--subsample", "0.8",
         "--physics-status",
-        f"preliminary_psi2s_r6range4_point_estimate_no_bootstrap_head{head}_source{source_hash}",
+        f"preliminary_{reweight_tag.lower()}_point_estimate_no_bootstrap_head{head}_source{source_hash}",
     ]
 
 

@@ -1,0 +1,14 @@
+executable = run_reweight_validation.sh
+
+output = logs/job_$(job_tag).out
+error  = logs/job_$(job_tag).err
+log    = logs/job_$(job_tag).log
+
++JobFlavour = "workday"
+
+request_cpus = 1
+request_memory = 3000
+
+arguments = $(reweight_tag) $(validation_kind) $(apply_job)
+
+queue 1
