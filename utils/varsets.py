@@ -6,12 +6,22 @@ PBPB_VARSETS_X = {
     "8v2": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta", "Btktkpt"],
     "9v2": ["Btrk1dR", "Btrk2dR", "Btktkpt", "Btrk1Pt", "Btrk2Pt", "Bchi2Prob", "Bcos_dtheta", "BtrkPtimb", "BtktkvProb"],
     "5v2": ["Bchi2Prob", "Btrk1dR", "Btrk2dR", "Btrk1Pt", "Btrk2Pt"],
+    "5v3": ["Btrk1dR", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt"],
     "6v4": ["Btrk2dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta"],
     "6v5": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt"],
     "7v1": ["Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Bmu2y", "Bmu1y", "Btrk1Phi","Btrk2Phi"],
     "7v2": ["Btrk1dR", "Btrk2dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "BtrkPtimb"],
+    "7v3": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt", "Bmu1y"],
+    "7v4": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt", "Bmu2pt"],
+    "7v5": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt", "Bmu2y"],
     "8v1": ["Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "Bmu2y", "Bmu1y", "Btrk1Phi","Btrk2Phi"],
+    "8v3": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt", "Bmu1y", "Bmu2pt"],
+    "8v4": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt", "Bmu1y", "Bmu2y"],
+    "8v5": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt", "Bmu1y", "Bmu1pt"],
+    "8v6": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt", "Bmu2y", "Bmu2pt"],
     "9v1": ["Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "Bmu2y", "Bmu1y", "Bmu1pt", "Btrk1Phi","Btrk2Phi"],
+    "9v3": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt", "Bmu1y", "Bmu2y", "Bmu1pt"],
+    "10v1": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt", "Bmu1y", "Bmu2y", "Bmu1pt", "Bmu2pt"],
     "11v1": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "BtktkvProb", "Bcos_dtheta", "Btktkpt", "BujvProb", "Btrk2Eta", "Btrk2Phi", "Bmu1y"],
     "12v1": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta", "Bmu2y", "Bmu1y", "Bmu1pt", "Bmu2pt", "BujvProb"],
     "13v1": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta", "Bmu2y", "Bmu1y", "Bmu1pt", "Bmu2pt", "BujvProb", "Btktkpt"],
@@ -24,7 +34,11 @@ PBPB_VARSETS_X = {
 }
 
 PBPB_VARSETS_PSI2S = {
+    "5v1": ["Btrk1dR", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt"],
     "6v1": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt"],
+    "7v1": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt", "Bmu1y"],
+    "7v2": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt", "Bmu2pt"],
+    "8v1": ["Btrk1dR", "Btktkpt", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt", "Bmu1y", "Bmu2pt"],
 }
 
 PBPB_VARSETS_BU = {
@@ -75,12 +89,14 @@ PP_REWEIGHT_VARSETS_X = {
     "R4_noCos": ["Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt"],
     "R5": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt"],
     "R5v2": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk1Pt", "Btrk1dR"],
+    "R5v3": ["Btrk1dR", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt"],
     "R6": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt", "Btrk1dR"],
     "R6v2": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk1Pt", "Btrk1dR", "Btrk2dR"],
     "R8": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta", "Btktkpt"],
 }
 
 PP_REWEIGHT_VARSETS_PSI2S = {
+    "R5": ["Bcos_dtheta", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt", "Btrk1dR"],
     "R6": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt", "Btrk1dR"],
     "R8": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta", "Btktkpt"],
 }

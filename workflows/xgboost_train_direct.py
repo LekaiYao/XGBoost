@@ -14,6 +14,7 @@ from xgboost import XGBClassifier
 from configs.samples import (
     bd_pbpb_precut_paths,
     infer_channel_from_tag,
+    infer_direct_xgb_version,
     infer_dataset_token_from_tag,
     infer_dataset_year,
     infer_fid_profile,
@@ -22,11 +23,12 @@ from configs.samples import (
     infer_selection_profile,
     resolve_training_config,
     resolve_training_reweight_config,
+    resolve_training_signal_artifact_variant,
     split_root_spec,
     supports_bd_pbpb_precut,
     to_root_spec,
 )
-from configs.direct_xgb_settings import DIRECT_XGB_PARAMS
+from configs.direct_xgb_settings import resolve_direct_xgb_params
 from utils.paths import (
     condor_feature_importance_cumulative_path,
     condor_feature_importance_path,
@@ -109,6 +111,7 @@ def main():
     selection_profile = args.selection_profile or infer_selection_profile(train_tag, sample)
     fid_profile = infer_fid_profile(train_tag, sample)
     reweight_profile = infer_reweight_profile(train_tag)
+    model_version = infer_direct_xgb_version(train_tag)
     train_cfg = resolve_training_config(sample, channel, dataset_year, selection_profile)
     reweight_cfg = resolve_training_reweight_config(
         sample, channel, dataset_year, reweight_profile, selection_profile, fid_profile
@@ -120,6 +123,11 @@ def main():
         raise ValueError(f"Unable to infer feature set from train_tag: {train_tag}")
     input_columns = get_varset_columns(sample_key, feature_set_tag, channel=channel)
     trans_columns = [f"{col}_trans" for col in input_columns]
+    signal_artifact = resolve_training_signal_artifact_variant(
+        sample, channel, dataset_year, reweight_profile, input_columns
+    )
+    if signal_artifact is not None:
+        reweight_cfg["signal"] = signal_artifact["signal"]
 
     sig_path = to_root_spec(train_cfg["signal"])
     bkg_path = to_root_spec(train_cfg["background"])
@@ -130,6 +138,8 @@ def main():
     if reweight_cfg["signal"] is not None:
         sig_path = to_root_spec(reweight_cfg["signal"])
         dataset_source = f"{dataset_source}_signal_override"
+        if signal_artifact is not None:
+            dataset_source = f"{dataset_source}_{signal_artifact['artifact_variant']}"
 
     if args.use_precut:
         if not supports_bd_pbpb_precut(train_tag):
@@ -148,6 +158,10 @@ def main():
     print(f"Dataset source: {dataset_source}")
     print(f"Selection profile: {selection_profile}")
     print(f"Reweight profile: {reweight_profile}")
+    print(
+        "Signal artifact variant: "
+        + (signal_artifact["artifact_variant"] if signal_artifact else "nominal")
+    )
 
     signal_read_columns = list(
         dict.fromkeys(
@@ -232,7 +246,7 @@ def main():
         "random_state": 42,
         "n_jobs": 4,
         "scale_pos_weight": scale_pos_weight,
-        **DIRECT_XGB_PARAMS[dataset_token][channel],
+        **resolve_direct_xgb_params(sample, model_version),
     }
     xgbc = XGBClassifier(**params)
     fit_kwargs = {
@@ -288,7 +302,14 @@ def main():
                 "input_columns": input_columns,
                 "trans_columns": trans_columns,
                 "model_params": params,
+                "direct_xgb_version": model_version,
                 "reweight_profile": reweight_profile,
+                "signal_artifact_variant": (
+                    signal_artifact["artifact_variant"] if signal_artifact else None
+                ),
+                "signal_artifact_manifest": (
+                    signal_artifact["manifest"] if signal_artifact else None
+                ),
                 "signal_input_override": reweight_cfg["signal"] is not None,
                 "signal_weight_branch": reweight_cfg["weight_branch"],
                 "signal_path": sig_path,
@@ -518,6 +539,12 @@ def main():
             "n_bkg_train": n_bkg_train,
             "scale_pos_weight": scale_pos_weight,
             "reweight_profile": reweight_profile,
+            "signal_artifact_variant": (
+                signal_artifact["artifact_variant"] if signal_artifact else None
+            ),
+            "signal_artifact_manifest": (
+                signal_artifact["manifest"] if signal_artifact else None
+            ),
             "signal_input_override": reweight_cfg["signal"] is not None,
             "signal_weight_branch": reweight_cfg["weight_branch"],
             "signal_weight_sum": (

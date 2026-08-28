@@ -82,12 +82,14 @@ with open(resolved_config_path) as f:
 
 input_columns = config["input_columns"]
 trans_columns = config["trans_columns"]
+if config.get("signal_path"):
+    SIG_PATH = config["signal_path"]
 
 df_sig = uproot.concatenate(SIG_PATH, library="pd")
 df_bkg = uproot.concatenate(BKG_PATH, library="pd")
 df_sig = apply_selection(df_sig, train_cfg["signal_selection"], "signal_selection")
 df_bkg = apply_selection(df_bkg, train_cfg["background_selection"], "background_selection")
-weight_branch = reweight_cfg["weight_branch"]
+weight_branch = config.get("signal_weight_branch", reweight_cfg["weight_branch"])
 if weight_branch:
     signal_weights = df_sig[weight_branch].to_numpy(dtype=float)
 else:
