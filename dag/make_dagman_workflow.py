@@ -25,6 +25,8 @@ def make_dag(
     version_end: int,
     optuna_n_trials: int,
     fid_profile: str,
+    with_shap: bool = True,
+    with_fit_interface: bool = True,
 ) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     dag_path = out_dir / f"wf_{group_tag}_v{version_start}_v{version_end}.dag"
@@ -34,6 +36,8 @@ def make_dag(
         train_node = f"TR_v{version}"
         apply_node = f"AP_v{version}"
         draw_node = f"DR_v{version}"
+        shap_node = f"SH_v{version}"
+        fit_interface_node = f"FI_v{version}"
         tag = train_tag(group_tag, version, mode)
         train_job_tag = f"{tag}_train"
         apply_job_tag = f"{tag}_apply"
@@ -63,6 +67,26 @@ def make_dag(
         lines.append(f"PARENT {apply_node} CHILD {draw_node}")
         lines.append("")
 
+        if with_shap:
+            lines.append(f"JOB {shap_node} submit_shap_job.sub")
+            lines.append(
+                f'VARS {shap_node} train_tag="{tag}" use_precut="0" '
+                f'job_tag="{tag}_shap"'
+            )
+            lines.append("")
+            lines.append(f"PARENT {draw_node} CHILD {shap_node}")
+            lines.append("")
+
+        if with_fit_interface:
+            lines.append(f"JOB {fit_interface_node} submit_fit_interface_job.sub")
+            lines.append(
+                f'VARS {fit_interface_node} train_tag="{tag}" '
+                f'job_tag="{tag}_fit_interface"'
+            )
+            lines.append("")
+            lines.append(f"PARENT {draw_node} CHILD {fit_interface_node}")
+            lines.append("")
+
     dag_path.write_text("\n".join(lines))
     return dag_path
 
@@ -73,6 +97,8 @@ def main():
     parser.add_argument("--version-start", type=int, default=None)
     parser.add_argument("--version-end", type=int, default=None)
     parser.add_argument("--fid-profile", default="auto")
+    parser.add_argument("--with-shap", type=int, choices=[0, 1], default=1)
+    parser.add_argument("--with-fit-interface", type=int, choices=[0, 1], default=1)
     parser.add_argument("--out-dir", default="dag/generated")
     args = parser.parse_args()
 
@@ -110,6 +136,8 @@ def main():
         version_end=version_end,
         optuna_n_trials=optuna_n_trials,
         fid_profile=args.fid_profile,
+        with_shap=bool(args.with_shap),
+        with_fit_interface=bool(args.with_fit_interface),
     )
     print(dag)
 

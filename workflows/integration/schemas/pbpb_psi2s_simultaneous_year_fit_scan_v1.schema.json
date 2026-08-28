@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pbpb_psi2s_simultaneous_year_fit_scan_v1.schema.json",
+  "title": "PbPb23-anchor PbPb23+PbPb24 Psi2S simultaneous fit scan manifest v1",
+  "type": "object",
+  "required": [
+    "schema_version", "contract", "anchor_train_tag", "channel", "system",
+    "path_base", "pairing", "working_points", "nominal_fit_contract",
+    "required_outputs"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "contract": {"const": "pbpb_psi2s_simultaneous_year_fit_scan"},
+    "anchor_train_tag": {"type": "string", "pattern": "^Psi2S_pb23_"},
+    "channel": {"const": "Psi2S"},
+    "system": {"const": "PbPb"},
+    "path_base": {"const": "manifest_directory"},
+    "pairing": {
+      "type": "object",
+      "required": ["anchor_dataset", "selection_policy", "categories"],
+      "properties": {
+        "anchor_dataset": {"const": "pb23"},
+        "selection_policy": {
+          "const": "year-specific score thresholds matched at common weighted Psi2S efficiency"
+        },
+        "categories": {
+          "type": "object",
+          "required": ["pb23", "pb24"],
+          "properties": {
+            "pb23": {"$ref": "#/$defs/category"},
+            "pb24": {"$ref": "#/$defs/category"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "working_points": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["key", "target_weighted_efficiency", "categories"],
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^psi2seff(10|15|20|25|30|35|40)$"
+          },
+          "target_weighted_efficiency": {"type": "number"},
+          "categories": {
+            "type": "object",
+            "required": ["pb23", "pb24"],
+            "properties": {
+              "pb23": {"$ref": "#/$defs/workingPointCategory"},
+              "pb24": {"$ref": "#/$defs/workingPointCategory"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "nominal_fit_contract": {
+      "type": "object",
+      "required": [
+        "version", "fit_type", "mass_range_gev", "data_event_weight",
+        "fit_sequence", "shared_parameters", "category_specific_parameters",
+        "signal", "background", "significance"
+      ],
+      "properties": {
+        "version": {"const": 1},
+        "fit_type": {"const": "simultaneous_extended_unbinned"},
+        "mass_range_gev": {"const": [3.6, 3.8]},
+        "data_event_weight": {"const": "unit"},
+        "fit_sequence": {
+          "const": [
+            "fit_weighted_signal_mc_independently_by_category",
+            "fit_data_simultaneously_with_fixed_category_mc_shape"
+          ]
+        },
+        "shared_parameters": {"const": ["signal_mean"]},
+        "category_specific_parameters": {"type": "array"},
+        "signal": {
+          "type": "object",
+          "required": ["model", "shape_source", "event_weight_branch", "mc_fit", "data_fit"],
+          "properties": {
+            "model": {"const": "double_gaussian_mc_shape"},
+            "shape_source": {"const": "weighted_signal_mc_by_category"},
+            "event_weight_branch": {"const": "Reweight"},
+            "mc_fit": {
+              "type": "object",
+              "required": [
+                "performed_independently_by_category", "shared_component_mean",
+                "parameters_transferred_to_data"
+              ],
+              "properties": {
+                "performed_independently_by_category": {"const": true},
+                "shared_component_mean": {"const": true},
+                "parameters_transferred_to_data": {
+                  "const": ["sigma1", "sigma2", "fraction"]
+                }
+              },
+              "additionalProperties": false
+            },
+            "data_fit": {
+              "type": "object",
+              "required": [
+                "shared_mean_across_categories", "fixed_from_category_mc",
+                "mean_gev", "category_width_scale", "yields"
+              ],
+              "properties": {
+                "shared_mean_across_categories": {"const": true},
+                "fixed_from_category_mc": {
+                  "const": ["sigma1", "sigma2", "fraction"]
+                },
+                "mean_gev": {
+                  "type": "object",
+                  "required": ["initial", "range"],
+                  "properties": {
+                    "initial": {"const": 3.686097},
+                    "range": {"const": [3.681097, 3.691097]}
+                  },
+                  "additionalProperties": false
+                },
+                "category_width_scale": {
+                  "type": "object",
+                  "required": ["range"],
+                  "properties": {"range": {"const": [0.9, 1.15]}},
+                  "additionalProperties": false
+                },
+                "yields": {"const": "independent_nonnegative_by_category"}
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "background": {"type": "object"},
+        "significance": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "required_outputs": {
+      "type": "object",
+      "required": ["per_point_fields"],
+      "properties": {
+        "per_point_fields": {"type": "array", "minItems": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "category": {
+      "type": "object",
+      "required": [
+        "dataset", "train_tag", "data", "signal_mc", "score",
+        "fiducial_selection", "threshold_provenance"
+      ],
+      "properties": {
+        "dataset": {"enum": ["pb23", "pb24"]},
+        "train_tag": {"type": "string", "pattern": "^Psi2S_pb(23|24)_"},
+        "data": {"$ref": "#/$defs/dataInput"},
+        "signal_mc": {"$ref": "#/$defs/mcInput"},
+        "score": {"$ref": "#/$defs/score"},
+        "fiducial_selection": {"type": "object"},
+        "threshold_provenance": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "dataInput": {
+      "type": "object",
+      "required": ["path", "tree", "entries", "mass_branch", "score_branch", "event_weight"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "tree": {"const": "ntmix"},
+        "entries": {"type": "integer", "minimum": 1},
+        "mass_branch": {"const": "Bmass"},
+        "score_branch": {"const": "Prediction"},
+        "event_weight": {"const": "unit"}
+      },
+      "additionalProperties": false
+    },
+    "mcInput": {
+      "type": "object",
+      "required": [
+        "path", "tree", "entries", "mass_branch", "score_branch",
+        "event_weight_branch", "weight_usage"
+      ],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "tree": {"const": "ntmix_PSI2S"},
+        "entries": {"type": "integer", "minimum": 1},
+        "mass_branch": {"const": "Bmass"},
+        "score_branch": {"const": "Prediction"},
+        "event_weight_branch": {"const": "Reweight"},
+        "weight_usage": {"const": "signal_shape_and_efficiency"}
+      },
+      "additionalProperties": false
+    },
+    "score": {
+      "type": "object",
+      "required": ["branch", "comparison_operator", "threshold_boundary", "equality_passes"],
+      "properties": {
+        "branch": {"const": "Prediction"},
+        "comparison_operator": {"const": ">"},
+        "threshold_boundary": {"const": "exclusive"},
+        "equality_passes": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "workingPointCategory": {
+      "type": "object",
+      "required": ["threshold", "achieved_weighted_efficiency", "selected_data_entries", "selection"],
+      "properties": {
+        "threshold": {"type": "number"},
+        "achieved_weighted_efficiency": {"type": "number"},
+        "selected_data_entries": {"type": "integer", "minimum": 0},
+        "selection": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

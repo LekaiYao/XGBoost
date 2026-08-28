@@ -8,10 +8,11 @@ from utils.tagging import split_channel_tag
 def make_dag(
     out_dir: Path,
     train_tag: str,
-    with_shap: bool,
-    use_precut: bool,
+    with_shap: bool = True,
+    use_precut: bool = False,
     apply_extra_mc: str = "0",
     pre_reweight_job: str = "0",
+    with_fit_interface: bool = True,
 ) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     dag_path = out_dir / f"wf_single_{train_tag}.dag"
@@ -68,19 +69,30 @@ def make_dag(
                 "",
             ]
         )
+    if with_fit_interface:
+        lines.extend(
+            [
+                "JOB FIT_INTERFACE submit_fit_interface_job.sub",
+                f'VARS FIT_INTERFACE train_tag="{train_tag}" job_tag="{train_tag}_fit_interface"',
+                "",
+                "PARENT DRAW CHILD FIT_INTERFACE",
+                "",
+            ]
+        )
 
     dag_path.write_text("\n".join(lines))
     return dag_path
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate DAG for single-tag train->apply->draw (optional shap).")
+    parser = argparse.ArgumentParser(description="Generate DAG for single-tag train->apply->draw->shap.")
     parser.add_argument("--train-tag", required=True)
-    parser.add_argument("--with-shap", type=int, choices=[0, 1], default=0)
+    parser.add_argument("--with-shap", type=int, choices=[0, 1], default=1)
     parser.add_argument("--use-precut", type=int, choices=[0, 1], default=0)
     parser.add_argument("--apply-extra-mc", default="0")
     parser.add_argument("--out-dir", default="dag/generated")
     parser.add_argument("--pre-reweight-job", default="0")
+    parser.add_argument("--with-fit-interface", type=int, choices=[0, 1], default=1)
     args = parser.parse_args()
     split_channel_tag(args.train_tag)
 
@@ -88,6 +100,7 @@ def main():
         Path(args.out_dir), args.train_tag, bool(args.with_shap),
         bool(args.use_precut), args.apply_extra_mc,
         args.pre_reweight_job,
+        bool(args.with_fit_interface),
     )
     print(dag)
 

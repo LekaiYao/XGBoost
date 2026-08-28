@@ -1,0 +1,14 @@
+executable = run_fit_interface_job.sh
+
+output = logs/job_$(job_tag).out
+error  = logs/job_$(job_tag).err
+log    = logs/job_$(job_tag).log
+
++JobFlavour = "espresso"
+
+request_cpus = 1
+request_memory = 2000
+
+arguments = $(train_tag)
+
+queue 1
