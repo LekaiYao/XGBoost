@@ -1,0 +1,14 @@
+universe = vanilla
+executable = run_x_sideband_mass_efficiency.sh
+
+output = logs/job_x_sideband_mass_efficiency_v1.out
+error = logs/job_x_sideband_mass_efficiency_v1.err
+log = logs/job_x_sideband_mass_efficiency_v1.log
+
+getenv = True
+request_cpus = 1
+request_memory = 6000MB
+request_disk = 2GB
++JobFlavour = "workday"
+
+queue 1
