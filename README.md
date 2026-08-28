@@ -3,32 +3,48 @@
 CMS Run 3 pp/PbPb 的 XGBoost 训练与 apply 工作流。正式主线执行：
 
 ```text
-TRAIN → APPLY → DRAW → SHAP
+TRAIN → APPLY → DRAW → {SHAP, FIT_INTERFACE}
 ```
 
 XGBoost 最终向下游提供带 `Prediction` 的 DATA/MC ROOT，以及 `analysis_manifest.json`。
 
-## 1. 正式提交：Direct XGBoost + SHAP
+## 1. 正式提交：Direct XGBoost + SHAP + fit interface
 
-推荐始终显式写出两个开关：
+SHAP 和 fit-interface exporter 均为默认环节；以下命令等价于显式传入
+`with_shap=1`、`with_fit_interface=1`：
 
 ```bash
-bash dag/submit_single_workflow.sh <train_tag> 1 0
+bash dag/submit_single_workflow.sh <train_tag>
 ```
 
-- 第一个 `1`：`with_shap=1`，在 DRAW 后运行 SHAP；
-- 第二个 `0`：`use_precut=0`，读取标准 ROOT 输入。
+- 如需临时关闭，可显式传入 `with_shap=0`；
+- 第六个参数 `with_fit_interface` 可显式设为 `0`，关闭拟合接口节点；
+- `use_precut` 默认同样为 `0`，读取标准 ROOT 输入。
 
 带 reweighting 的训练通过 tag 中的 profile 从 `configs/samples.py` 自动解析 signal
 ROOT、TTree 和 weight branch；提交命令不接受显式路径。例如：
 
 ```bash
 bash dag/submit_single_workflow.sh \
-  X_pp24_v4_fid3_8v2_rwpsi2sr5v1_xgb_v1 0 0
+  X_pp24_v4_fid3_8v2_rwpsi2sr5v1_xgb_v1
 ```
 
-旧 tag 和显式 `rw0` 都表示无权重。weighted signal 的 SHAP 输入策略尚未固定，因此当前
-先使用 `with_shap=0`。
+旧 tag 和显式 `rw0` 都表示无权重。weighted signal 的 SHAP 使用与训练一致的 signal
+selection 和配置中的 weight branch。
+
+### pp reweight DAG
+
+配置在 `workflows/reweighting/run_configured_job.py` 的 pp reweight 使用：
+
+```bash
+bash dag/submit_reweight_workflow.sh <reweight_tag> [with_splot_validation] [with_mc_domain_validation]
+```
+
+两个验证开关默认均为 `1`。DAG 默认执行 train、已配置年份的 PbPb apply、
+sPlot/RW 验证和逐年份 ppRef/PbPb MC 验证；任一验证可用对应参数设为 `0` 跳过。
+提交前会报告 sPlot 文件是否存在，验证节点运行时还会再次检查；若缺失，节点写入
+`status=skipped_missing_splot` 的 manifest 后成功退出。验证输出位于
+`output/reweighting/<reweight_tag>/validation/`。
 
 ### Bu pp24 示例
 
@@ -111,28 +127,31 @@ exporter 会验证：
 
 manifest 包含 ROOT/TTree、channel/system、fid/selection、sidebands 和建议质量区间；不包含 Punzi 参数、最终 cut 或 fit model。XGBoost 不直接修改 Analysis_CODES。
 
-PbPb24 X 的固定 signal-efficiency 七点拟合交接使用专用 exporter：
+DRAW 后的默认 `FIT_INTERFACE` 节点调用：
 
 ```bash
-.venv/bin/python -m workflows.integration.export_x_fit_scan_manifest <train_tag>
+.venv/bin/python -m workflows.integration.export_default_fit_interface <train_tag>
 ```
 
-它在 scored DATA 完整存在后原子生成版本化任务入口：
+dispatcher 只为 `configs/year_pairings.py` 中登记的 PbPb23/PbPb24 组合生成接口。
+若当前 tag 未配置 pairing，或另一年份尚未完成，节点记录原因后成功跳过；若当前 tag
+应有的 model/scored ROOT/weighted-efficiency thresholds 缺失，或两年配置不兼容，则失败。
+两个年份的 DAG 都会执行该节点，因此无论哪一年最后完成，接口均会在 PbPb23 anchor 下生成。
+
+X 当前默认接口为：
 
 ```text
-output/selected/<train_tag>/fit_scan_manifest.data_only_nominal_v2.json
+output/selected/<pb23_anchor_tag>/fit_scan_manifest.pb23_pb24_simultaneous_mc_shape_nominal_v2.json
 ```
 
 schema 位于
-`workflows/integration/schemas/pbpb24_x_data_only_nominal_fit_scan_v2.schema.json`。
-manifest 交付 DATA 文件/tree、10%--40%（间隔 5%）weighted-X-efficiency thresholds、
-完整 fiducial/score selection、DATA-only 单 Gaussian nominal fit contract 和预期输出。
-v2 将 Gaussian `sigma` 范围收紧为 `[0.002,0.008] GeV`；v1
-`[0.0001,0.010] GeV` 及其 H019/H020 结果继续保留，仅作历史 provenance。
-`Reweight` 只说明 ML 如何得到 threshold，不作为 nominal mass-fit shape 输入。
+`workflows/integration/schemas/pbpb_x_simultaneous_year_mc_shape_nominal_fit_scan_v2.schema.json`。
+manifest 交付两年 scored DATA/weighted MC、10%--40%（间隔 5%）的逐年 matched-efficiency
+thresholds、完整 selection，以及“各年份先拟合 weighted MC 双 Gaussian shape，再 simultaneous
+拟合 DATA”的 nominal contract。接口生成不提交 Analysis_CODES fit、不执行 toys，也不选择 WP。
 
-历史 `fit_scan_manifest.json` 是 H019 首轮 reweighted-MC/double-Gaussian contract，
-为 provenance 保留，不会被新 exporter 覆盖，也不得用于新的 nominal fit。
+历史单年 DATA-only `fit_scan_manifest.data_only_nominal_v*.json` 与早期
+`fit_scan_manifest.json` 只作 provenance 保留，不是当前 paired-year nominal 接口。
 
 ## 3. 同名 tag 重新提交
 
@@ -271,7 +290,8 @@ bash dag/submit_dagman_workflow.sh \
   X_pb24_v2_fid1_8v1_1o200 1 10 auto
 ```
 
-Optuna 执行 `TRAIN → APPLY → DRAW`，当前不自动追加 SHAP。objective index `1` 表示 validation AUC。
+Optuna 默认执行 `TRAIN → APPLY → DRAW → {SHAP, FIT_INTERFACE}`；可分别用
+`with_shap=0`、`with_fit_interface=0` 关闭对应节点。objective index `1` 表示 validation AUC。
 
 ## 7. 主要配置入口
 
