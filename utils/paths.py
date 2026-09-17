@@ -94,6 +94,10 @@ def efficiency_reference_mc_path(output_tag, output_prefix="", train_tag=None):
     )
 
 
+def root_scored_dir(train_tag):
+    return os.path.join(selected_dir(train_tag), "root_scored")
+
+
 def reweighting_dir(reweight_tag):
     return os.path.join(REWEIGHTING_DIR, reweight_tag)
 

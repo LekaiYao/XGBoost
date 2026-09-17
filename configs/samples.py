@@ -1384,6 +1384,23 @@ def resolve_apply_config(sample: str, channel: str, dataset_year: str) -> dict:
     }
 
 
+def resolve_full_apply_config(sample: str, channel: str, dataset_year: str) -> dict:
+    """Explicit five-sample full APPLY; independent of compact APPLY inputs."""
+    if (sample, channel, dataset_year) != ("pbpb", "X", "2023"):
+        raise ValueError("Full APPLY is configured for pbpb/X/2023 only")
+    return {
+        "x_prompt": {**deepcopy(_PBPB23_X3872_MC), "is_data": False},
+        "x_nonprompt": {**_spec(
+            "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC_X3872_nonPrompt.root",
+            "ntmix_X3872"), "is_data": False},
+        "psi2s_prompt": {**deepcopy(_PBPB23_PSI2S_MC), "is_data": False},
+        "psi2s_nonprompt": {**_spec(
+            "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC_PSI2S_nonPrompt.root",
+            "ntmix_PSI2S"), "is_data": False},
+        "data": {**deepcopy(_PBPB23_NTMIX_DATA), "is_data": True},
+    }
+
+
 def resolve_extra_mc_apply_config(sample: str, channel: str, dataset_year: str, keys=None) -> dict:
     """Resolve the extra MC samples (beyond signal MC) to be scored independently.
 
