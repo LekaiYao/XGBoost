@@ -17,6 +17,9 @@ from configs.samples import (
     infer_channel_from_tag,
     infer_dataset_token_from_tag,
     infer_fid_profile,
+    infer_reweight_profile,
+    infer_selection_profile,
+    resolve_training_reweight_config,
     infer_sample_from_tag,
     resolve_apply_config,
     resolve_fiducial_config,
@@ -88,7 +91,11 @@ def _load_category(
     data_path = output_directory / "DATA_with_score.root"
     signal_mc_path = output_directory / "MC_with_score.root"
     data_tree = apply_config["data"][0]["tree"]
-    signal_mc_tree = apply_config["mc"][0]["tree"]
+    reweight_config = resolve_training_reweight_config(
+        sample, channel, year, infer_reweight_profile(tag),
+        infer_selection_profile(tag, sample), infer_fid_profile(tag, sample),
+    )
+    signal_mc_tree = (reweight_config["signal"] or apply_config["mc"][0])["tree"]
     data_entries = _validate_scored_input(
         data_path, data_tree, (MASS_BRANCH, SCORE_BRANCH)
     )

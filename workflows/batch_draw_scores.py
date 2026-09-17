@@ -7,6 +7,7 @@ import textwrap
 import matplotlib.pyplot as plt
 import numpy as np
 import uproot
+from utils.training_weights import resolve_training_weights, weight_branches_from_metadata
 
 from configs.samples import (
     infer_channel_from_tag,
@@ -206,15 +207,15 @@ for train_tag in valid_train_tags:
     if os.path.exists(reference_file):
         with open(resolve_model_config_path(train_tag)) as f:
             model_cfg = json.load(f)
-        weight_branch = model_cfg.get("efficiency_reference_weight_branch")
+        weight_branch = weight_branches_from_metadata(model_cfg, "efficiency_reference")
         efficiency_label = "weighted signal efficiency" if weight_branch else "signal efficiency"
         reference_tree_name = split_root_spec(model_cfg["efficiency_reference_signal"])[1]
         reference_tree = uproot.open(reference_file)[reference_tree_name]
-        ref_columns = list(dict.fromkeys([score_column] + ([weight_branch] if weight_branch else []) + selection_columns(fid_cfg.get("expression"))))
+        ref_columns = list(dict.fromkeys([score_column] + weight_branch + selection_columns(fid_cfg.get("expression"))))
         ref_df = reference_tree.arrays(ref_columns, library="pd")
         ref_df = apply_selection(ref_df, fid_cfg.get("expression"), f"fiducial_profiles[{active_fid}]")
         scores = ref_df[score_column].to_numpy(dtype=float)
-        weights = ref_df[weight_branch].to_numpy(dtype=float) if weight_branch else np.ones(len(ref_df))
+        weights = resolve_training_weights(ref_df, weight_branch, "efficiency reference")
         valid = np.isfinite(scores) & np.isfinite(weights) & (weights > 0)
         scores, weights = scores[valid], weights[valid]
         threshold_rows = weighted_efficiency_thresholds(
@@ -243,4 +244,4 @@ for train_tag in valid_train_tags:
             ); plt.close()
             efficiency_rows.append({"target_efficiency": target, "score_threshold": threshold, "achieved_efficiency": achieved, "data_entries": int(len(data_cut))})
         with open(os.path.join(efficiency_dir, "thresholds.json"), "w") as f:
-            json.dump({"train_tag": train_tag, "efficiency_label": efficiency_label, "weight_branch": weight_branch, "reference_file": reference_file, "thresholds": efficiency_rows}, f, indent=2)
+            json.dump({"train_tag": train_tag, "efficiency_label": efficiency_label, "weight_branch": weight_branch[0] if len(weight_branch) == 1 else None, "weight_branches": weight_branch, "reference_file": reference_file, "thresholds": efficiency_rows}, f, indent=2)

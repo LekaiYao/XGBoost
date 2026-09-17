@@ -93,8 +93,8 @@ _PBPB23_PSI2S_MC = _spec(
     "ntmix_PSI2S",
 )
 _PBPB23_X3872_MC = _spec(
-    "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MCX3872.root",
-    "ntmixX3872",
+    "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MC_X3872.root",
+    "ntmix_X3872",
 )
 _PPREF24_NTMIX_DATA = _spec(
     "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/ppRef24/flat_ntmix_ppRef_DATA.root",
@@ -198,7 +198,7 @@ SAMPLES = {
     "pbpb": {
         "channels": {
             "X": _pbpb_channel_cfg(
-                _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_MCX3872.root", "ntmixX3872"),
+                _PBPB23_X3872_MC,
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root", "ntmix"),
                 _spec("/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb23/flat_ntmix_PbPb23_DATA.root", "ntmix"),
                 _PBPB24_X3872_MC,
@@ -1199,6 +1199,7 @@ def resolve_training_config(sample: str, channel: str, dataset_year: str, select
         "signal": deepcopy(ds["signal"]),
         "background": deepcopy(ds["background"]),
         "selection_profile": selection_profile,
+        "signal_base_weight_branch": "pThatreweight" if channel in ("X", "Psi2S") else None,
         "signal_selection": sel["signal_selection"],
         "background_selection": sel["background_selection"],
         "dataset_source": f"{sample}_{channel}_{dataset_year}",

@@ -48,6 +48,7 @@ from utils.run_metadata import save_run_metadata
 from utils.selection import apply_selection, selection_columns
 from utils.training_weights import (
     balanced_scale_pos_weight,
+    training_weight_branches,
     resolve_training_weights,
     weighted_ks_curve,
 )
@@ -163,11 +164,15 @@ def main():
         + (signal_artifact["artifact_variant"] if signal_artifact else "nominal")
     )
 
+    signal_weight_branches = training_weight_branches(
+        train_cfg.get("signal_base_weight_branch"), reweight_cfg["weight_branch"]
+    )
+    signal_weight_branch = signal_weight_branches[0] if len(signal_weight_branches) == 1 else None
     signal_read_columns = list(
         dict.fromkeys(
             input_columns
             + selection_columns(signal_selection)
-            + ([reweight_cfg["weight_branch"]] if reweight_cfg["weight_branch"] else [])
+            + signal_weight_branches
         )
     )
     background_read_columns = list(
@@ -185,10 +190,10 @@ def main():
 
     ak_sig = apply_selection(ak_sig, signal_selection, "signal_selection")
     ak_bkg = apply_selection(ak_bkg, background_selection, "background_selection")
-    is_weighted_training = reweight_cfg["weight_branch"] is not None
+    is_weighted_training = bool(signal_weight_branches)
     if is_weighted_training:
         signal_weight = resolve_training_weights(
-            ak_sig, reweight_cfg["weight_branch"], "signal sample"
+            ak_sig, signal_weight_branches, "signal sample"
         )
         background_weight = resolve_training_weights(
             ak_bkg, None, "background sample"
@@ -291,6 +296,15 @@ def main():
         efficiency_reference = reweight_cfg["signal"]
         efficiency_reference_weight = reweight_cfg["weight_branch"]
 
+    if efficiency_reference is None and is_weighted_training:
+        efficiency_reference = train_cfg["signal"]
+    efficiency_reference_weights = training_weight_branches(
+        train_cfg.get("signal_base_weight_branch"), efficiency_reference_weight
+    ) if efficiency_reference is not None else []
+    efficiency_reference_weight = (
+        efficiency_reference_weights[0] if len(efficiency_reference_weights) == 1 else None
+    )
+
     ensure_dir(condor_model_dir(train_tag))
     ensure_dir(condor_training_dir(train_tag))
     joblib.dump(xgbc, condor_model_path(train_tag))
@@ -311,7 +325,9 @@ def main():
                     signal_artifact["manifest"] if signal_artifact else None
                 ),
                 "signal_input_override": reweight_cfg["signal"] is not None,
-                "signal_weight_branch": reweight_cfg["weight_branch"],
+                "signal_weight_branch": signal_weight_branch,
+                "signal_weight_branches": signal_weight_branches,
+                "signal_weight_expression": " * ".join(signal_weight_branches) or "1",
                 "signal_path": sig_path,
                 "split_policy": "candidate_level_random_split_preliminary",
                 "split_random_state": 42,
@@ -323,6 +339,7 @@ def main():
                     else None
                 ),
                 "efficiency_reference_weight_branch": efficiency_reference_weight,
+                "efficiency_reference_weight_branches": efficiency_reference_weights,
             },
             f,
             indent=2,
@@ -546,7 +563,9 @@ def main():
                 signal_artifact["manifest"] if signal_artifact else None
             ),
             "signal_input_override": reweight_cfg["signal"] is not None,
-            "signal_weight_branch": reweight_cfg["weight_branch"],
+            "signal_weight_branch": signal_weight_branch,
+            "signal_weight_branches": signal_weight_branches,
+            "signal_weight_expression": " * ".join(signal_weight_branches) or "1",
             "signal_weight_sum": (
                 float(signal_weight.sum())
                 if is_weighted_training

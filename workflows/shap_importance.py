@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import shap
+from utils.training_weights import resolve_training_weights, weight_branches_from_metadata
 import uproot
 
 from configs.samples import (
@@ -34,7 +35,7 @@ from utils.paths import (
     shap_importance_path,
     shap_summary_path,
 )
-from utils.selection import apply_selection
+from utils.selection import apply_selection, selection_columns
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run SHAP analysis for a trained XGBoost model.")
@@ -85,15 +86,18 @@ trans_columns = config["trans_columns"]
 if config.get("signal_path"):
     SIG_PATH = config["signal_path"]
 
-df_sig = uproot.concatenate(SIG_PATH, library="pd")
-df_bkg = uproot.concatenate(BKG_PATH, library="pd")
+weight_branch = config.get("signal_weight_branch", reweight_cfg["weight_branch"])
+weight_config = {"signal_weight_branch": weight_branch, **config}
+signal_weight_branches = weight_branches_from_metadata(weight_config)
+signal_columns = list(dict.fromkeys(input_columns + selection_columns(train_cfg["signal_selection"]) + signal_weight_branches))
+background_columns = list(dict.fromkeys(input_columns + selection_columns(train_cfg["background_selection"])))
+df_sig = uproot.concatenate(SIG_PATH, expressions=signal_columns, library="pd")
+df_bkg = uproot.concatenate(BKG_PATH, expressions=background_columns, library="pd")
 df_sig = apply_selection(df_sig, train_cfg["signal_selection"], "signal_selection")
 df_bkg = apply_selection(df_bkg, train_cfg["background_selection"], "background_selection")
-weight_branch = config.get("signal_weight_branch", reweight_cfg["weight_branch"])
-if weight_branch:
-    signal_weights = df_sig[weight_branch].to_numpy(dtype=float)
-else:
-    signal_weights = np.ones(len(df_sig), dtype=float)
+signal_weights = resolve_training_weights(
+    df_sig, signal_weight_branches, "SHAP signal"
+)
 df_sig["_shap_weight"] = signal_weights
 df_bkg["_shap_weight"] = 1.0
 

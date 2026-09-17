@@ -8,6 +8,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import uproot
+from utils.training_weights import resolve_training_weights, weight_branches_from_metadata
 
 from configs.samples import (
     infer_channel_from_tag,
@@ -41,7 +42,7 @@ def load_reference(tag):
     fiducial = resolve_fiducial_config(sample, channel, fid_profile)["expression"]
     with open(resolve_model_config_path(tag)) as handle:
         model_config = json.load(handle)
-    weight_branch = model_config.get("efficiency_reference_weight_branch")
+    weight_branch = weight_branches_from_metadata(model_config, "efficiency_reference")
     if not weight_branch:
         raise ValueError(f"Tag '{tag}' has no weighted efficiency reference")
     _, tree_name = split_root_spec(model_config["efficiency_reference_signal"])
@@ -51,7 +52,7 @@ def load_reference(tag):
     with uproot.open(input_path) as root_file:
         tree = root_file[tree_name]
         score_branch = f"Prediction_{tag}" if f"Prediction_{tag}" in tree else "Prediction"
-        columns = list(dict.fromkeys([score_branch, weight_branch] + selection_columns(fiducial)))
+        columns = list(dict.fromkeys([score_branch] + weight_branch + selection_columns(fiducial)))
         frame = tree.arrays(columns, library="pd")
     frame = apply_selection(frame, fiducial, f"fiducial profile {fid_profile}")
     return {
@@ -65,7 +66,7 @@ def load_reference(tag):
         "fiducial_selection": fiducial,
         "entries": int(len(frame)),
         "scores": frame[score_branch].to_numpy(dtype=float),
-        "weights": frame[weight_branch].to_numpy(dtype=float),
+        "weights": resolve_training_weights(frame, weight_branch, "efficiency reference"),
     }
 
 

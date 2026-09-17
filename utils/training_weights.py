@@ -2,6 +2,16 @@ import numpy as np
 
 
 def resolve_training_weights(frame, branch, label):
+    if isinstance(branch, (list, tuple)):
+        branches = list(branch)
+        if len(set(branches)) != len(branches):
+            raise ValueError("Duplicate training weight factors would double-count weights")
+        weights = np.ones(len(frame), dtype=float)
+        for factor in branches:
+            weights *= resolve_training_weights(frame, factor, label)
+        if not np.isfinite(weights).all() or not np.isfinite(weights.sum()) or weights.sum() <= 0:
+            raise ValueError(f"{label} combined training weights require a finite positive sum")
+        return weights
     if branch is None:
         return np.ones(len(frame), dtype=float)
     if branch not in frame.columns:
@@ -11,9 +21,26 @@ def resolve_training_weights(frame, branch, label):
         raise ValueError(f"{label} training weight branch '{branch}' contains non-finite values")
     if np.any(weights < 0.0):
         raise ValueError(f"{label} training weights must be non-negative for XGBoost")
-    if float(weights.sum()) <= 0.0:
+    if not np.isfinite(weights.sum()) or float(weights.sum()) <= 0.0:
         raise ValueError(f"{label} training weights must have a positive sum")
     return weights
+
+
+def training_weight_branches(base_branch, correction_branch=None):
+    """Independent generator and data/MC correction factors, each used once."""
+    branches = [branch for branch in (base_branch, correction_branch) if branch]
+    if len(set(branches)) != len(branches):
+        raise ValueError("Duplicate training weight factors")
+    return branches
+
+
+def weight_branches_from_metadata(config, prefix="signal"):
+    """New explicit factor list takes precedence; old model metadata stays valid."""
+    key = f"{prefix}_weight_branches"
+    if key in config:
+        return list(config[key])
+    branch = config.get(f"{prefix}_weight_branch")
+    return [branch] if branch else []
 
 
 def balanced_scale_pos_weight(labels, weights):

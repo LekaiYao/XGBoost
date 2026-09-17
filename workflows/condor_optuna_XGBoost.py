@@ -40,6 +40,7 @@ from utils.paths import (
     ensure_dir,
 )
 from utils.run_metadata import save_run_metadata
+from utils.training_weights import (resolve_training_weights, training_weight_branches, balanced_scale_pos_weight, weighted_ks_curve)
 from utils.selection import apply_selection
 from utils.tagging import parse_optuna_spec_from_train_tag
 from utils.varsets import get_varset_columns, infer_sample_from_tag, infer_varset_from_tag
@@ -95,6 +96,9 @@ def resolve_training_inputs():
 
 
 SAMPLE_KEY, CHANNEL, DATASET_YEAR, DATASET_SOURCE, SELECTION_PROFILE, SIG_PATH, BKG_PATH, SIGNAL_SELECTION, BACKGROUND_SELECTION = resolve_training_inputs()
+TRAIN_CFG = resolve_training_config(SAMPLE_KEY, CHANNEL, DATASET_YEAR, SELECTION_PROFILE)
+SIGNAL_WEIGHT_BRANCHES = training_weight_branches(TRAIN_CFG.get("signal_base_weight_branch"))
+SIGNAL_WEIGHT_BRANCH = SIGNAL_WEIGHT_BRANCHES[0] if SIGNAL_WEIGHT_BRANCHES else None
 DATASET_TOKEN = infer_dataset_token_from_tag(train_tag)
 OPTUNA_OBJECTIVE_INDEX, OPTUNA_N_TRIALS_FROM_TAG, OPTUNA_SPACE_VERSION = parse_optuna_spec_from_train_tag(train_tag)
 if number_trials != OPTUNA_N_TRIALS_FROM_TAG:
@@ -416,8 +420,8 @@ def save_feature_importance(model, feature_names, train_tag):
     print(f"Feature importance plot saved to: {cumulative_plot_path}")
 
 
-def build_roc_payload(y_true, score):
-    fpr, tpr, thresholds = roc_curve(y_true, score)
+def build_roc_payload(y_true, score, sample_weight=None):
+    fpr, tpr, thresholds = roc_curve(y_true, score, sample_weight=sample_weight)
     roc_auc = auc(fpr, tpr)
     return {
         "auc": float(roc_auc),
@@ -529,6 +533,8 @@ ak_bkg = uproot.concatenate(BKG_PATH, library="pd")
 ak_sig = apply_selection(ak_sig, SIGNAL_SELECTION, "signal_selection")
 ak_bkg = apply_selection(ak_bkg, BACKGROUND_SELECTION, "background_selection")
 
+ak_sig["_training_weight"] = resolve_training_weights(ak_sig, SIGNAL_WEIGHT_BRANCHES, "signal sample")
+ak_bkg["_training_weight"] = resolve_training_weights(ak_bkg, None, "background sample")
 ak_sig["is_sig"] = True
 ak_bkg["is_sig"] = False
 ak_sig["is_bkg"] = False
@@ -538,7 +544,7 @@ df_raw = pd.concat([ak_sig, ak_bkg], axis=0, ignore_index=True)
 
 scaler = StandardScaler()
 df_trans = pd.DataFrame(
-    scaler.fit_transform(df_raw[input_columns]),
+    scaler.fit(df_raw[input_columns], sample_weight=df_raw["_training_weight"] if SIGNAL_WEIGHT_BRANCHES else None).transform(df_raw[input_columns]),
     columns=[f"{col}_trans" for col in input_columns],
     index=df_raw.index,
 )
@@ -565,7 +571,10 @@ X_val, X_test, y_val, y_test = train_test_split(
 
 n_sig = (y_train["is_sig"] == 1).sum()
 n_bkg = (y_train["is_sig"] == 0).sum()
-pos_weight = n_bkg / n_sig
+weight_train = df_raw.loc[X_train.index, "_training_weight"].to_numpy()
+weight_val = df_raw.loc[X_val.index, "_training_weight"].to_numpy()
+weight_test = df_raw.loc[X_test.index, "_training_weight"].to_numpy()
+pos_weight = balanced_scale_pos_weight(y_train["is_sig"], weight_train)
 
 
 def objective(trial):
@@ -583,14 +592,15 @@ def objective(trial):
         params[name] = suggest_param(trial, name, config)
 
     model = XGBClassifier(**params)
-    fit_kwargs = {}
+    fit_kwargs = {"sample_weight": weight_train}
     if EARLY_STOPPING_ROUNDS is not None:
         fit_kwargs["eval_set"] = [(X_val, y_val["is_sig"])]
+        fit_kwargs["sample_weight_eval_set"] = [weight_val]
         fit_kwargs["verbose"] = False
     model.fit(X_train, y_train["is_sig"], **fit_kwargs)
 
     pred = model.predict_proba(X_val)[:, 1]
-    val_fpr, val_tpr, _ = roc_curve(y_val["is_sig"].astype(int).to_numpy(), pred)
+    val_fpr, val_tpr, _ = roc_curve(y_val["is_sig"].astype(int).to_numpy(), pred, sample_weight=weight_val)
     val_auc = auc(val_fpr, val_tpr)
     trial.set_user_attr("validation_auc", float(val_auc))
     return val_auc
@@ -619,7 +629,7 @@ xgbc = XGBClassifier(
     n_jobs=4,
     **({"early_stopping_rounds": int(EARLY_STOPPING_ROUNDS)} if EARLY_STOPPING_ROUNDS is not None else {}),
 )
-final_fit_kwargs = {"verbose": False}
+final_fit_kwargs = {"verbose": False, "sample_weight": weight_train, "sample_weight_eval_set": [weight_train, weight_val]}
 final_fit_kwargs["eval_set"] = [
     (X_train, y_train["is_sig"]),
     (X_val, y_val["is_sig"]),
@@ -638,8 +648,8 @@ test_y_true = y_test["is_sig"].astype(int).to_numpy()
 
 score_plot_path = condor_training_score_path(train_tag)
 plt.figure(figsize=(6, 6))
-plt.hist(test_score_xgb_sig, label="X(3872)", histtype="step", bins=np.linspace(0, 1, 100), density=True)
-plt.hist(test_score_xgb_bkg, label="bkg", histtype="step", bins=np.linspace(0, 1, 100), density=True)
+plt.hist(test_score_xgb_sig, weights=weight_test[y_test["is_sig"].to_numpy(dtype=bool)], label="X(3872)", histtype="step", bins=np.linspace(0, 1, 100), density=True)
+plt.hist(test_score_xgb_bkg, weights=weight_test[y_test["is_bkg"].to_numpy(dtype=bool)], label="bkg", histtype="step", bins=np.linspace(0, 1, 100), density=True)
 plt.xlabel("Score (Prob. from XGBoost Prediction)")
 plt.ylabel("(Bin Width)$^{-1}$")
 plt.legend()
@@ -648,8 +658,8 @@ plt.savefig(score_plot_path)
 plt.close()
 print(f"Score plot saved to: {score_plot_path}")
 
-train_roc = build_roc_payload(train_y_true, train_score_xgb_all)
-test_roc = build_roc_payload(test_y_true, test_score_xgb_all)
+train_roc = build_roc_payload(train_y_true, train_score_xgb_all, weight_train)
+test_roc = build_roc_payload(test_y_true, test_score_xgb_all, weight_test)
 
 roc_json_path = os.path.join(condor_training_dir(train_tag), "roc.json")
 with open(roc_json_path, "w") as f:
@@ -763,8 +773,8 @@ def compute_ks_curve(y_true, score):
 
 train_scores_all = xgbc.predict_proba(X_train)[:, 1]
 test_scores_all = xgbc.predict_proba(X_test)[:, 1]
-train_ks = compute_ks_curve(y_train["is_sig"].to_numpy(), train_scores_all)
-test_ks = compute_ks_curve(y_test["is_sig"].to_numpy(), test_scores_all)
+train_ks = weighted_ks_curve(y_train["is_sig"].to_numpy(), train_scores_all, weight_train)
+test_ks = weighted_ks_curve(y_test["is_sig"].to_numpy(), test_scores_all, weight_test)
 
 ks_plot_path = condor_training_ks_curve_path(train_tag)
 plt.figure(figsize=(7, 5))
@@ -827,6 +837,14 @@ joblib.dump(scaler, trained_scaler_path)
 print(f"Scaler saved to: {trained_scaler_path}")
 
 config = {
+    "signal_path": SIG_PATH,
+    "signal_input_override": False,
+    "signal_weight_branch": SIGNAL_WEIGHT_BRANCH,
+    "signal_weight_branches": SIGNAL_WEIGHT_BRANCHES,
+    "signal_weight_expression": " * ".join(SIGNAL_WEIGHT_BRANCHES) or "1",
+    "efficiency_reference_signal": SIG_PATH if SIGNAL_WEIGHT_BRANCHES else None,
+    "efficiency_reference_weight_branch": SIGNAL_WEIGHT_BRANCH,
+    "efficiency_reference_weight_branches": SIGNAL_WEIGHT_BRANCHES,
     "input_columns": input_columns,
     "trans_columns": trans_columns,
 }
@@ -865,6 +883,10 @@ save_run_metadata(
     optimization_metric="max validation AUC",
     best_objective_value=study.best_value,
     notes={
+        "signal_weight_branch": SIGNAL_WEIGHT_BRANCH,
+        "signal_weight_branches": SIGNAL_WEIGHT_BRANCHES,
+        "signal_weight_expression": " * ".join(SIGNAL_WEIGHT_BRANCHES) or "1",
+        "signal_weight_sum": float(ak_sig["_training_weight"].sum()),
         "search_space_tag": "single",
         "optuna_objective_index": OPTUNA_OBJECTIVE_INDEX,
         "optuna_space_version": OPTUNA_SPACE_VERSION,

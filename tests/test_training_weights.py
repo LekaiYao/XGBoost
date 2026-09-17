@@ -189,7 +189,7 @@ class TrainingWeightsTest(unittest.TestCase):
         apply_cfg = resolve_apply_config("pbpb", "Psi2S", "2023")
         extra_cfg = resolve_extra_mc_apply_config("pbpb", "Psi2S", "2023", "x3872")
         self.assertEqual(apply_cfg["mc"][0]["tree"], "ntmix_PSI2S")
-        self.assertEqual(extra_cfg["samples"]["x3872"]["tree"], "ntmixX3872")
+        self.assertEqual(extra_cfg["samples"]["x3872"]["tree"], "ntmix_X3872")
         self.assertEqual(infer_direct_xgb_version(tag), 1)
         self.assertEqual(
             resolve_direct_xgb_params("pbpb", 1), DIRECT_XGB_PARAMS["pbpb"][1]
@@ -455,7 +455,7 @@ class TrainingWeightsTest(unittest.TestCase):
         self.assertEqual(infer_reweight_profile(tag), "rwr6range5v1")
         training = resolve_training_config("pbpb", "X", "2023", "pb23_v3")
         fiducial = resolve_fiducial_config("pbpb", "X", "pb23_fid3")
-        self.assertEqual(training["signal"]["tree"], "ntmixX3872")
+        self.assertEqual(training["signal"]["tree"], "ntmix_X3872")
         self.assertIn("Bmass > 3.82 and Bmass < 3.85", training["background_selection"])
         self.assertIn("Bmass > 3.89 and Bmass < 3.92", training["background_selection"])
         for expression in (training["signal_selection"], fiducial["expression"]):

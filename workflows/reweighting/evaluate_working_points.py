@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+from utils.training_weights import resolve_training_weights
 
 from configs.samples import split_root_spec
 from utils.paths import (
@@ -105,7 +106,7 @@ def _validate_same_setup(unweighted_tag, weighted_tag):
     weighted_model = _read_json(model_config_path(weighted_tag))
     if unweighted_model.get("reweight_profile") != "rw0":
         raise ValueError(f"First tag must be unweighted (rw0): {unweighted_tag}")
-    weight_branch = weighted_model.get("signal_weight_branch")
+    weight_branch = weighted_model.get("signal_weight_branches", weighted_model.get("signal_weight_branch"))
     if not weight_branch:
         raise ValueError(f"Second tag has no signal weight branch: {weighted_tag}")
     if unweighted_model["input_columns"] != weighted_model["input_columns"]:
@@ -122,7 +123,8 @@ def _load_and_align_weights(
         signal_selection,
         "reweighted signal MC",
     ).reset_index(drop=True)
-    validate_columns(weighted_mc, [*columns, weight_branch], "reweighted signal MC")
+    branches = [weight_branch] if isinstance(weight_branch, str) else weight_branch
+    validate_columns(weighted_mc, [*columns, *branches], "reweighted signal MC")
     if len(weighted_mc) != len(scored_mc):
         raise ValueError(
             f"Reweighted/scored MC length mismatch: {len(weighted_mc)} != {len(scored_mc)}"
@@ -134,7 +136,7 @@ def _load_and_align_weights(
         mismatches[column] = float(np.max(np.abs(left - right)))
         if not np.allclose(left, right, rtol=0.0, atol=1e-12, equal_nan=False):
             raise ValueError(f"Reweighted/scored MC event alignment failed for '{column}'")
-    weights = weighted_mc[weight_branch].to_numpy(dtype=float)
+    weights = resolve_training_weights(weighted_mc, branches, "reweighted signal MC")
     if not np.isfinite(weights).all() or np.any(weights < 0.0) or weights.sum() <= 0.0:
         raise ValueError("Reweight branch must be finite, non-negative, and have positive sum")
     return weights, {
