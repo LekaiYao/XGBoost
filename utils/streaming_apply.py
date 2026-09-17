@@ -3,6 +3,8 @@ from pathlib import Path
 import pandas as pd
 import uproot
 
+from utils.selection import apply_selection
+
 
 def score_frame(frame, model_bundles):
     output = frame.copy()
@@ -24,6 +26,7 @@ def write_scored_root(
     output_tree,
     model_bundles,
     step_size="100 MB",
+    selection=None,
 ):
     output_path = Path(output_path)
     temporary_path = output_path.with_suffix(output_path.suffix + ".tmp")
@@ -37,6 +40,9 @@ def write_scored_root(
                 step_size=step_size,
                 library="pd",
             ):
+                frame = apply_selection(frame, selection, "apply fiducial selection")
+                if frame.empty:
+                    continue
                 scored = score_frame(frame, model_bundles)
                 arrays = {
                     column: scored[column].to_numpy()
@@ -49,7 +55,7 @@ def write_scored_root(
                 entries += len(scored)
                 chunks += 1
         if chunks == 0:
-            raise ValueError(f"Input TTree contains no entries: {input_spec}")
+            raise ValueError(f"Input TTree contains no entries after selection: {input_spec}")
         temporary_path.replace(output_path)
     except Exception:
         temporary_path.unlink(missing_ok=True)

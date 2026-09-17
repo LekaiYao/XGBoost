@@ -112,6 +112,23 @@ _PPREF24_X3872_MC = _spec(
 _X_R5V3_RW_SUPPORT = "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.4)"
 _X_R6RANGE5_RW_SUPPORT = "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR <= 0.4)"
 _X_R5V3_ML_SUPPORT = "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR < 0.25)"
+_X_OFFICIAL_KINEMATIC_ML_SUPPORT = "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6)"
+_X_OFFICIAL_LOOSE_ML_SUPPORT = '(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15)'
+_X_OFFICIAL_DR025_ML_SUPPORT = _X_OFFICIAL_LOOSE_ML_SUPPORT + " and (Btrk2dR > 0) and (Btrk2dR < 0.25)"
+_X_OFFICIAL_DR1_025_ML_SUPPORT = _X_OFFICIAL_LOOSE_ML_SUPPORT + " and (Btrk1dR > 0) and (Btrk1dR < 0.25)"
+_X_OFFICIAL_BOTHDR025_ML_SUPPORT = _X_OFFICIAL_DR025_ML_SUPPORT + " and (Btrk1dR > 0) and (Btrk1dR < 0.25)"
+_X_OFFICIAL_DR025_Y24_ML_SUPPORT = _X_OFFICIAL_DR025_ML_SUPPORT.replace("abs(By) < 1.6", "abs(By) < 2.4")
+_X_OFFICIAL_BOTHDR025_Y24_ML_SUPPORT = _X_OFFICIAL_BOTHDR025_ML_SUPPORT.replace("abs(By) < 1.6", "abs(By) < 2.4")
+_X_OFFICIAL_KINEMATIC_PT15_ML_SUPPORT = _X_OFFICIAL_KINEMATIC_ML_SUPPORT.replace("Bpt > 10", "Bpt > 15")
+_X_OFFICIAL_KINEMATIC_PT15_Q013_SUPPORT = _X_OFFICIAL_KINEMATIC_PT15_ML_SUPPORT + " and (BQvalue < 0.13)"
+_X_OFFICIAL_LOOSE_PT15_ML_SUPPORT = _X_OFFICIAL_LOOSE_ML_SUPPORT.replace("Bpt > 10", "Bpt > 15")
+_X_OFFICIAL_DR025_PT15_ML_SUPPORT = _X_OFFICIAL_DR025_ML_SUPPORT.replace("Bpt > 10", "Bpt > 15")
+_X_OFFICIAL_DR030_PT15_ML_SUPPORT = _X_OFFICIAL_DR025_PT15_ML_SUPPORT.replace("Btrk2dR < 0.25", "Btrk2dR < 0.3")
+_X_OFFICIAL_DR035_PT15_ML_SUPPORT = _X_OFFICIAL_DR025_PT15_ML_SUPPORT.replace("Btrk2dR < 0.25", "Btrk2dR < 0.35")
+_X_OFFICIAL_DR025_PT15_Q013_ML_SUPPORT = _X_OFFICIAL_DR025_PT15_ML_SUPPORT.replace("BQvalue < 0.15", "BQvalue < 0.13")
+_X_OFFICIAL_DR025_PT15_Y24_ML_SUPPORT = _X_OFFICIAL_DR025_Y24_ML_SUPPORT.replace("Bpt > 10", "Bpt > 15")
+_X_OFFICIAL_BOTHDR025_MASS052_ML_SUPPORT = _X_OFFICIAL_BOTHDR025_ML_SUPPORT + " and (Btktkmass > 0.52)"
+_X_OFFICIAL_DR025_LXY2_ML_SUPPORT = _X_OFFICIAL_DR025_ML_SUPPORT + " and (Bnorm_svpvDistance_2D < 2)"
 _X_BASELINE_ML_SUPPORT = "(Bpt > 10) and (Bpt < 50) and (abs(By) < 1.6) and (BQvalue < 0.15) and (Btrk1Pt > 0.9) and (Btrk1Pt <= 4.5) and (Btrk2Pt > 0.9) and (Btrk2Pt <= 4.5) and (Bcos_dtheta >= -1) and (Bcos_dtheta <= 1) and (Btktkpt >= 2) and (Btktkpt <= 8) and (Bchi2Prob >= 0) and (Bchi2Prob <= 1) and (Btrk1dR >= 0) and (Btrk1dR <= 0.45) and (Btrk2dR >= 0) and (Btrk2dR < 0.25)"
 _X_NARROW_SIDEBANDS = "((Bmass > 3.82 and Bmass < 3.85) or (Bmass > 3.89 and Bmass < 3.92))"
 _X_EXPANDED_SIDEBANDS = "((Bmass > 3.80 and Bmass < 3.85) or (Bmass > 3.89 and Bmass < 3.94))"
@@ -320,6 +337,124 @@ SAMPLES = {
                         "signal_selection": _X_BASELINE_ML_SUPPORT,
                         "background_selection": f"{_X_EXPANDED_SIDEBANDS} and {_X_BASELINE_ML_SUPPORT}",
                     },
+                    "pb23_v25": {
+                        "signal_selection": _X_OFFICIAL_DR030_PT15_ML_SUPPORT,
+                        "background_selection": f"{_X_NARROW_SIDEBANDS} and {_X_OFFICIAL_DR030_PT15_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v27": {
+                        "signal_selection": _X_OFFICIAL_DR035_PT15_ML_SUPPORT,
+                        "background_selection": f"{_X_EXPANDED_SIDEBANDS} and {_X_OFFICIAL_DR035_PT15_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v29": {
+                        "signal_selection": _X_OFFICIAL_KINEMATIC_PT15_ML_SUPPORT,
+                        "background_selection": f"{_X_EXPANDED_SIDEBANDS} and {_X_OFFICIAL_KINEMATIC_PT15_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                        "apply_selection": _X_OFFICIAL_KINEMATIC_PT15_Q013_SUPPORT,
+                    },
+                    "pb23_v28": {
+                        "signal_selection": _X_OFFICIAL_DR035_PT15_ML_SUPPORT,
+                        "background_selection": "((Bmass > 3.77 and Bmass < 3.85) or (Bmass > 3.89 and Bmass < 3.97)) and " + _X_OFFICIAL_DR035_PT15_ML_SUPPORT,
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v26": {
+                        "signal_selection": _X_OFFICIAL_DR035_PT15_ML_SUPPORT,
+                        "background_selection": f"{_X_NARROW_SIDEBANDS} and {_X_OFFICIAL_DR035_PT15_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v24": {
+                        "signal_selection": _X_OFFICIAL_LOOSE_PT15_ML_SUPPORT,
+                        "background_selection": f"{_X_NARROW_SIDEBANDS} and {_X_OFFICIAL_LOOSE_PT15_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v23": {
+                        "signal_selection": _X_OFFICIAL_DR025_PT15_ML_SUPPORT,
+                        "background_selection": f"{_X_EXPANDED_SIDEBANDS} and {_X_OFFICIAL_DR025_PT15_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v22": {
+                        "signal_selection": _X_OFFICIAL_DR025_PT15_Q013_ML_SUPPORT,
+                        "background_selection": f"{_X_NARROW_SIDEBANDS} and {_X_OFFICIAL_DR025_PT15_Q013_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v21": {
+                        "signal_selection": _X_OFFICIAL_DR025_PT15_ML_SUPPORT,
+                        "background_selection": "((Bmass > 3.75 and Bmass < 3.85) or (Bmass > 3.9 and Bmass < 4.0)) and " + _X_OFFICIAL_DR025_PT15_ML_SUPPORT,
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v19": {
+                        "signal_selection": _X_OFFICIAL_DR025_PT15_ML_SUPPORT,
+                        "background_selection": f"{_X_NARROW_SIDEBANDS} and {_X_OFFICIAL_DR025_PT15_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v20": {
+                        "signal_selection": _X_OFFICIAL_DR025_PT15_Y24_ML_SUPPORT,
+                        "background_selection": f"{_X_NARROW_SIDEBANDS} and {_X_OFFICIAL_DR025_PT15_Y24_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v17": {
+                        "signal_selection": _X_OFFICIAL_DR025_Y24_ML_SUPPORT,
+                        "background_selection": f"{_X_NARROW_SIDEBANDS} and {_X_OFFICIAL_DR025_Y24_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v18": {
+                        "signal_selection": _X_OFFICIAL_BOTHDR025_Y24_ML_SUPPORT,
+                        "background_selection": "((Bmass > 3.75 and Bmass < 3.85) or (Bmass > 3.9 and Bmass < 4.0)) and " + _X_OFFICIAL_BOTHDR025_Y24_ML_SUPPORT,
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v14": {
+                        "signal_selection": _X_OFFICIAL_DR025_ML_SUPPORT,
+                        "background_selection": "((Bmass > 3.75 and Bmass < 3.85) or (Bmass > 3.9 and Bmass < 4.0)) and " + _X_OFFICIAL_DR025_ML_SUPPORT,
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v15": {
+                        "signal_selection": _X_OFFICIAL_KINEMATIC_ML_SUPPORT,
+                        "background_selection": "((Bmass > 3.75 and Bmass < 3.85) or (Bmass > 3.9 and Bmass < 4.0)) and " + _X_OFFICIAL_KINEMATIC_ML_SUPPORT,
+                        "apply_fiducial_selection": True,
+                        "apply_selection": _X_OFFICIAL_DR025_ML_SUPPORT,
+                    },
+                    "pb23_v16": {
+                        "signal_selection": _X_OFFICIAL_KINEMATIC_ML_SUPPORT,
+                        "background_selection": "((Bmass > 3.75 and Bmass < 3.85) or (Bmass > 3.9 and Bmass < 4.0)) and " + _X_OFFICIAL_KINEMATIC_ML_SUPPORT,
+                        "apply_fiducial_selection": True,
+                        "apply_selection": _X_OFFICIAL_BOTHDR025_ML_SUPPORT,
+                    },
+                    "pb23_v13": {
+                        "signal_selection": _X_OFFICIAL_BOTHDR025_MASS052_ML_SUPPORT,
+                        "background_selection": "((Bmass > 3.75 and Bmass < 3.85) or (Bmass > 3.9 and Bmass < 4.0)) and " + _X_OFFICIAL_BOTHDR025_MASS052_ML_SUPPORT,
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v12": {
+                        "signal_selection": _X_OFFICIAL_BOTHDR025_ML_SUPPORT,
+                        "background_selection": "((Bmass > 3.75 and Bmass < 3.85) or (Bmass > 3.9 and Bmass < 4.0)) and " + _X_OFFICIAL_BOTHDR025_ML_SUPPORT,
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v11": {
+                        "signal_selection": _X_OFFICIAL_DR1_025_ML_SUPPORT,
+                        "background_selection": f"{_X_NARROW_SIDEBANDS} and {_X_OFFICIAL_DR1_025_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v10": {
+                        "signal_selection": _X_OFFICIAL_BOTHDR025_ML_SUPPORT,
+                        "background_selection": f"{_X_NARROW_SIDEBANDS} and {_X_OFFICIAL_BOTHDR025_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v9": {
+                        "signal_selection": _X_OFFICIAL_DR025_LXY2_ML_SUPPORT,
+                        "background_selection": f"{_X_NARROW_SIDEBANDS} and {_X_OFFICIAL_DR025_LXY2_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v7": {
+                        "signal_selection": _X_OFFICIAL_DR025_ML_SUPPORT,
+                        "background_selection": f"{_X_NARROW_SIDEBANDS} and {_X_OFFICIAL_DR025_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                    },
+                    "pb23_v8": {
+                        "signal_selection": _X_OFFICIAL_LOOSE_ML_SUPPORT,
+                        "background_selection": f"{_X_NARROW_SIDEBANDS} and {_X_OFFICIAL_LOOSE_ML_SUPPORT}",
+                        "apply_fiducial_selection": True,
+                    },
                     "pb23_v6": {
                         "signal_selection": _X_BASELINE_ML_SUPPORT,
                         "background_selection": f"{_X_BROAD_SIDEBANDS} and {_X_BASELINE_ML_SUPPORT}",
@@ -350,6 +485,21 @@ SAMPLES = {
                     "pb23_fid2": "BQvalue < 0.2 and abs(By) < 1.6 and Bpt > 10.0 and Bpt < 50.0",
                     "pb23_fid3": "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 and Btrk1Pt > 0.9 and Btrk1Pt <= 4.5 and Btrk2Pt > 0.9 and Btrk2Pt <= 4.5 and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1dR >= 0 and Btrk1dR <= 0.45 and Btrk2dR >= 0 and Btrk2dR < 0.25",
                     "pb23_fid4": _X_R5V3_ML_SUPPORT,
+                    "pb23_fid5": _X_OFFICIAL_DR025_ML_SUPPORT,
+                    "pb23_fid6": _X_OFFICIAL_LOOSE_ML_SUPPORT,
+                    "pb23_fid7": _X_OFFICIAL_DR025_LXY2_ML_SUPPORT,
+                    "pb23_fid8": _X_OFFICIAL_BOTHDR025_ML_SUPPORT,
+                    "pb23_fid9": _X_OFFICIAL_DR1_025_ML_SUPPORT,
+                    "pb23_fid10": _X_OFFICIAL_BOTHDR025_MASS052_ML_SUPPORT,
+                    "pb23_fid11": _X_OFFICIAL_DR025_Y24_ML_SUPPORT,
+                    "pb23_fid12": _X_OFFICIAL_BOTHDR025_Y24_ML_SUPPORT,
+                    "pb23_fid13": _X_OFFICIAL_DR025_PT15_ML_SUPPORT,
+                    "pb23_fid14": _X_OFFICIAL_DR025_PT15_Y24_ML_SUPPORT,
+                    "pb23_fid15": _X_OFFICIAL_DR025_PT15_Q013_ML_SUPPORT,
+                    "pb23_fid16": _X_OFFICIAL_LOOSE_PT15_ML_SUPPORT,
+                    "pb23_fid17": _X_OFFICIAL_DR030_PT15_ML_SUPPORT,
+                    "pb23_fid18": _X_OFFICIAL_DR035_PT15_ML_SUPPORT,
+                    "pb23_fid19": _X_OFFICIAL_KINEMATIC_PT15_Q013_SUPPORT,
                 },
                 {"mass_range": [3.62, 4.0], "bin_width": 0.01, "reference_masses": [3.686, 3.872]},
             ),
@@ -676,6 +826,12 @@ SAMPLES["pbpb"]["channels"]["X"]["datasets"]["2024"]["apply"]["extra_mc"] = {
         "/eos/user/h/hmarques/RUN3_Data_MC_sharing/X3872/PbPb24/flat_ntmix_PbPb24_MC_X3872.root",
         "ntmix_X3872",
     ),
+}
+
+
+# Additional MC scored by the PbPb23 X model on explicit request.
+SAMPLES["pbpb"]["channels"]["X"]["datasets"]["2023"]["apply"]["extra_mc"] = {
+    "psi2s": _PBPB23_PSI2S_MC,
 }
 
 
@@ -1206,6 +1362,8 @@ def resolve_training_config(sample: str, channel: str, dataset_year: str, select
         "channel": channel,
     }
     for key in (
+        "apply_fiducial_selection",
+        "apply_selection",
         "efficiency_reference_signal",
         "efficiency_reference_weight_branch",
     ):
@@ -1300,3 +1458,18 @@ def bd_pbpb_precut_paths(tag: str, input_dir: str = "input") -> dict:
         "train_background": root / f"{base}_train_background.root",
         "apply_data": root / f"{base}_apply_data.root",
     }
+
+
+def resolve_default_training_profiles(sample, channel, dataset_year, input_columns):
+    """Choose profiles for new PbPb23 X runs; explicit historical tags stay authoritative."""
+    if (sample, channel, dataset_year) != ("pbpb", "X", "2023"):
+        raise ValueError("Automatic dR defaults are defined only for pbpb/X/2023")
+    columns = set(input_columns)
+    profiles = {
+        (True, True): ("pb23_v8", "pb23_fid6"),
+        (True, False): ("pb23_v7", "pb23_fid5"),
+        (False, True): ("pb23_v11", "pb23_fid9"),
+        (False, False): ("pb23_v10", "pb23_fid8"),
+    }
+    selection_profile, fid_profile = profiles[("Btrk1dR" in columns, "Btrk2dR" in columns)]
+    return {"selection_profile": selection_profile, "fid_profile": fid_profile}

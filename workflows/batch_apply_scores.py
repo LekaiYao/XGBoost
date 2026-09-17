@@ -80,6 +80,14 @@ dataset_year = dataset_year_override or infer_dataset_year(output_tag, sample_ke
 apply_cfg = resolve_apply_config(sample_key, channel, dataset_year)
 draw_cfg = resolve_draw_config(sample_key, channel, dataset_year)
 draw_tree_name = draw_cfg["data"]["tree"]
+selection_profile = infer_selection_profile(output_tag, sample_key)
+training_cfg = resolve_training_config(sample_key, channel, dataset_year, selection_profile)
+fid_profile = infer_fid_profile(output_tag, sample_key)
+fid_cfg = resolve_fiducial_config(sample_key, channel, fid_profile)
+apply_selection_expression = fid_cfg["expression"] if training_cfg.get("apply_fiducial_selection", False) else None
+expected_apply_selection = training_cfg.get("apply_selection", training_cfg["signal_selection"])
+if apply_selection_expression is not None and apply_selection_expression != expected_apply_selection:
+    raise ValueError("Apply fiducial selection must match the configured apply selection")
 
 MC_INPUT = to_root_spec(apply_cfg["mc"][0])
 DATA_INPUT = data_input_override or to_root_spec(apply_cfg["data"][0])
@@ -181,7 +189,7 @@ if apply_extra_mc is not None:
         print(f"Processing extra MC [{key}]: {EXTRA_INPUT}")
         try:
             result = write_scored_root(
-                EXTRA_INPUT, out_path, extra_tree, models
+                EXTRA_INPUT, out_path, extra_tree, models, selection=apply_selection_expression
             )
             print(
                 f"Saved extra MC with score: {out_path} "
@@ -196,7 +204,7 @@ if apply_extra_mc is not None:
 
 print(f"Processing MC: {MC_INPUT}")
 mc_path = os.path.join(output_dir, f"{output_prefix}MC_with_score.root")
-mc_result = write_scored_root(MC_INPUT, mc_path, MC_TREE_INPUT, models)
+mc_result = write_scored_root(MC_INPUT, mc_path, MC_TREE_INPUT, models, selection=apply_selection_expression)
 print(
     f"Saved MC with score: {mc_path} "
     f"({mc_result['entries']} entries in {mc_result['chunks']} chunks)"
@@ -208,7 +216,7 @@ reference_input = models[0]["config"].get("efficiency_reference_signal") if sing
 if reference_input:
     reference_tree = split_root_spec(reference_input)[1]
     reference_path = os.path.join(output_dir, f"{output_prefix}REFERENCE_MC_with_score.root")
-    reference_result = write_scored_root(reference_input, reference_path, reference_tree, models)
+    reference_result = write_scored_root(reference_input, reference_path, reference_tree, models, selection=apply_selection_expression)
     print(
         f"Saved efficiency-reference MC with score: {reference_path} "
         f"({reference_result['entries']} entries in {reference_result['chunks']} chunks)"
@@ -216,17 +224,13 @@ if reference_input:
 
 print(f"Processing DATA: {DATA_INPUT}")
 data_path = os.path.join(output_dir, f"{output_prefix}DATA_with_score.root")
-data_result = write_scored_root(DATA_INPUT, data_path, draw_tree_name, models)
+data_result = write_scored_root(DATA_INPUT, data_path, draw_tree_name, models, selection=apply_selection_expression)
 print(
     f"Saved DATA with score: {data_path} "
     f"({data_result['entries']} entries in {data_result['chunks']} chunks)"
 )
 
 summary_path = os.path.join(output_dir, f"{output_prefix}batch_apply_summary.json")
-selection_profile = infer_selection_profile(output_tag, sample_key)
-training_cfg = resolve_training_config(sample_key, channel, dataset_year, selection_profile)
-fid_profile = infer_fid_profile(output_tag, sample_key)
-fid_cfg = resolve_fiducial_config(sample_key, channel, fid_profile)
 
 varset_tag = None
 varset_columns = []
@@ -252,6 +256,7 @@ with open(summary_path, "w") as f:
                 "signal_selection": training_cfg["signal_selection"],
                 "background_selection": training_cfg["background_selection"],
             },
+            "apply_selection": {"expression": apply_selection_expression, "mc_entries": mc_result["entries"], "data_entries": data_result["entries"]},
             "draw_selection": {
                 "fid_profile": fid_profile,
                 "fiducial_cut": fid_cfg,
