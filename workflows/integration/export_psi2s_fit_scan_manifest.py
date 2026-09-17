@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from utils.paths import resolve_efficiency_threshold_path
 import argparse
 import json
 import re
@@ -110,7 +111,7 @@ def build_fit_scan_manifest(
 
     output_directory = Path(selected_directory or selected_dir(train_tag)).resolve()
     threshold_path = (
-        output_directory / "cut_scan/weighted_signal_efficiency/thresholds.json"
+        resolve_efficiency_threshold_path(output_directory)
     ).resolve()
     data_path = (output_directory / "DATA_with_score.root").resolve()
     signal_mc_path = (output_directory / "MC_with_score.root").resolve()

@@ -19,6 +19,7 @@ from configs.samples import (
     resolve_fiducial_config,
 )
 from configs.year_pairings import resolve_year_pairing
+from utils.paths import resolve_efficiency_threshold_path
 from utils.paths import cut_scan_dir, selected_dir
 from utils.selection import apply_selection, selection_columns
 
@@ -58,7 +59,7 @@ def load_data(tag):
     frame = frame[(frame["Bmass"] > mass_range[0]) & (frame["Bmass"] < mass_range[1])]
     frame = apply_selection(frame, fiducial, f"fiducial profile {fid_profile}")
 
-    threshold_path = Path(cut_scan_dir(tag)) / "weighted_signal_efficiency" / "thresholds.json"
+    threshold_path = resolve_efficiency_threshold_path(selected_dir(tag))
     if not threshold_path.is_file():
         raise FileNotFoundError(f"Missing weighted-efficiency thresholds: {threshold_path}")
     thresholds = json.loads(threshold_path.read_text())
@@ -103,9 +104,9 @@ def main():
     if targets_a != targets_b:
         raise ValueError(f"Efficiency target mismatch: {sorted(targets_a)} != {sorted(targets_b)}")
 
-    output_dir = Path(cut_scan_dir(args.anchor_train_tag)) / "combined_pb23_pb24_weighted_signal_efficiency"
-    manifest_path = output_dir / "thresholds.json"
-    if output_dir.exists() and any(output_dir.iterdir()):
+    output_dir = Path(cut_scan_dir(args.anchor_train_tag))
+    manifest_path = output_dir / "thresholds_pb23_pb24.json"
+    if manifest_path.exists() or any(output_dir.glob("DATA_pb23_pb24_eff*.pdf")):
         raise FileExistsError(f"Refusing to overwrite combined draw outputs: {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
 

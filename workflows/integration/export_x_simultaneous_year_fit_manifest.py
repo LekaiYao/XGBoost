@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from utils.paths import resolve_efficiency_threshold_path
 import argparse
 import json
 import os
@@ -66,7 +67,7 @@ def _load_category(tag: str, dataset: str, manifest_directory: Path, targets: li
 
     fid_profile = infer_fid_profile(tag, sample)
     fid_expression = resolve_fiducial_config(sample, channel, fid_profile)["expression"]
-    threshold_path = output_directory / "cut_scan/weighted_signal_efficiency/thresholds.json"
+    threshold_path = resolve_efficiency_threshold_path(output_directory)
     payload = json.loads(threshold_path.read_text(encoding="utf-8"))
     if payload.get("train_tag") != tag or payload.get("weight_branch") != THRESHOLD_WEIGHT_BRANCH:
         raise ValueError(f"Invalid weighted-efficiency threshold provenance for '{tag}'")

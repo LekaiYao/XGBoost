@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from utils.paths import resolve_efficiency_threshold_path
 import argparse
 import hashlib
 import json
@@ -72,7 +73,7 @@ def prepare(h010_summary: Path, output_dir: Path) -> Path:
         target = round(float(row["target_x_efficiency"]), 10)
         if target not in TARGETS:
             raise ValueError(f"Unexpected X target efficiency: {target}")
-        threshold_path = Path("output/selected") / tag / "cut_scan/weighted_signal_efficiency/thresholds.json"
+        threshold_path = resolve_efficiency_threshold_path(Path("output/selected") / tag)
         x_row = load_x_efficiencies(threshold_path).get(target)
         if x_row is None:
             raise ValueError(f"Missing X efficiency {target} for {tag}")

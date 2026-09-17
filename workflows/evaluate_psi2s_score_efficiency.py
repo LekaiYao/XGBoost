@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from utils.paths import resolve_efficiency_threshold_path
 import argparse
 import hashlib
 import json
@@ -73,7 +74,7 @@ def evaluate(tag: str) -> Path:
 
     selected_dir = Path("output/selected") / tag
     input_path = selected_dir / "MC_psi2s_with_score.root"
-    threshold_path = selected_dir / "cut_scan/weighted_signal_efficiency/thresholds.json"
+    threshold_path = resolve_efficiency_threshold_path(selected_dir)
     if not input_path.exists():
         raise FileNotFoundError(input_path)
     if not threshold_path.exists():

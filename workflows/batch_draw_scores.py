@@ -15,10 +15,11 @@ from configs.samples import (
     infer_fid_profile,
     infer_sample_from_tag,
     resolve_draw_config,
+    resolve_apply_config,
     resolve_fiducial_config,
     split_root_spec,
 )
-from utils.paths import ensure_dir, selected_dir, train_group_tag
+from utils.paths import ensure_dir, selected_dir, train_group_tag, cut_scan_dir, efficiency_reference_mc_path
 from utils.paths import resolve_model_config_path
 from utils.selection import apply_selection, selection_columns
 from utils.score_thresholds import weighted_efficiency_thresholds
@@ -66,10 +67,12 @@ if not (fid_profile == "auto" or re.fullmatch(r"fid\d*", fid_profile)):
 
 group_tag = train_group_tag(train_tags)
 output_tag = output_tag or group_tag
-sample_key = infer_sample_from_tag(output_tag)
-channel = infer_channel_from_tag(output_tag)
-dataset_year = infer_dataset_year(output_tag, sample_key)
-active_fid = infer_fid_profile(output_tag, sample_key) if fid_profile == "auto" else fid_profile
+# A grouped output name is a directory label, not a complete model tag.
+config_tag = train_tags[0] if len(train_tags) > 1 else output_tag
+sample_key = infer_sample_from_tag(config_tag)
+channel = infer_channel_from_tag(config_tag)
+dataset_year = infer_dataset_year(config_tag, sample_key)
+active_fid = infer_fid_profile(config_tag, sample_key) if fid_profile == "auto" else fid_profile
 fid_cfg = resolve_fiducial_config(sample_key, channel, active_fid)
 draw_cfg = resolve_draw_config(sample_key, channel, dataset_year)
 
@@ -78,7 +81,6 @@ MASS_RANGE = tuple(draw_cfg["plot"]["mass_range"])
 BIN_WIDTH = float(draw_cfg["plot"]["bin_width"])
 BINS = np.arange(MASS_RANGE[0], MASS_RANGE[1] + BIN_WIDTH, BIN_WIDTH)
 REFERENCE_MASSES = list(draw_cfg["plot"].get("reference_masses", []))
-score_cuts = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.90, 0.95]
 efficiency_targets = [
     0.90, 0.80, 0.70, 0.60, 0.50, 0.40, 0.35,
     0.30, 0.25, 0.20, 0.15, 0.10, 0.05,
@@ -104,11 +106,6 @@ if draw_config_path:
         raise ValueError(
             f"Tag '{output_tag}' not found in draw config '{draw_config_path}'."
         )
-    if "score_cuts" in tag_cfg:
-        cuts = tag_cfg["score_cuts"]
-        if not isinstance(cuts, list) or not cuts:
-            raise ValueError(f"Invalid score_cuts for tag '{output_tag}' in '{draw_config_path}'")
-        score_cuts = [float(x) for x in cuts]
     if "mass_range" in tag_cfg:
         mass_range = tag_cfg["mass_range"]
         if not isinstance(mass_range, list) or len(mass_range) != 2:
@@ -122,7 +119,6 @@ if draw_config_path:
         raise ValueError(f"mass_range must satisfy min < max for tag '{output_tag}'")
     BINS = np.arange(MASS_RANGE[0], MASS_RANGE[1] + BIN_WIDTH, BIN_WIDTH)
     print(f"Using draw overrides from {draw_config_path} for tag {output_tag}")
-    print(f"  score_cuts={score_cuts}")
     print(f"  mass_range={MASS_RANGE}")
     print(f"  bin_width={BIN_WIDTH}")
 
@@ -175,41 +171,26 @@ df_fid = apply_selection(df_base, fid_cfg.get("expression"), f"fiducial_profiles
 # Significance scan is intentionally disabled for now.
 for train_tag in valid_train_tags:
     score_column = score_branch_map[train_tag]
-    cut_scan_root = ensure_dir(os.path.join(selected_dir(output_tag), "cut_scan"))
-    score_cut_root = ensure_dir(os.path.join(cut_scan_root, "score_cut"))
-    if len(valid_train_tags) == 1:
-        output_dir = score_cut_root
-    else:
-        output_dir = ensure_dir(os.path.join(cut_scan_root, f"{output_prefix}{train_tag}"))
-    for cut in score_cuts:
-        cut_tag = int(round(cut * 1000)) if cut >= 0.99 else int(round(cut * 100))
-        df_cut = df_fid[df_fid[score_column] > cut]
-
-        plt.figure(figsize=(6, 6))
-        plt.hist(df_cut["Bmass"], bins=BINS, histtype="step", linewidth=2)
-        for mass in REFERENCE_MASSES:
-            plt.axvline(mass, linestyle="--", linewidth=1.2, color="gray", alpha=0.8)
-        plt.xlabel("Bmass (GeV)")
-        plt.ylabel("Entries")
-        plt.title(format_plot_title(train_tag, f"score > {cut}"), fontsize=10)
-        plt.xlim(MASS_RANGE[0], MASS_RANGE[1])
-        plt.grid(alpha=0.3)
-        plt.tight_layout()
-
-        if cut >= 0.99:
-            out_name = os.path.join(output_dir, f"DATA_{active_fid}_cut{cut_tag:04d}.pdf")
-        else:
-            out_name = os.path.join(output_dir, f"DATA_{active_fid}_cut{cut_tag:03d}.pdf")
-        plt.savefig(out_name, bbox_inches="tight")
-        plt.close()
-
-    reference_file = os.path.join(selected_dir(output_tag), f"{output_prefix}REFERENCE_MC_with_score.root")
-    if os.path.exists(reference_file):
-        with open(resolve_model_config_path(train_tag)) as f:
-            model_cfg = json.load(f)
+    cut_scan_root = ensure_dir(cut_scan_dir(output_tag))
+    filename_prefix = output_prefix + (train_tag + "_" if len(train_tags) > 1 else "")
+    reference_file = efficiency_reference_mc_path(
+        output_tag, output_prefix, train_tag=train_tag if len(train_tags) > 1 else None,
+    )
+    with open(resolve_model_config_path(train_tag)) as f:
+        model_cfg = json.load(f)
+    reference_spec = model_cfg.get("efficiency_reference_signal")
+    if reference_spec:
         weight_branch = weight_branches_from_metadata(model_cfg, "efficiency_reference")
+        reference_tree_name = split_root_spec(reference_spec)[1]
+    else:
+        reference_file = os.path.join(selected_dir(output_tag), f"{output_prefix}MC_with_score.root")
+        weight_branch = weight_branches_from_metadata(model_cfg)
+        reference_tree_name = (split_root_spec(model_cfg["signal_path"])[1] if model_cfg.get("signal_path")
+                               else resolve_apply_config(sample_key, channel, dataset_year)["mc"][0]["tree"])
+    if not os.path.exists(reference_file):
+        raise FileNotFoundError(f"Missing MC reference for xeff DRAW: {reference_file}")
+    if os.path.exists(reference_file):
         efficiency_label = "weighted signal efficiency" if weight_branch else "signal efficiency"
-        reference_tree_name = split_root_spec(model_cfg["efficiency_reference_signal"])[1]
         reference_tree = uproot.open(reference_file)[reference_tree_name]
         ref_columns = list(dict.fromkeys([score_column] + weight_branch + selection_columns(fid_cfg.get("expression"))))
         ref_df = reference_tree.arrays(ref_columns, library="pd")
@@ -221,7 +202,7 @@ for train_tag in valid_train_tags:
         threshold_rows = weighted_efficiency_thresholds(
             scores, weights, efficiency_targets
         )
-        efficiency_dir = ensure_dir(os.path.join(cut_scan_root, "weighted_signal_efficiency"))
+        efficiency_dir = cut_scan_root
         efficiency_rows = []
         for row in threshold_rows:
             target = row["target_efficiency"]
@@ -239,9 +220,9 @@ for train_tag in valid_train_tags:
             )
             plt.xlim(MASS_RANGE[0], MASS_RANGE[1]); plt.grid(alpha=0.3); plt.tight_layout()
             plt.savefig(
-                os.path.join(efficiency_dir, f"DATA_{active_fid}_eff{int(target*100):03d}.pdf"),
+                os.path.join(efficiency_dir, f"{filename_prefix}DATA_{active_fid}_eff{int(target*100):03d}.pdf"),
                 bbox_inches="tight",
             ); plt.close()
             efficiency_rows.append({"target_efficiency": target, "score_threshold": threshold, "achieved_efficiency": achieved, "data_entries": int(len(data_cut))})
-        with open(os.path.join(efficiency_dir, "thresholds.json"), "w") as f:
+        with open(os.path.join(efficiency_dir, f"{filename_prefix}thresholds.json"), "w") as f:
             json.dump({"train_tag": train_tag, "efficiency_label": efficiency_label, "weight_branch": weight_branch[0] if len(weight_branch) == 1 else None, "weight_branches": weight_branch, "reference_file": reference_file, "thresholds": efficiency_rows}, f, indent=2)

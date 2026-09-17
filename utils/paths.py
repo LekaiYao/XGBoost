@@ -1,5 +1,6 @@
 import os
 import re
+from pathlib import Path
 
 OUTPUT_ROOT_DIR = "output"
 MODELS_DIR = os.path.join(OUTPUT_ROOT_DIR, "models")
@@ -83,6 +84,14 @@ def shap_dir(train_tag):
 
 def selected_dir(train_tag):
     return os.path.join(SELECTED_DIR, train_tag)
+
+
+def efficiency_reference_mc_path(output_tag, output_prefix="", train_tag=None):
+    """Keep single-model naming; isolate each grouped model's reference."""
+    model_prefix = f"{train_tag}_" if train_tag is not None else ""
+    return os.path.join(
+        selected_dir(output_tag), f"{output_prefix}{model_prefix}REFERENCE_MC_with_score.root"
+    )
 
 
 def reweighting_dir(reweight_tag):
@@ -288,3 +297,11 @@ def resolve_data_output_path(train_tag):
 
 def resolve_mc_output_path(train_tag):
     return mc_output_path(train_tag)
+
+
+def resolve_efficiency_threshold_path(selected_directory):
+    """Prefer flat DRAW output; accept historical nested thresholds."""
+    root = Path(selected_directory) / "cut_scan"
+    flat = root / "thresholds.json"
+    legacy = root / "weighted_signal_efficiency" / "thresholds.json"
+    return flat if flat.exists() or not legacy.exists() else legacy

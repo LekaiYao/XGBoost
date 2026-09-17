@@ -21,7 +21,7 @@ from configs.samples import (
     to_root_spec,
 )
 from utils.apply_inputs import resolve_apply_mc_input
-from utils.paths import ensure_dir, resolve_model_config_path, resolve_model_path, resolve_scaler_path, selected_dir, train_group_tag
+from utils.paths import ensure_dir, resolve_model_config_path, resolve_model_path, resolve_scaler_path, selected_dir, train_group_tag, efficiency_reference_mc_path
 from utils.streaming_apply import write_scored_root
 from utils.varsets import get_varset_columns, infer_varset_from_tag
 
@@ -74,15 +74,17 @@ while i < len(args):
 
 group_tag = train_group_tag(train_tags)
 output_tag = output_tag or group_tag
-sample_key = infer_sample_from_tag(output_tag)
-channel = infer_channel_from_tag(output_tag)
-dataset_year = dataset_year_override or infer_dataset_year(output_tag, sample_key)
+# A grouped output name is a directory label, not a complete model tag.
+config_tag = train_tags[0] if len(train_tags) > 1 else output_tag
+sample_key = infer_sample_from_tag(config_tag)
+channel = infer_channel_from_tag(config_tag)
+dataset_year = dataset_year_override or infer_dataset_year(config_tag, sample_key)
 apply_cfg = resolve_apply_config(sample_key, channel, dataset_year)
 draw_cfg = resolve_draw_config(sample_key, channel, dataset_year)
 draw_tree_name = draw_cfg["data"]["tree"]
-selection_profile = infer_selection_profile(output_tag, sample_key)
+selection_profile = infer_selection_profile(config_tag, sample_key)
 training_cfg = resolve_training_config(sample_key, channel, dataset_year, selection_profile)
-fid_profile = infer_fid_profile(output_tag, sample_key)
+fid_profile = infer_fid_profile(config_tag, sample_key)
 fid_cfg = resolve_fiducial_config(sample_key, channel, fid_profile)
 apply_selection_expression = fid_cfg["expression"] if training_cfg.get("apply_fiducial_selection", False) else None
 expected_apply_selection = training_cfg.get("apply_selection", training_cfg["signal_selection"])
@@ -212,11 +214,19 @@ print(
 
 # A common weighted signal reference makes score thresholds comparable between
 # weighted and unweighted trainings at fixed weighted signal efficiency.
-reference_input = models[0]["config"].get("efficiency_reference_signal") if single_model_mode else None
-if reference_input:
+for model_bundle in models:
+    reference_input = model_bundle["config"].get("efficiency_reference_signal")
+    if not reference_input:
+        continue
     reference_tree = split_root_spec(reference_input)[1]
-    reference_path = os.path.join(output_dir, f"{output_prefix}REFERENCE_MC_with_score.root")
-    reference_result = write_scored_root(reference_input, reference_path, reference_tree, models, selection=apply_selection_expression)
+    reference_path = efficiency_reference_mc_path(
+        output_tag, output_prefix,
+        train_tag=None if single_model_mode else model_bundle["train_tag"],
+    )
+    reference_result = write_scored_root(
+        reference_input, reference_path, reference_tree, [model_bundle],
+        selection=apply_selection_expression,
+    )
     print(
         f"Saved efficiency-reference MC with score: {reference_path} "
         f"({reference_result['entries']} entries in {reference_result['chunks']} chunks)"

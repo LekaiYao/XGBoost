@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from utils.paths import resolve_efficiency_threshold_path
 import argparse
 import fcntl
 from pathlib import Path
@@ -25,7 +26,7 @@ def _required_paths(train_tag: str) -> tuple[Path, ...]:
         Path(resolve_model_config_path(train_tag)).resolve(),
         selected / "DATA_with_score.root",
         selected / "MC_with_score.root",
-        selected / "cut_scan/weighted_signal_efficiency/thresholds.json",
+        resolve_efficiency_threshold_path(selected),
     )
 
 

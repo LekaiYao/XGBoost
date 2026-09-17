@@ -26,6 +26,7 @@ from configs.samples import (
     resolve_draw_config,
     resolve_fiducial_config,
 )
+from utils.paths import resolve_efficiency_threshold_path
 from utils.paths import comparison_dir, cut_scan_dir, data_output_path
 from utils.selection import apply_selection, selection_columns
 
@@ -77,7 +78,7 @@ def _load_tag(tag: str) -> dict:
     fiducial = resolve_fiducial_config(sample, channel, fid_profile)["expression"]
     tree_name = resolve_draw_config(sample, channel, year)["data"]["tree"]
     data_path = Path(data_output_path(tag))
-    threshold_path = Path(cut_scan_dir(tag)) / "weighted_signal_efficiency" / "thresholds.json"
+    threshold_path = resolve_efficiency_threshold_path(Path(cut_scan_dir(tag)).parent)
     if not data_path.is_file():
         raise FileNotFoundError(f"Missing scored DATA: {data_path}")
     if not threshold_path.is_file():
