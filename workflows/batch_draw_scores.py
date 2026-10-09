@@ -28,7 +28,7 @@ if len(sys.argv) < 2:
     print(
         "Usage: python3 workflows/batch_draw_scores.py "
         "[--output-tag <output_tag>] [--output-prefix <prefix>] [--fid-profile <auto|fid{n}>] "
-        "[--draw-config <json_path>] "
+        "[--draw-config <json_path>] [--cut-scan-name <cut_scan|cut_scan_SUFFIX>] "
         "<train_tag> [<train_tag> ...]"
     )
     sys.exit(1)
@@ -38,6 +38,7 @@ output_tag = None
 output_prefix = ""
 fid_profile = "auto"
 draw_config_path = None
+cut_scan_name = "cut_scan"
 train_tags = []
 
 i = 0
@@ -53,6 +54,10 @@ while i < len(args):
         continue
     if token == "--fid-profile" and i + 1 < len(args):
         fid_profile = args[i + 1]
+        i += 2
+        continue
+    if token == "--cut-scan-name" and i + 1 < len(args):
+        cut_scan_name = args[i + 1]
         i += 2
         continue
     if token == "--draw-config" and i + 1 < len(args):
@@ -171,7 +176,7 @@ df_fid = apply_selection(df_base, fid_cfg.get("expression"), f"fiducial_profiles
 # Significance scan is intentionally disabled for now.
 for train_tag in valid_train_tags:
     score_column = score_branch_map[train_tag]
-    cut_scan_root = ensure_dir(cut_scan_dir(output_tag))
+    cut_scan_root = ensure_dir(cut_scan_dir(output_tag, cut_scan_name))
     filename_prefix = output_prefix + (train_tag + "_" if len(train_tags) > 1 else "")
     reference_file = efficiency_reference_mc_path(
         output_tag, output_prefix, train_tag=train_tag if len(train_tags) > 1 else None,
@@ -226,3 +231,11 @@ for train_tag in valid_train_tags:
             efficiency_rows.append({"target_efficiency": target, "score_threshold": threshold, "achieved_efficiency": achieved, "data_entries": int(len(data_cut))})
         with open(os.path.join(efficiency_dir, f"{filename_prefix}thresholds.json"), "w") as f:
             json.dump({"train_tag": train_tag, "efficiency_label": efficiency_label, "weight_branch": weight_branch[0] if len(weight_branch) == 1 else None, "weight_branches": weight_branch, "reference_file": reference_file, "thresholds": efficiency_rows}, f, indent=2)
+
+    # Punzi is part of default DRAW for the approved PbPb23 X scope.
+    from workflows.punzi_scan import applicable as punzi_applicable, run as run_punzi
+    if punzi_applicable(train_tag):
+        if output_tag != train_tag or output_prefix or cut_scan_name != "cut_scan":
+            raise ValueError("Punzi requires per-tag default output ownership; run the tag separately")
+        run_punzi(train_tag, draw_config={"mass_range": list(MASS_RANGE),
+                  "bin_width": BIN_WIDTH, "reference_masses": REFERENCE_MASSES})

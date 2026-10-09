@@ -1,0 +1,195 @@
+{
+  "schema_version": 2,
+  "recipe_id": "pb23_punzi_empirical_ab5_two_sidebands_v2",
+  "date": "2026-09-28",
+  "status": {
+    "method": "HUMAN_APPROVED_2026-09-28",
+    "delivery": "ready_for_ml_acceptance",
+    "ml_implementation": "owned_by_ML_not_executed_here",
+    "extended_membership": "discarded_no_extra_assignment"
+  },
+  "formula": {
+    "name": "Punzi empirical corrected denominator",
+    "a": 5,
+    "b": 5,
+    "overall_multiplier": 1,
+    "signal_window_factor": 1,
+    "epsilon": "mc_pass_sumw / mc_pre_score_sumw",
+    "D": "a*a/8 + 9*b*b/13 + a*sqrt(B) + b/2*sqrt(b*b + 4*a*sqrt(B) + 4*B)",
+    "D_ab5_independent_identity": "3425/104 + 10*sqrt(B)",
+    "FOM": "epsilon / D",
+    "B": "sideband_width_ratio * scaled_passing_sideband_entries"
+  },
+  "selection": {
+    "score_comparator": ">",
+    "mass_comparators": [
+      ">",
+      "<"
+    ],
+    "mc_mass": [
+      3.62,
+      4.0
+    ],
+    "background_target_window": [
+      3.84,
+      3.9
+    ],
+    "data_weight": 1,
+    "signal": "prompt X MC of this tag",
+    "mc_weight": "source pThatreweight, physical relative weights, no class-balance multiplier",
+    "pre_score_scope": "tag-specific DATA apply selection and MC apply/efficiency population, before score cut; freeze source entry IDs and hashes",
+    "tag_fields_required": [
+      "model_hash",
+      "data_source_and_hash",
+      "mc_source_and_hash",
+      "data_apply_selection",
+      "mc_apply_selection",
+      "weight_definition",
+      "source_entry_identity",
+      "split_membership_provenance"
+    ],
+    "new_ml_request_example_only": {
+      "data": "15<Bpt<50 and abs(By)<1.6 and BQvalue<0.15",
+      "mc_addition": "pthat>=10",
+      "training_sidebands": [
+        [
+          3.8,
+          3.85
+        ],
+        [
+          3.89,
+          3.94
+        ]
+      ]
+    },
+    "mc_population_check": "For training-sideband curves use true MC train/test union after the same tag apply and MC mass requirements; it must match total efficiency population. Report caps/exclusions/missing membership instead of creating new identities."
+  },
+  "grid": {
+    "integer_k_min": 5,
+    "integer_k_max": 95,
+    "threshold": "k/100",
+    "points": 91,
+    "plot_all_points": true,
+    "source": "user instruction recorded in ML request"
+  },
+  "optimal": {
+    "curve": "each scope independently uses its own total curve",
+    "criterion": "largest unrounded finite FOM on specified grid",
+    "ties": "smallest score among exact equal maxima; report all ties",
+    "zero_background": "valid, no floor; D(0)=3425/104",
+    "minimum_sideband_entries": 0,
+    "zero_mc_denominator": "invalid entire curve; no optimal",
+    "nonfinite_or_nonpositive_weight": "reject inconsistent input; do not silently drop or replace",
+    "all_zero_efficiencies": "all FOM zero: historical first-maximum behavior retained, flag uninformative",
+    "boundary_maximum": "report boundary flag; no automatic grid extension"
+  },
+  "source": {
+    "path": "scripts/workflows/scan_pb23_punzi_corrected_score.py",
+    "sha256": "d7ec72f3248f14bb515c2c78c48a0aac497359b3cc2d413d4cb07f488b899961",
+    "formula_line": 31,
+    "mc_denominator_line": 21,
+    "git_HEAD": "abfd2a9c853408d195eef8c281352046b4c95f4e",
+    "git_status": "script untracked; SHA256 is authoritative"
+  },
+  "request": "XGBoost/docs/requests/4codes/open/2026-09-28_punzi_method_for_ml.md",
+  "human_decision": {
+    "date": "2026-09-28",
+    "authority": "explicit user decision in Analysis_CODES session",
+    "quote": "最终绘制两张图，一张是当前宽侧带的总punzi fom,一张则是训练侧带总、train、test punzi fom，在cut_scan也改为加两张图，对应两个总optimal punzi fom,宽侧带命名为_wide_optimal,训练侧带命名为_optimal",
+    "reconfirmation_required": false,
+    "supersedes": "old ML request single wide-sideband total/train/test plot and proposed extended evaluation membership"
+  },
+  "scopes": {
+    "wide": {
+      "sidebands": [
+        [
+          3.75,
+          3.84
+        ],
+        [
+          3.9,
+          3.99
+        ]
+      ],
+      "sideband_width": "0.18",
+      "target_width": "0.06",
+      "width_ratio": "1/3",
+      "curves": [
+        "total"
+      ],
+      "B_total": "(left_total+right_total)/3",
+      "optimal_from": "wide.total",
+      "data_population": "full DATA apply population in wide sidebands",
+      "mc_population": "full tag prompt-X efficiency population"
+    },
+    "training": {
+      "sidebands": [
+        [
+          3.8,
+          3.85
+        ],
+        [
+          3.89,
+          3.94
+        ]
+      ],
+      "sideband_source": "actual tag training metadata; values shown are current approved ML route",
+      "sideband_width": "0.10",
+      "target_width": "0.06",
+      "width_ratio": "3/5",
+      "curves": [
+        "total",
+        "train",
+        "test"
+      ],
+      "B_total": "(left_total+right_total)*3/5",
+      "B_train": "(left_train+right_train)*3/(5*q_train)",
+      "B_test": "(left_test+right_test)*3/(5*q_test)",
+      "q_train": 0.75,
+      "q_test": 0.25,
+      "optimal_from": "training.total",
+      "membership": "original training split only; no extension, no redraw of membership",
+      "data_population": "union of true background train/test candidates, restricted to tag apply selection and actual training sidebands",
+      "mc_population": "union of true prompt-X train/test candidates, restricted to tag MC apply selection and 3.62<m<4.00",
+      "epsilon_each_curve": "passed physical MC weight sum within that group / pre-score physical MC weight sum within that group",
+      "total_definition": "disjoint union train+test counted once; never average the two FOM values",
+      "normalization": "q is original score-independent split inclusion probability; confirm actual sampling metadata; cannot use post-cut group proportions",
+      "conditions": [
+        "same fixed model for all curves",
+        "no missing/duplicate source identities",
+        "true union matches eligible total population; caps or nonrandom exclusions must be reported",
+        "test is diagnostic because total is used for optimal selection"
+      ],
+      "width_rule": "target window width / sum of actual sideband widths; training mass boundaries follow model metadata and are recorded"
+    }
+  },
+  "outputs": {
+    "fom_plots": [
+      {
+        "scope": "wide",
+        "curves": [
+          "total"
+        ]
+      },
+      {
+        "scope": "training",
+        "curves": [
+          "total",
+          "train",
+          "test"
+        ]
+      }
+    ],
+    "optimal_mass_plots": {
+      "directory": "cut_scan",
+      "population": "full DATA passing same tag apply selection and the respective optimal score; no sideband/train/test restriction on mass plot",
+      "wide_suffix": "_wide_optimal.pdf",
+      "training_suffix": "_optimal.pdf",
+      "filename": "preserve tag/data/config prefix; encode actual score immediately before semantic suffix, e.g. ...score0p77_wide_optimal.pdf and ...score0p80_optimal.pdf",
+      "style": "reuse existing cut_scan mass range, bin width, axes, reference mass lines and plotting style",
+      "same_cut": "keep both named outputs and both method provenance records even when cuts coincide"
+    },
+    "point_records": "91 points per curve, both independent total optima; store windows,width ratios,split identity provenance,weights and model/formula hashes",
+    "preserve_existing_scan_outputs": true
+  }
+}
