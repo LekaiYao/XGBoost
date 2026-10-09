@@ -29,6 +29,7 @@ from configs.samples import (
     to_root_spec,
 )
 from configs.direct_xgb_settings import resolve_direct_xgb_params
+from configs.feature_selection import experiment_for_tag
 from utils.paths import (
     condor_feature_importance_cumulative_path,
     condor_feature_importance_path,
@@ -71,7 +72,7 @@ def build_roc_payload(y_true, score, sample_weight=None):
 def parse_args():
     parser = argparse.ArgumentParser(description="Direct XGBoost training without Optuna")
     parser.add_argument("train_tag")
-    parser.add_argument("--dataset-year", choices=["2023", "2024"], default=None)
+    parser.add_argument("--dataset-year", choices=["2018", "2023", "2024"], default=None)
     parser.add_argument("--selection-profile", default=None)
     parser.add_argument("--use-precut", type=int, choices=[0, 1], default=0)
     return parser.parse_args()
@@ -173,6 +174,8 @@ def main():
             input_columns
             + selection_columns(signal_selection)
             + signal_weight_branches
+            + ([train_cfg["training_signal_exclusion"]["branch"]]
+               if train_cfg.get("training_signal_exclusion") else [])
         )
     )
     background_read_columns = list(
@@ -180,6 +183,12 @@ def main():
     )
     print(f"Signal read columns ({len(signal_read_columns)}): {signal_read_columns}")
     print(f"Background read columns ({len(background_read_columns)}): {background_read_columns}")
+
+    # Freeze original source revisions before reading, for approved Punzi diagnostics.
+    record_identity = sample == "pbpb" and channel == "X" and str(dataset_year) in {"2018", "2023"}
+    if record_identity:
+        from utils.training_identity import source_revision, save_identity
+        source_revisions = [source_revision(spec) for spec in (sig_path, bkg_path)]
 
     ak_sig = uproot.concatenate(
         sig_path, expressions=signal_read_columns, library="pd"
@@ -190,6 +199,8 @@ def main():
 
     ak_sig = apply_selection(ak_sig, signal_selection, "signal_selection")
     ak_bkg = apply_selection(ak_bkg, background_selection, "background_selection")
+    source_signal_entries = ak_sig.index.to_numpy(dtype=np.int64)
+    source_background_entries = ak_bkg.index.to_numpy(dtype=np.int64)
     is_weighted_training = bool(signal_weight_branches)
     if is_weighted_training:
         signal_weight = resolve_training_weights(
@@ -201,6 +212,18 @@ def main():
     else:
         signal_weight = None
         background_weight = None
+
+    exclusion = train_cfg.get("training_signal_exclusion")
+    excluded_signal = None
+    if exclusion:
+        if exclusion["scope"] != "training_only_after_split":
+            raise ValueError("Unsupported training signal exclusion scope")
+        excluded_signal = np.isclose(
+            ak_sig[exclusion["branch"]].to_numpy(dtype=float),
+            exclusion["value"], rtol=1e-12, atol=0.0,
+        )
+        if not excluded_signal.any() or excluded_signal.all():
+            raise ValueError("Training exclusion must identify a nonempty, proper MC subset")
 
     ak_sig = ak_sig[input_columns].copy()
     ak_bkg = ak_bkg[input_columns].copy()
@@ -225,6 +248,29 @@ def main():
         )
         weight_train = None
         weight_test = None
+    exclusion_metadata = None
+    excluded_test = None
+    if exclusion:
+        excluded_all = pd.Series(
+            np.r_[excluded_signal, np.zeros(len(ak_bkg), dtype=bool)], index=df_raw.index
+        )
+        excluded_train = excluded_all.loc[X_train_raw.index]
+        excluded_test = excluded_all.loc[X_test_raw.index].to_numpy()
+        exclusion_metadata = {
+            **exclusion,
+            "removed_train_signal": int(excluded_train.sum()),
+            "retained_test_excluded_tier": int(excluded_test.sum()),
+            "original_train_signal": int(y_train["is_sig"].sum()),
+            "test_signal": int(y_test["is_sig"].sum()),
+            "test_background": int(y_test["is_bkg"].sum()),
+        }
+        if not excluded_train.any():
+            raise ValueError("No training signal matched the configured exclusion")
+        X_train_raw = X_train_raw.loc[~excluded_train]
+        y_train = y_train.loc[~excluded_train]
+        if weight_train is not None:
+            weight_train = weight_train.loc[~excluded_train]
+        print(f"Training-only signal exclusion: {exclusion_metadata}")
     scaler = StandardScaler()
     scaler.fit(
         X_train_raw,
@@ -288,6 +334,19 @@ def main():
         test_score_xgb_all,
         weight_test.to_numpy() if is_weighted_training else None,
     )
+    combined_roc = build_roc_payload(
+        np.concatenate([train_y_true, test_y_true]),
+        np.concatenate([train_score_xgb_all, test_score_xgb_all]),
+        np.concatenate([weight_train.to_numpy(), weight_test.to_numpy()])
+        if is_weighted_training else None,
+    )
+    test_without_excluded_tier = None
+    if excluded_test is not None:
+        keep = ~excluded_test
+        test_without_excluded_tier = build_roc_payload(
+            test_y_true[keep], test_score_xgb_all[keep],
+            weight_test.to_numpy()[keep] if is_weighted_training else None,
+        )
     efficiency_reference = train_cfg.get("efficiency_reference_signal")
     efficiency_reference_weight = train_cfg.get(
         "efficiency_reference_weight_branch"
@@ -307,6 +366,9 @@ def main():
 
     ensure_dir(condor_model_dir(train_tag))
     ensure_dir(condor_training_dir(train_tag))
+    if record_identity:
+        save_identity(train_tag, source_signal_entries, source_background_entries,
+                      X_train_raw.index, X_test_raw.index, source_revisions)
     joblib.dump(xgbc, condor_model_path(train_tag))
     joblib.dump(scaler, condor_scaler_path(train_tag))
 
@@ -317,6 +379,7 @@ def main():
                 "trans_columns": trans_columns,
                 "model_params": params,
                 "direct_xgb_version": model_version,
+                "feature_selection_experiment": experiment_for_tag(train_tag),
                 "reweight_profile": reweight_profile,
                 "signal_artifact_variant": (
                     signal_artifact["artifact_variant"] if signal_artifact else None
@@ -333,6 +396,7 @@ def main():
                 "split_random_state": 42,
                 "train_fraction": 0.75,
                 "scaler_fit_scope": "training_subset_only",
+                "training_signal_exclusion": exclusion_metadata,
                 "efficiency_reference_signal": (
                     to_root_spec(efficiency_reference)
                     if efficiency_reference is not None
@@ -381,6 +445,10 @@ def main():
                 "mode": "direct_xgboost",
                 "train": train_roc,
                 "test": test_roc,
+                "combined": combined_roc,
+                "test_without_excluded_tier": test_without_excluded_tier,
+                "training_signal_exclusion": exclusion_metadata,
+                "combined_definition": "pooled train and test predictions; original sample weights",
             },
             f,
             indent=2,
@@ -543,6 +611,8 @@ def main():
         test_fraction=0.25,
         notes={
             "training_mode": "direct_xgboost",
+            "feature_selection_experiment": experiment_for_tag(train_tag),
+            "combined_auc": float(combined_roc["auc"]),
             "dataset_source": dataset_source,
             "dataset_year": dataset_year,
             "selection_profile": selection_profile,
@@ -552,6 +622,7 @@ def main():
             "test_auc": float(test_roc["auc"]),
             "roc_json_path": roc_json_path,
             "roc_plot_path": roc_plot_path,
+            "training_signal_exclusion": exclusion_metadata,
             "n_sig_train": n_sig_train,
             "n_bkg_train": n_bkg_train,
             "scale_pos_weight": scale_pos_weight,

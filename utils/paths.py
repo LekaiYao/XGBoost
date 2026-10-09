@@ -2,6 +2,8 @@ import os
 import re
 from pathlib import Path
 
+from configs.feature_selection import experiment_for_tag
+
 OUTPUT_ROOT_DIR = "output"
 MODELS_DIR = os.path.join(OUTPUT_ROOT_DIR, "models")
 TRAINING_DIR = os.path.join(OUTPUT_ROOT_DIR, "training")
@@ -62,28 +64,41 @@ def train_batch_tag(train_tag):
     return f"{base_tag}_{token}{start}_{token}{end}"
 
 
+def experiment_output_dir(category, experiment):
+    from configs.feature_selection import resolve_feature_selection_experiment
+    resolve_feature_selection_experiment(experiment)
+    roots = {"models": MODELS_DIR, "training": TRAINING_DIR,
+             "selected": SELECTED_DIR, "shap": SHAP_DIR}
+    return os.path.join(roots[category], experiment)
+
+
+def _tag_output_dir(root, train_tag):
+    experiment = experiment_for_tag(train_tag)
+    return os.path.join(root, experiment, train_tag) if experiment else os.path.join(root, train_tag)
+
+
 def model_dir(train_tag):
-    return os.path.join(MODELS_DIR, train_tag)
+    return _tag_output_dir(MODELS_DIR, train_tag)
 
 
 def training_dir(train_tag):
-    return os.path.join(TRAINING_DIR, train_tag)
+    return _tag_output_dir(TRAINING_DIR, train_tag)
 
 
 def condor_model_dir(train_tag):
-    return os.path.join(MODELS_DIR, train_tag)
+    return _tag_output_dir(MODELS_DIR, train_tag)
 
 
 def condor_training_dir(train_tag):
-    return os.path.join(TRAINING_DIR, train_tag)
+    return _tag_output_dir(TRAINING_DIR, train_tag)
 
 
 def shap_dir(train_tag):
-    return os.path.join(SHAP_DIR, train_tag)
+    return _tag_output_dir(SHAP_DIR, train_tag)
 
 
 def selected_dir(train_tag):
-    return os.path.join(SELECTED_DIR, train_tag)
+    return _tag_output_dir(SELECTED_DIR, train_tag)
 
 
 def efficiency_reference_mc_path(output_tag, output_prefix="", train_tag=None):
@@ -131,8 +146,14 @@ def reweighted_root_path(reweight_tag, input_path):
     return os.path.join(reweighting_dir(reweight_tag), f"{stem}_with_reweight.root")
 
 
-def cut_scan_dir(train_tag):
-    return os.path.join(selected_dir(train_tag), "cut_scan")
+def punzi_dir(train_tag):
+    return os.path.join(selected_dir(train_tag), "punzi")
+
+
+def cut_scan_dir(train_tag, directory_name="cut_scan"):
+    if not re.fullmatch(r"cut_scan(?:_[A-Za-z0-9]+)?", directory_name):
+        raise ValueError("Invalid cut-scan directory name")
+    return os.path.join(selected_dir(train_tag), directory_name)
 
 
 def model_path(train_tag):
