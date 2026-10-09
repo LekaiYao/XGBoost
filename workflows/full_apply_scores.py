@@ -44,7 +44,10 @@ def main():
     if selection != training.get("apply_selection", training["signal_selection"]):
         raise ValueError("Full APPLY fiducial does not match configured apply selection")
     config = json.loads(Path(resolve_model_config_path(tag)).read_text())
-    model = joblib.load(resolve_model_path(tag))
+    from utils.model_backend import load_model, score_transformed
+    from utils.tagging import model_kind
+    is_bdtg = model_kind(tag) == "bdtg"
+    model = load_model(tag, config)
     scaler = joblib.load(resolve_scaler_path(tag))
     features = config["input_columns"]
     transformed_columns = config["trans_columns"]
@@ -62,11 +65,13 @@ def main():
             score_selection = f"({selection}) and ({training['apply_signal_selection']})"
         columns = list(dict.fromkeys(features + selection_columns(score_selection)))
         destination = output_dir / Path(spec["path"]).name
-        if args.only_data and destination.exists():
+        if (args.only_data or is_bdtg) and destination.exists():
             raise FileExistsError(f"DATA output already exists: {destination}")
         temporary = destination.with_suffix(".root.tmp")
         with uproot.open(spec["path"]) as source_file:
             source_branches = source_file[spec["tree"]].keys()
+            if is_bdtg and "Score_raw" in source_branches:
+                raise ValueError(f"Score_raw already exists in {spec['path']}")
             branch_renames = {"Score": "Score_source"} if "Score" in source_branches else {}
             if branch_renames and "Score_source" in source_branches:
                 raise ValueError(f"Both Score and Score_source exist in {spec['path']}")
@@ -74,8 +79,9 @@ def main():
         try:
             with tempfile.TemporaryDirectory(prefix="full_apply_") as scratch:
                 scores_path = Path(scratch) / "scores.bin"
+                raw_path = Path(scratch) / "raw.bin"
                 entries = selected_entries = 0
-                with scores_path.open("wb") as score_file:
+                with scores_path.open("wb") as score_file, raw_path.open("wb") as raw_file:
                     for arrays in uproot.iterate(
                         f"{spec['path']}:{spec['tree']}", expressions=columns,
                         step_size="100 MB", library="np",
@@ -83,13 +89,19 @@ def main():
                         frame = pd.DataFrame(arrays)
                         selected = apply_selection(frame, score_selection, "full APPLY scoring selection")
                         scores = np.full(len(frame), -1, dtype=np.float32)
+                        raw_scores = np.full(len(frame), np.nan, dtype=np.float32)
                         if len(selected):
                             transformed = pd.DataFrame(
                                 scaler.transform(selected[features]),
                                 columns=transformed_columns, index=selected.index,
                             )
-                            scores[selected.index.to_numpy()] = model.predict_proba(transformed)[:, 1]
+                            mapped, raw = score_transformed(model, transformed)
+                            scores[selected.index.to_numpy()] = mapped
+                            if raw is not None:
+                                raw_scores[selected.index.to_numpy()] = raw
                         scores.tofile(score_file)
+                        if is_bdtg:
+                            raw_scores.tofile(raw_file)
                         entries += len(frame)
                         selected_entries += len(selected)
                 if not spec["is_data"]:
@@ -98,6 +110,7 @@ def main():
                     json.dumps(str(temporary.resolve())), json.dumps(spec["tree"]),
                     json.dumps(str(scores_path)), "true" if spec["is_data"] else "false",
                     json.dumps(spec["path"]),
+                    json.dumps(str(raw_path) if is_bdtg else ""),
                 ]) + ")"
                 subprocess.run(["root", "-l", "-b", "-q", call], check=True)
                 temporary.replace(destination)
@@ -109,7 +122,12 @@ def main():
                                 output_entries=selected_entries if spec["is_data"] else entries))
             (output_dir / ("data_apply_summary.json" if args.only_data else "full_apply_summary.json")).write_text(json.dumps(
                 dict(train_tag=tag, fiducial_selection=selection, score_branch="Score",
-                     include_data=args.include_data, samples=records),
+                     include_data=args.include_data, samples=records,
+                     model_type=model_kind(tag),
+                     raw_score_branch="Score_raw" if is_bdtg else None,
+                     raw_unscored_value="NaN" if is_bdtg else None,
+                     score_mapping="(raw+1)/2" if is_bdtg else "predict_proba",
+                     valid_score="Score >= 0"),
                 indent=2,
             ))
             print(f"Finished {key}: {records[-1]['output_entries']} entries", flush=True)

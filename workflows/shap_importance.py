@@ -76,7 +76,9 @@ resolved_model_path = resolve_model_path(train_tag)
 resolved_scaler_path = resolve_scaler_path(train_tag)
 resolved_config_path = resolve_model_config_path(train_tag)
 
-xgbc = joblib.load(resolved_model_path)
+from utils.model_backend import load_model
+from utils.tagging import model_kind
+xgbc = load_model(train_tag)
 scaler = joblib.load(resolved_scaler_path)
 with open(resolved_config_path) as f:
     config = json.load(f)
@@ -108,10 +110,24 @@ if max_events > 0 and len(df_raw) > max_events:
 X_trans = pd.DataFrame(scaler.transform(df_raw[input_columns]), columns=trans_columns, index=df_raw.index)
 X_display = df_raw[input_columns].copy()
 
-explainer = shap.TreeExplainer(xgbc)
-shap_values = explainer.shap_values(X_trans)
-if isinstance(shap_values, list):
-    shap_values = shap_values[1]
+if model_kind(train_tag) == "bdtg":
+    from utils.tmva_shap import explain_bdtg
+    from utils.training_identity import sha256
+    shap_values, explanation = explain_bdtg(xgbc, X_trans)
+    ensure_dir(shap_dir(train_tag))
+    explanation.update(model_sha256=sha256(resolved_model_path), train_tag=train_tag,
+                       max_events=max_events, explained_events=len(X_trans),
+                       aggregation_weight="physical pThatreweight for MC; DATA=1")
+    with open(str(shap_dir(train_tag))+"/shap_metadata.json", "w") as stream:
+        json.dump(explanation, stream, indent=2)
+    np.savez_compressed(str(shap_dir(train_tag))+"/shap_values.npz", values=shap_values,
+                        source_concat_index=df_raw.index.to_numpy(),
+                        physical_weights=df_raw["_shap_weight"].to_numpy())
+else:
+    explainer = shap.TreeExplainer(xgbc)
+    shap_values = explainer.shap_values(X_trans)
+    if isinstance(shap_values, list):
+        shap_values = shap_values[1]
 
 shap_weights = df_raw["_shap_weight"].to_numpy(dtype=float)
 mean_abs_shap = np.average(np.abs(shap_values), axis=0, weights=shap_weights)

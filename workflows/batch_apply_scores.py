@@ -126,11 +126,11 @@ for train_tag in train_tags:
         resolved_scaler_path = resolve_scaler_path(train_tag)
         resolved_config_path = resolve_model_config_path(train_tag)
 
-        xgbc = joblib.load(resolved_model_path)
-        scaler = joblib.load(resolved_scaler_path)
-
         with open(resolved_config_path) as f:
             config = json.load(f)
+        from utils.model_backend import load_model
+        xgbc = load_model(train_tag, config)
+        scaler = joblib.load(resolved_scaler_path)
     except Exception as exc:
         skipped_models.append({"train_tag": train_tag, "reason": str(exc)})
         print(f"  [SKIP] {train_tag}: {exc}")
@@ -265,6 +265,13 @@ for tag in [m["train_tag"] for m in models] + train_tags:
 with open(summary_path, "w") as f:
     json.dump(
         {
+            "score_definitions": [{"train_tag": m["train_tag"],
+                "model_type": m["config"].get("model_type", "xgb"),
+                "score_branch": m["score_column"],
+                "raw_score_branch": m["score_column"].replace("Prediction", "Prediction_raw", 1)
+                    if m["config"].get("model_type") == "bdtg" else None,
+                "mapping": m["config"].get("score_mapping", "predict_proba")}
+                for m in models],
             "input_datasets": {
                 "sample": sample_key,
                 "channel": channel,

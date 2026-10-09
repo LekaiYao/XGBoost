@@ -1,5 +1,22 @@
 import re
 
+def model_kind(tag):
+    """Legacy Optuna/direct tags remain XGBoost; new backends are explicit."""
+    match = re.search(r"_(xgb|bdtg)_v[0-9]+$", tag)
+    if match:
+        return match.group(1)
+    if re.search(r"_[0-9]+o[0-9]+_v[0-9]+(?:_v[0-9]+)?$", tag):
+        return "xgb"
+    raise ValueError(f"Unsupported model tag: {tag}")
+
+
+def bdtg_version(tag):
+    match = re.search(r"_bdtg_v([0-9]+)$", tag)
+    if not match:
+        raise ValueError(f"Not a BDTG tag: {tag}")
+    return int(match.group(1))
+
+
 CHANNELS = ("X", "Psi2S", "Bu", "Bd", "Bs")
 _CHANNEL_SET = set(CHANNELS)
 

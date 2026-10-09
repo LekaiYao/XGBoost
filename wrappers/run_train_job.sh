@@ -13,7 +13,9 @@ cd "${repo_dir}"
 source .venv/bin/activate
 export PYTHONNOUSERSITE=1
 
-if [[ "${train_tag}" == *_xgb_* ]]; then
+if [[ "${train_tag}" == *_bdtg_* ]]; then
+  exec "${repo_dir}/.venv/bin/python" -m workflows.bdtg_train "${train_tag}"
+elif [[ "${train_tag}" == *_xgb_* ]]; then
   exec "${repo_dir}/.venv/bin/python" -m workflows.xgboost_train_direct "${train_tag}" --use-precut "${use_precut}"
 else
   exec "${repo_dir}/.venv/bin/python" -m workflows.condor_optuna_XGBoost "${train_tag}"

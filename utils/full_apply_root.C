@@ -11,6 +11,8 @@
 #include <fstream>
 #include <stdexcept>
 #include <iostream>
+#include <cmath>
+#include <limits>
 
 // Copy live objects into a fresh file, without obsolete/free ROOT data blocks.
 void full_apply_copy_objects(TDirectory *source, TDirectory *target,
@@ -38,7 +40,7 @@ void full_apply_copy_objects(TDirectory *source, TDirectory *target,
 // MC: update a complete copy. DATA: build a fresh file from the source.
 void full_apply_root(const char *path, const char *tree_name,
                      const char *scores_path, bool filter_data,
-                     const char *source_path = "") {
+                     const char *source_path = "", const char *raw_scores_path = "") {
     try {
         std::unique_ptr<TFile> original;
         if (filter_data) {
@@ -55,6 +57,9 @@ void full_apply_root(const char *path, const char *tree_name,
         auto *source = dynamic_cast<TTree *>(
             (filter_data ? original.get() : &file)->Get(tree_name));
         if (!source) throw std::runtime_error("Missing RECO TTree");
+        const bool has_raw = std::string(raw_scores_path).size() != 0;
+        if (has_raw && source->GetBranch("Score_raw"))
+            throw std::runtime_error("Score_raw branch collision");
         if (auto *legacy = source->GetBranch("Score")) {
             if (source->GetBranch("Score_source"))
                 throw std::runtime_error("Score and Score_source both exist");
@@ -70,22 +75,41 @@ void full_apply_root(const char *path, const char *tree_name,
             leaf->SetTitle("Score_source");
         }
         std::ifstream input(scores_path, std::ios::binary);
+        std::ifstream raw_input;
+        if (has_raw) raw_input.open(raw_scores_path, std::ios::binary);
+        float raw = std::numeric_limits<float>::quiet_NaN();
         float score = -1.f;
         file.cd();
         TTree *target = filter_data ? source->CloneTree(0) : source;
         auto *branch = target->Branch("Score", &score, "Score/F");
+        auto *raw_branch = has_raw ? target->Branch("Score_raw", &raw, "Score_raw/F") : nullptr;
         const auto entries = source->GetEntries();
         for (Long64_t i = 0; i < entries; ++i) {
             if (!input.read(reinterpret_cast<char *>(&score), sizeof(score)))
                 throw std::runtime_error("Cannot read score stream");
+            if (has_raw) {
+                if (!raw_input.read(reinterpret_cast<char*>(&raw), sizeof(raw)))
+                    throw std::runtime_error("Cannot read raw score stream");
+                if (!std::isfinite(score) || (score != -1.f && (score < 0.f || score > 1.f)))
+                    throw std::runtime_error("Invalid mapped score");
+                if (score >= 0.f && (!std::isfinite(raw) || raw < -1.f || raw > 1.f ||
+                    std::abs(score - (raw+1.f)/2.f) > 2.e-7f))
+                    throw std::runtime_error("Invalid raw/mapped score pair");
+                if (score == -1.f && !std::isnan(raw))
+                    throw std::runtime_error("Unscored raw response must be NaN");
+            }
             if (filter_data) {
                 if (score < 0.f) continue;
                 source->GetEntry(i);
                 target->Fill();
             } else {
                 branch->Fill();
+                if (raw_branch) raw_branch->Fill();
             }
         }
+        char extra;
+        if (input.read(&extra, 1) || (has_raw && raw_input.read(&extra, 1)))
+            throw std::runtime_error("Extra score stream entries");
         target->Write(tree_name, TObject::kOverwrite);
         std::cout << "Saved " << tree_name << ": " << target->GetEntries()
                   << " RECO entries" << std::endl;

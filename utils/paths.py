@@ -157,7 +157,9 @@ def cut_scan_dir(train_tag, directory_name="cut_scan"):
 
 
 def model_path(train_tag):
-    return os.path.join(model_dir(train_tag), "xgb_model.pkl")
+    from utils.tagging import model_kind
+    filename = "bdtg.weights.xml" if model_kind(train_tag) == "bdtg" else "xgb_model.pkl"
+    return os.path.join(model_dir(train_tag), filename)
 
 
 def scaler_path(train_tag):
@@ -173,7 +175,7 @@ def training_score_path(train_tag):
 
 
 def condor_model_path(train_tag):
-    return os.path.join(condor_model_dir(train_tag), "xgb_model.pkl")
+    return model_path(train_tag)
 
 
 def condor_scaler_path(train_tag):

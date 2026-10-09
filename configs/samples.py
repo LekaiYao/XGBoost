@@ -7,7 +7,7 @@ import re
 from utils.tagging import infer_sample_from_body, split_channel_tag
 
 SINGLE_DAG_BODY_RE = re.compile(
-    r"^(pp24|pb18|pb23|pb24)_v(\d+)_fid(\d+)_([0-9]+v[0-9]*)(?:_(rw[a-z0-9]+))?_xgb_v(\d+)$"
+    r"^(pp24|pb18|pb23|pb24)_v(\d+)_fid(\d+)_([0-9]+v[0-9]*)(?:_(rw[a-z0-9]+))?_(?:xgb|bdtg)_v(\d+)$"
 )
 GROUP_DAG_BODY_RE = re.compile(r"^(pp24|pb18|pb23|pb24)_v(\d+)_fid(\d+)_([0-9]+v[0-9]*)_(\d+)o(\d+)_v(\d+)$")
 
@@ -65,6 +65,8 @@ def _parse_common_body_for_profiles(tag: str):
 
 def infer_direct_xgb_version(tag: str) -> int:
     """Return the direct-XGBoost configuration version encoded as xgb_vN."""
+    if "_xgb_v" not in tag:
+        raise ValueError(f"Not a direct XGBoost tag: {tag}")
     return _parse_single_dag_body_or_raise(tag)[-1]
 
 

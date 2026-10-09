@@ -19,6 +19,8 @@ from utils.paths import (model_dir, training_dir, selected_dir, cut_scan_dir, pu
 from utils.selection import apply_selection, selection_columns
 from utils.training_identity import sha256, source_revision, check_revision
 from utils.punzi import scan, optimal, mass_mask, sidebands_from_selection
+from utils.model_backend import load_model
+from utils.tagging import model_kind
 
 RECIPE_PATH = Path(__file__).resolve().parents[1]/'configs/punzi_pb23_x.json'
 
@@ -51,6 +53,28 @@ def predict(df, config, scaler, model):
     return model.predict_proba(transformed)[:, 1]
 
 
+def validated_split(kind,cfg,meta,signal_entries,background_entries,frozen):
+    ns,nb=len(signal_entries),len(background_entries)
+    if kind=='bdtg':
+        if frozen is None:raise ValueError('BDTG native split is required')
+        tr,te=frozen['train_index'],frozen['test_index']
+    else:
+        tr,te=train_test_split(np.arange(ns+nb),train_size=cfg['train_fraction'],random_state=cfg['split_random_state'])
+    for ids in (tr,te):
+        if ids.dtype.kind not in 'iu' or ids.ndim!=1:raise ValueError('Invalid split index dtype/shape')
+    if not np.array_equal(np.sort(np.r_[tr,te]),np.arange(ns+nb)):
+        raise ValueError('Split membership is not a disjoint complete partition')
+    arrays=dict(signal_entry=signal_entries,background_entry=background_entries,train_index=tr,test_index=te)
+    if frozen is not None:
+        for key in arrays:
+            if not np.array_equal(arrays[key],frozen[key]):raise ValueError('Original split mismatch: '+key)
+    notes=meta['notes']
+    for key,count in [('n_sig_train',(tr<ns).sum()),('n_bkg_train',(tr>=ns).sum()),
+                      ('n_sig_test',(te<ns).sum()),('n_bkg_test',(te>=ns).sum())]:
+        if key in notes and count!=notes[key]:raise ValueError('Training population/count mismatch: '+key)
+    return arrays
+
+
 def run(tag, draw_config=None):
     if not applicable(tag):
         print(f'Punzi not applicable: approved recipes are for PbPb18/PbPb23 X, tag={tag}')
@@ -62,11 +86,18 @@ def run(tag, draw_config=None):
     year = infer_dataset_year(tag, infer_sample_from_tag(tag))
     recipe_path = RECIPE_PATH if year == '2023' else RECIPE_PATH.with_name('punzi_pb18_x.json')
     recipe=json.loads(recipe_path.read_text())
-    if meta['training_script'] != 'workflows/xgboost_train_direct.py' or meta['is_optuna']:
+    kind=model_kind(tag)
+    if kind=='bdtg':
+        if cfg.get('model_type')!='bdtg' or Path(meta['training_script']).name!='bdtg_train.py':
+            raise ValueError('BDTG provenance mismatch')
+    elif meta['training_script'] != 'workflows/xgboost_train_direct.py' or meta['is_optuna']:
         raise ValueError('Punzi split support requires direct training with recorded original split')
     if cfg.get('training_signal_exclusion') or cfg.get('signal_weight_branches') != ['pThatreweight']:
         raise ValueError('Unsupported exclusion/weight definition; cannot invent membership')
-    if cfg['split_policy'] != 'candidate_level_random_split_preliminary' or meta['val_fraction'] != 0:
+    if kind=='bdtg':
+        if cfg['split_policy']!='TMVA native class-wise random 75/25; not shared with XGBoost':
+            raise ValueError('Unsupported BDTG split policy')
+    elif cfg['split_policy'] != 'candidate_level_random_split_preliminary' or meta['val_fraction'] != 0:
         raise ValueError('Unsupported split policy')
     sigspec,bkgspec=meta['signal_path'],meta['background_path']
     if cfg['efficiency_reference_signal'] != sigspec or app['input_datasets']['data_input'] != bkgspec or app['input_datasets']['mc_input'] != sigspec:
@@ -86,6 +117,7 @@ def run(tag, draw_config=None):
         if sha256(npz_path)!=identity['npz_sha256']: raise ValueError('Split identity hash mismatch')
         frozen=dict(np.load(npz_path)); membership='recorded_at_training'
     else:
+        if kind=='bdtg':raise ValueError('BDTG requires saved native split identities')
         # Explicit migration only for the seven models with a pre-submission revision record.
         plan=json.loads((old_evidence/'plan.json').read_text())
         if tag not in plan['tags']: raise ValueError('No original source/split provenance available')
@@ -103,18 +135,25 @@ def run(tag, draw_config=None):
     ns,nb=len(sigtrain),len(bkgtrain)
     q=float(cfg['train_fraction'])
     if q!=float(meta['train_fraction']): raise ValueError('Split fraction mismatch')
-    tr,te=train_test_split(np.arange(ns+nb),train_size=q,random_state=cfg['split_random_state'])
-    arrays=dict(signal_entry=sigtrain.index.to_numpy(),background_entry=bkgtrain.index.to_numpy(),train_index=tr,test_index=te)
-    if frozen is not None:
-        for key in arrays:
-            if not np.array_equal(arrays[key],frozen[key]): raise ValueError('Original split mismatch: '+key)
+    arrays=validated_split(kind,cfg,meta,sigtrain.index.to_numpy(),bkgtrain.index.to_numpy(),frozen)
+    tr,te=arrays['train_index'],arrays['test_index']
     notes=meta['notes']
-    if ns!=notes['signal_weight_entries'] or (tr<ns).sum()!=notes['n_sig_train'] or (tr>=ns).sum()!=notes['n_bkg_train']:
-        raise ValueError('Training population/count mismatch')
-    if not np.isclose(sigtrain.pThatreweight.sum(),notes['signal_weight_sum'],rtol=1e-12): raise ValueError('Weight sum mismatch')
+    if kind=='bdtg':
+        train_sig_ids=tr[tr<ns]
+        if not np.isclose(sigtrain.pThatreweight.iloc[train_sig_ids].sum(),notes['signal_train_weight_sum'],rtol=1e-12):
+            raise ValueError('BDTG training weight sum mismatch')
+        # Native TMVA fixes the class counts before a random shuffle. This is
+        # the pre-cut background inclusion probability, never a post-cut ratio.
+        q=float((tr>=ns).sum()/nb)
+    else:
+        if ns!=notes['signal_weight_entries']:raise ValueError('Signal population/count mismatch')
+        if not np.isclose(sigtrain.pThatreweight.sum(),notes['signal_weight_sum'],rtol=1e-12): raise ValueError('Weight sum mismatch')
     modelpath=resolve_model_path(tag); scalerpath=resolve_scaler_path(tag)
-    model=joblib.load(modelpath); scaler=joblib.load(scalerpath)
-    model.set_params(n_jobs=4)
+    if kind=='bdtg':
+        if sha256(modelpath)!=cfg['model_sha256'] or sha256(scalerpath)!=cfg['scaler_sha256']:
+            raise ValueError('BDTG model/scaler changed')
+    model=load_model(tag,cfg); scaler=joblib.load(scalerpath)
+    if kind=='xgb':model.set_params(n_jobs=4)
     sig['_score']=predict(sig,cfg,scaler,model);bkg['_score']=predict(bkg,cfg,scaler,model)
     weights=np.r_[sigtrain.pThatreweight.to_numpy(),np.ones(nb)]
     scores=np.r_[sig.loc[sigtrain.index,'_score'],bkg.loc[bkgtrain.index,'_score']]
@@ -181,6 +220,8 @@ def run(tag, draw_config=None):
     payload=dict(status='PASS',train_tag=tag,recipe_id=recipe['recipe_id'],recipe_sha256=sha256(recipe_path),
         sources=revisions,membership=membership,split_identity_sha256=sha256(out/'split_identity.npz'),
         split_seed=cfg['split_random_state'],q_train=q,q_test=1-q,auc_reproduced=auc_check,
+        model_type=kind,split_policy=cfg['split_policy'],nominal_train_fraction=cfg['train_fraction'],
+        inclusion_probability_source='native pre-cut class counts' if kind=='bdtg' else 'original sklearn split fraction',
         mc_apply_selection=mcapply,data_apply_selection=dataapply,background_training_selection=bkgsel,
         weight='source pThatreweight; no class balance',model_sha256=sha256(modelpath),scaler_sha256=sha256(scalerpath),
         config_sha256=sha256(cfg_path),metadata_sha256=sha256(meta_path),apply_summary_sha256=sha256(apply_path),

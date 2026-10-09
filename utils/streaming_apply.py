@@ -14,9 +14,15 @@ def score_frame(frame, model_bundles):
             columns=bundle["trans_columns"],
             index=frame.index,
         )
-        output[bundle["score_column"]] = bundle["model"].predict_proba(
-            transformed[bundle["trans_columns"]]
-        )[:, 1]
+        from utils.model_backend import score_transformed
+        score, raw = score_transformed(bundle["model"], transformed[bundle["trans_columns"]])
+        column = bundle["score_column"]
+        if raw is not None:
+            raw_column = column.replace("Prediction", "Prediction_raw", 1)
+            if column in frame.columns or raw_column in frame.columns:
+                raise ValueError("BDTG prediction branch collision")
+            output[raw_column] = raw
+        output[column] = score
     return output
 
 
