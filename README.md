@@ -351,3 +351,44 @@ X channel extra MC：
   dag/make_dagman_workflow.py dag/make_single_workflow.py \
   utils/varsets.py utils/paths.py configs/samples.py
 ```
+
+
+## BDTG submission
+
+Use the checkout's `.venv` and a ROOT installation with TMVA. The matching
+`*_xgb_v1` model, scaler, metadata, saved split identities and original input
+ROOT files must be present under the configured paths. These data products
+remain outside Git. The initial backend supports PbPb18/PbPb23 X with `rw0`.
+
+```bash
+# Prepare only: resolves and checks inputs, hashes dependencies, freezes source.
+.venv/bin/python -m dag.submit_bdtg_workflow X_pb18_v1_fid1_3v3_rw0_bdtg_v1
+# After reviewing preparation.json, submit exactly that prepared bundle.
+.venv/bin/python -m dag.submit_bdtg_workflow --prepared /absolute/path/to/bundle --submit
+```
+
+Preparation creates a unique `output/submissions/<run>_<tag>/` directory with
+`resolved_config.json`, `environment.json`, `submission_manifest.json`,
+`source_snapshot/`, DAG, wrapper, submit template and `preparation.json`.
+No historical submission manifest is required. Existing output directories
+are refused for a full run: explicitly archive them first when a rerun is
+intended. `--postprocess-only` prepares DRAW, SHAP, FIT_INTERFACE and VERIFY
+for an existing trained/applied tag; it may update those diagnostics.
+
+`--submit` checks the prepared hashes, reference artifacts, input files,
+ROOT version and Python packages, rejects active jobs for the tag, creates
+an isolated directory below the AFS submission root, runs Condor's submit
+file dry-run, then submits the DAG once. Use `--afs-dir` to override the AFS
+root. `submission.json` records the host, pool, schedd, cluster, query command
+and submission outcome; `submit.log` retains the original response. A recorded
+submission attempt prevents blind duplicate submission. The command exits
+after the receipt; it does not monitor jobs or declare workflow completion.
+
+Workers execute the EOS checkout and verify the frozen source hashes before
+each stage; keep that checkout and its `.venv` unchanged while the DAG runs.
+The snapshot and package list allow reconstruction of that checkout, but
+input ROOT files and reference models must be retained separately. The
+snapshot is an archive, not a second automatically executed checkout. The
+complete DAG is TRAIN → APPLY → EXTRA → FULL → DRAW → SHAP → FIT_INTERFACE →
+VERIFY; FULL includes DATA and X/Psi2S prompt/nonprompt MC. FIT_INTERFACE skips
+unregistered year pairings according to the existing interface policy.
