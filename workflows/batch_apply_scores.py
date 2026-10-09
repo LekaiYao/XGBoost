@@ -183,6 +183,10 @@ if apply_extra_mc is not None:
     if use_precut:
         raise ValueError("--apply-extra-mc cannot be combined with --use-precut.")
     extra_cfg = resolve_extra_mc_apply_config(sample_key, channel, dataset_year, apply_extra_mc)
+    extra_selection = apply_selection_expression
+    if training_cfg.get("apply_mc_selection"):
+        extra_selection = (f"({extra_selection}) and ({training_cfg['apply_mc_selection']})"
+                           if extra_selection else training_cfg["apply_mc_selection"])
     failures = []
     for key, spec in extra_cfg["samples"].items():
         EXTRA_INPUT = to_root_spec(spec)
@@ -191,7 +195,7 @@ if apply_extra_mc is not None:
         print(f"Processing extra MC [{key}]: {EXTRA_INPUT}")
         try:
             result = write_scored_root(
-                EXTRA_INPUT, out_path, extra_tree, models, selection=apply_selection_expression
+                EXTRA_INPUT, out_path, extra_tree, models, selection=extra_selection
             )
             print(
                 f"Saved extra MC with score: {out_path} "
@@ -202,11 +206,18 @@ if apply_extra_mc is not None:
             print(f"  [SKIP] extra MC {key}: {exc}")
     if failures:
         print(f"Completed extra MC apply with {len(failures)} failure(s): {[f['key'] for f in failures]}")
-    sys.exit(0)
+    sys.exit(1 if failures else 0)
 
 print(f"Processing MC: {MC_INPUT}")
 mc_path = os.path.join(output_dir, f"{output_prefix}MC_with_score.root")
-mc_result = write_scored_root(MC_INPUT, mc_path, MC_TREE_INPUT, models, selection=apply_selection_expression)
+signal_extra_selection = training_cfg.get("apply_signal_selection")
+mc_selection_expression = apply_selection_expression
+if signal_extra_selection:
+    mc_selection_expression = (
+        f"({apply_selection_expression}) and ({signal_extra_selection})"
+        if apply_selection_expression else signal_extra_selection
+    )
+mc_result = write_scored_root(MC_INPUT, mc_path, MC_TREE_INPUT, models, selection=mc_selection_expression)
 print(
     f"Saved MC with score: {mc_path} "
     f"({mc_result['entries']} entries in {mc_result['chunks']} chunks)"
@@ -225,7 +236,7 @@ for model_bundle in models:
     )
     reference_result = write_scored_root(
         reference_input, reference_path, reference_tree, [model_bundle],
-        selection=apply_selection_expression,
+        selection=mc_selection_expression,
     )
     print(
         f"Saved efficiency-reference MC with score: {reference_path} "
@@ -266,7 +277,7 @@ with open(summary_path, "w") as f:
                 "signal_selection": training_cfg["signal_selection"],
                 "background_selection": training_cfg["background_selection"],
             },
-            "apply_selection": {"expression": apply_selection_expression, "mc_entries": mc_result["entries"], "data_entries": data_result["entries"]},
+            "apply_selection": {"mc_expression": mc_selection_expression, "expression": apply_selection_expression, "mc_entries": mc_result["entries"], "data_entries": data_result["entries"]},
             "draw_selection": {
                 "fid_profile": fid_profile,
                 "fiducial_cut": fid_cfg,

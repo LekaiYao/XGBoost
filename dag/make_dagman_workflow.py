@@ -4,6 +4,7 @@ from pathlib import Path
 
 from utils.tagging import parse_optuna_spec_from_group_body, split_channel_tag
 from utils.varsets import infer_sample_from_tag
+from configs.samples import default_apply_extra_mc
 
 
 def train_tag(group_tag: str, version: int, mode: str) -> str:
@@ -64,7 +65,18 @@ def make_dag(
         lines.append("")
 
         lines.append(f"PARENT {train_node} CHILD {apply_node}")
-        lines.append(f"PARENT {apply_node} CHILD {draw_node}")
+        extra_mc = default_apply_extra_mc(tag)
+        if extra_mc != "0":
+            extra_node = f"PSI_v{version}"
+            lines.extend([
+                f"JOB {extra_node} submit_apply_job.sub",
+                f'VARS {extra_node} train_tag="{tag}" use_precut="0" '
+                f'apply_extra_mc="{extra_mc}" job_tag="{tag}_psi2s"',
+                f"PARENT {train_node} CHILD {extra_node}",
+                f"PARENT {apply_node} {extra_node} CHILD {draw_node}",
+            ])
+        else:
+            lines.append(f"PARENT {apply_node} CHILD {draw_node}")
         lines.append("")
 
         if with_shap:

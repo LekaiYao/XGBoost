@@ -1,5 +1,6 @@
 #include <TFile.h>
 #include <TTree.h>
+#include <TLeaf.h>
 #include <TObject.h>
 #include <TSystem.h>
 #include <TKey.h>
@@ -54,7 +55,20 @@ void full_apply_root(const char *path, const char *tree_name,
         auto *source = dynamic_cast<TTree *>(
             (filter_data ? original.get() : &file)->Get(tree_name));
         if (!source) throw std::runtime_error("Missing RECO TTree");
-        if (source->GetBranch("Score")) throw std::runtime_error("Score already exists");
+        if (auto *legacy = source->GetBranch("Score")) {
+            if (source->GetBranch("Score_source"))
+                throw std::runtime_error("Score and Score_source both exist");
+            auto *leaf = legacy->GetLeaf("Score");
+            const std::string title = legacy->GetTitle();
+            if (!leaf || legacy->GetListOfLeaves()->GetEntries() != 1 ||
+                title.rfind("Score/", 0) != 0)
+                throw std::runtime_error("Unsupported legacy Score branch layout");
+            // Preserve the input score; reserve Score for this model's output.
+            legacy->SetName("Score_source");
+            legacy->SetTitle(("Score_source" + title.substr(5)).c_str());
+            leaf->SetName("Score_source");
+            leaf->SetTitle("Score_source");
+        }
         std::ifstream input(scores_path, std::ios::binary);
         float score = -1.f;
         file.cd();

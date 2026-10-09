@@ -11,11 +11,11 @@ fi
 train_tag=$1
 with_shap=${2:-1}
 use_precut=${3:-0}
-apply_extra_mc=${4:-0}
+apply_extra_mc=${4:-auto}
 pre_reweight_job=${5:-0}
 with_fit_interface=${6:-1}
 
-if [[ ! "${train_tag}" =~ ^(X|Psi2S|Bu|Bd|Bs)_(pp24|pb23|pb24)_v[0-9]+_fid[0-9]+_[0-9]+v[0-9]*(_rw[a-z0-9]+)?_xgb_v[0-9]+$ ]]; then
+if [[ ! "${train_tag}" =~ ^(X|Psi2S|Bu|Bd|Bs)_(pp24|pb18|pb23|pb24)_v[0-9]+_fid[0-9]+_[0-9]+v[0-9]*(_rw[a-z0-9]+)?_xgb_v[0-9]+$ ]]; then
   echo "ERROR: invalid single DAG train_tag '${train_tag}'"
   echo "Expected format: {channel}_{dataset}_v{n}_fid{n}_{varset}_xgb_v{n}"
   echo "Example: X_pb24_v2_fid1_8v1_xgb_v1"
@@ -33,11 +33,11 @@ if [[ ! "${with_fit_interface}" =~ ^[01]$ ]]; then
 fi
 
 if [[ ! "${apply_extra_mc}" =~ ^(0|all|[a-z0-9_]+(,[a-z0-9_]+)*)$ ]]; then
-  echo "ERROR: apply_extra_mc must be 0, all, or comma-separated lowercase keys"
+  echo "ERROR: apply_extra_mc must be auto (default), 0, all, or comma-separated lowercase keys"
   exit 1
 fi
 
-if [[ "${use_precut}" == "1" && "${apply_extra_mc}" != "0" ]]; then
+if [[ "${use_precut}" == "1" && "${apply_extra_mc}" != "0" && "${apply_extra_mc}" != "auto" ]]; then
   echo "ERROR: apply_extra_mc cannot be combined with use_precut=1"
   exit 1
 fi

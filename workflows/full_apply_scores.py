@@ -1,4 +1,4 @@
-"""Opt-in complete ROOT copies with Score; compact APPLY remains the default."""
+"""Complete four-MC ROOT copies with Score and GEN plus fiducial DATA."""
 import argparse
 import json
 from pathlib import Path
@@ -26,6 +26,14 @@ from utils.selection import apply_selection, selection_columns
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("train_tag")
+    scope = parser.add_mutually_exclusive_group()
+    scope.add_argument("--include-data", dest="include_data", action="store_true",
+                       help="Include filtered DATA (default; retained for compatibility)")
+    scope.add_argument("--mc-only", dest="include_data", action="store_false",
+                       help="Explicitly restrict full APPLY to four MC samples")
+    scope.add_argument("--only-data", action="store_true",
+                       help="Write only filtered DATA; preserve existing MC and full summary")
+    parser.set_defaults(include_data=True)
     args = parser.parse_args()
     tag = args.train_tag
     sample = infer_sample_from_tag(tag)
@@ -40,14 +48,28 @@ def main():
     scaler = joblib.load(resolve_scaler_path(tag))
     features = config["input_columns"]
     transformed_columns = config["trans_columns"]
-    columns = list(dict.fromkeys(features + selection_columns(selection)))
     output_dir = Path(root_scored_dir(tag))
     output_dir.mkdir(parents=True, exist_ok=True)
     macro = Path(__file__).resolve().parents[1] / "utils/full_apply_root.C"
     records = []
     for key, spec in resolve_full_apply_config(sample, channel, year).items():
+        if (spec["is_data"] and not args.include_data) or (args.only_data and not spec["is_data"]):
+            continue
+        score_selection = selection
+        if not spec["is_data"] and training.get("apply_mc_selection"):
+            score_selection = f"({selection}) and ({training['apply_mc_selection']})"
+        elif key == "x_prompt" and training.get("apply_signal_selection"):
+            score_selection = f"({selection}) and ({training['apply_signal_selection']})"
+        columns = list(dict.fromkeys(features + selection_columns(score_selection)))
         destination = output_dir / Path(spec["path"]).name
+        if args.only_data and destination.exists():
+            raise FileExistsError(f"DATA output already exists: {destination}")
         temporary = destination.with_suffix(".root.tmp")
+        with uproot.open(spec["path"]) as source_file:
+            source_branches = source_file[spec["tree"]].keys()
+            branch_renames = {"Score": "Score_source"} if "Score" in source_branches else {}
+            if branch_renames and "Score_source" in source_branches:
+                raise ValueError(f"Both Score and Score_source exist in {spec['path']}")
         print(f"Full APPLY {key}: {spec['path']} -> {destination}", flush=True)
         try:
             with tempfile.TemporaryDirectory(prefix="full_apply_") as scratch:
@@ -59,7 +81,7 @@ def main():
                         step_size="100 MB", library="np",
                     ):
                         frame = pd.DataFrame(arrays)
-                        selected = apply_selection(frame, selection, "full APPLY fiducial")
+                        selected = apply_selection(frame, score_selection, "full APPLY scoring selection")
                         scores = np.full(len(frame), -1, dtype=np.float32)
                         if len(selected):
                             transformed = pd.DataFrame(
@@ -80,10 +102,14 @@ def main():
                 subprocess.run(["root", "-l", "-b", "-q", call], check=True)
                 temporary.replace(destination)
             records.append(dict(sample=key, input=spec, output=str(destination),
-                                input_entries=entries, fiducial_entries=selected_entries,
+                                input_entries=entries, scored_entries=selected_entries,
+                                score_selection=score_selection, unscored_value=-1,
+                                source_branch_renames=branch_renames,
+                                selection_applied_to_output=spec["is_data"],
                                 output_entries=selected_entries if spec["is_data"] else entries))
-            (output_dir / "full_apply_summary.json").write_text(json.dumps(
-                dict(train_tag=tag, fiducial_selection=selection, score_branch="Score", samples=records),
+            (output_dir / ("data_apply_summary.json" if args.only_data else "full_apply_summary.json")).write_text(json.dumps(
+                dict(train_tag=tag, fiducial_selection=selection, score_branch="Score",
+                     include_data=args.include_data, samples=records),
                 indent=2,
             ))
             print(f"Finished {key}: {records[-1]['output_entries']} entries", flush=True)

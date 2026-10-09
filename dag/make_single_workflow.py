@@ -3,6 +3,7 @@ import argparse
 from pathlib import Path
 
 from utils.tagging import split_channel_tag
+from configs.samples import default_apply_extra_mc
 
 
 def make_dag(
@@ -10,10 +11,12 @@ def make_dag(
     train_tag: str,
     with_shap: bool = True,
     use_precut: bool = False,
-    apply_extra_mc: str = "0",
+    apply_extra_mc: str = "auto",
     pre_reweight_job: str = "0",
     with_fit_interface: bool = True,
 ) -> Path:
+    if apply_extra_mc == "auto":
+        apply_extra_mc = default_apply_extra_mc(train_tag)
     out_dir.mkdir(parents=True, exist_ok=True)
     dag_path = out_dir / f"wf_single_{train_tag}.dag"
     precut_flag = int(use_precut)
@@ -89,7 +92,7 @@ def main():
     parser.add_argument("--train-tag", required=True)
     parser.add_argument("--with-shap", type=int, choices=[0, 1], default=1)
     parser.add_argument("--use-precut", type=int, choices=[0, 1], default=0)
-    parser.add_argument("--apply-extra-mc", default="0")
+    parser.add_argument("--apply-extra-mc", default="auto")
     parser.add_argument("--out-dir", default="dag/generated")
     parser.add_argument("--pre-reweight-job", default="0")
     parser.add_argument("--with-fit-interface", type=int, choices=[0, 1], default=1)
