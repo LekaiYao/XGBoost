@@ -1095,6 +1095,46 @@ TRAINING_SIGNAL_ARTIFACT_VARIANTS = {
 }
 
 
+# Isolated, user-authorized ppRef-only comparison; no nominal profile is changed.
+REWEIGHT_COMPARISON_STUDIES = {
+    "X_pp24_snapshotv1_dr045_comparison_v1": {
+        "sample": "pp",
+        "channel": "X",
+        "snapshot_manifest": "docs/ntuple_compatibility/2026-09-01_ppref_snapshot_v1/manifest.json",
+        "snapshot_manifest_sha256": "6af61ea5a429bd266329d7aaaa0c9d380dc7cd92459105fab20a5a1f95222ae8",
+        "original": _PPREF24_X3872_MC,
+        "source_data": _PPREF24_NTMIX_DATA,
+        "target": _spec(
+            "/eos/home-l/leyao/pbpb_work/X_analysis/Analysis_CODES/plotER/Validation/results/"
+            "ppRef_X_r5_splot_ppref_snapshot_v1/artifacts/ppref_x_signed_sweight_all_common.root",
+            "ntmix_X3872_sWeight",
+        ),
+        "target_weight_branch": "signal_sWeight",
+        "target_source_selection": "Bpt > 7.5 and Bpt < 50 and abs(By) < 2.4 and BQvalue < 0.15 and Bmass > 3.8 and Bmass < 4.0",
+        "selection": (
+            "Bpt > 10 and Bpt < 50 and abs(By) < 1.6 and BQvalue < 0.15 "
+            "and Btrk1Pt > 0.9 and Btrk1Pt <= 4.5 and Btrk2Pt > 0.9 and Btrk2Pt <= 4.5 "
+            "and Bcos_dtheta >= -1 and Bcos_dtheta <= 1 and Btktkpt >= 2 and Btktkpt <= 8 "
+            "and Bchi2Prob >= 0 and Bchi2Prob <= 1 and Btrk1dR >= 0 and Btrk1dR <= 0.45 "
+            "and Btrk2dR >= 0 and Btrk2dR <= 0.45"
+        ),
+        "variable_sets": ["R5", "R6", "R6trk2", "R7dr"],
+        "validation_variable_set": "R8dralpha",
+        "parameter_reference": "output/reweighting/X_pp24_xsplot_R6range5_rw_v1/reweighting_manifest.json",
+    },
+}
+
+
+REWEIGHT_COMPARISON_STUDIES["X_pp24_snapshotv1_dr045_alpha_comparison_v1"] = {
+    **deepcopy(REWEIGHT_COMPARISON_STUDIES["X_pp24_snapshotv1_dr045_comparison_v1"]),
+    "variable_sets": ["R5alpha", "R7alphadr"],
+}
+
+
+def resolve_reweight_comparison_config(study_tag: str) -> dict:
+    return deepcopy(REWEIGHT_COMPARISON_STUDIES[study_tag])
+
+
 def infer_reweight_profile(tag: str) -> str:
     _, body = split_channel_tag(tag)
     match = SINGLE_DAG_BODY_RE.fullmatch(body)

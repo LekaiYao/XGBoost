@@ -71,6 +71,11 @@ PP_REWEIGHT_VARSETS_X = {
     "R5v3": ["Btrk1dR", "Btrk1Pt", "Bchi2Prob", "Bcos_dtheta", "Btrk2Pt"],
     "R6": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt", "Btrk1dR"],
     "R6v2": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk1Pt", "Btrk1dR", "Btrk2dR"],
+    "R6trk2": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt", "Btrk2dR"],
+    "R7dr": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt", "Btrk1dR", "Btrk2dR"],
+    "R8dralpha": ["Bcos_dtheta", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt", "Btrk1dR", "Btrk2dR", "Balpha"],
+    "R5alpha": ["Balpha", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt"],
+    "R7alphadr": ["Balpha", "Btktkpt", "Bchi2Prob", "Btrk2Pt", "Btrk1Pt", "Btrk1dR", "Btrk2dR"],
     "R8": ["Bchi2Prob", "Btrk1dR", "BtrkPtimb", "Btrk1Pt", "Btrk2Pt", "BtktkvProb", "Bcos_dtheta", "Btktkpt"],
 }
 
