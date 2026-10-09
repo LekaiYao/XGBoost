@@ -114,8 +114,9 @@ class TrainingWeightsTest(unittest.TestCase):
 
         pbpb["max_depth"] = 999
         self.assertEqual(DIRECT_XGB_PARAMS["pbpb"][1]["max_depth"], 4)
-        with self.assertRaisesRegex(ValueError, "xgb_v2"):
-            resolve_direct_xgb_params("pbpb", 2)
+        unavailable = max(DIRECT_XGB_PARAMS["pbpb"]) + 1
+        with self.assertRaisesRegex(ValueError, f"xgb_v{unavailable}"):
+            resolve_direct_xgb_params("pbpb", unavailable)
 
     def test_psi2s_top_level_channel_configuration(self):
         tag = "Psi2S_pb24_v1_fid1_6v1_rwr6range4v1_xgb_v1"
