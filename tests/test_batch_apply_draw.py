@@ -41,6 +41,12 @@ class BatchApplyDrawTest(unittest.TestCase):
         self.addCleanup(self.stack.close)
         self.root = Path(self.stack.enter_context(tempfile.TemporaryDirectory()))
         self.configs = {}
+        # Synthetic APPLY fixtures are independent of archived production recipes.
+        from utils.varsets import VARSETS
+        self.stack.enter_context(patch.dict(VARSETS["pbpb"]["X"], {"6v5": ["x"], "8v1": ["x"]}))
+        channel = samples.SAMPLES["pbpb"]["channels"]["X"]
+        self.stack.enter_context(patch.dict(channel["selection_profiles"], {"pb24_v18": {}, "pb24_v2": {}}))
+        self.stack.enter_context(patch.dict(channel["fiducial_profiles"], {"pb24_fid19": "x > 0", "pb24_fid1": "x > 0"}))
         self.arrays = {
             "x": np.linspace(0, 9, 40), "Bmass": np.full(40, 3.87),
             "Reweight": np.linspace(1, 3, 40),
